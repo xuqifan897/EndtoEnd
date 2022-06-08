@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# ./build/EndtoEnd3 --compression 9
-
-./build/EndtoEnd3 \
+gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --phantom-dimension 200 200 197 \
     --voxel-size 2. \
     --phantom-isocenter 205.95534 211.23352 162.16011 \
@@ -28,3 +26,7 @@
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv
+
+
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/argparse.cpp:65
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/kernelInit.cpp:81

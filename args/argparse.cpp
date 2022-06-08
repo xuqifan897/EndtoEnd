@@ -42,12 +42,29 @@ int E2E::args_init(int argc, char** argv)
                 n is the number of beams")
             ("zenith-range", po::value<vector<float>>()->multitoken(), "The zenith range of the beam to avoid physical collision")
             ("dose-path", po::value<string>(), "The path to which the dose is stored")
+            ("spectrum-path", po::value<string>(), "The path to spectrum data")
+            ("ATheta-path", po::value<string>(), "The path to ATheta file")
+            ("atheta-path", po::value<string>(), "The path to atheta file")
+            ("BTheta-path", po::value<string>(), "The path to BTheta file")
+            ("btheta-path", po::value<string>(), "The path to btheta file")
+            ("pencil-path", po::value<string>(), "The path to the pencil beam lateral kernel file")
+            ("depthDose-path", po::value<string>(), "The path to the depth dose table file")
         ;
 
         E2E::args = new po::variables_map();
         po::store(po::parse_command_line(argc, argv, desc), *E2E::args);
         po::notify(*E2E::args);
+
+        if ((*E2E::args).count("help"))
+        {
+            cout << desc << endl;
+            return 1;
+        }
+
         log_arguments(*E2E::args);
+        spectrum_init();
+        CCCSkernel_init();
+        FCBBkernel_init();
     }
     catch(std::exception& e)
     {
