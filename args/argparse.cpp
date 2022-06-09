@@ -52,6 +52,8 @@ int E2E::args_init(int argc, char** argv)
         ;
 
         E2E::args = new po::variables_map();
+        // E2E::args = (po::variables_map*)malloc(sizeof(po::variables_map));
+        // (*E2E::args) = po::variables_map();
         po::store(po::parse_command_line(argc, argv, desc), *E2E::args);
         po::notify(*E2E::args);
 
@@ -62,9 +64,9 @@ int E2E::args_init(int argc, char** argv)
         }
 
         log_arguments(*E2E::args);
-        spectrum_init();
-        CCCSkernel_init();
-        FCBBkernel_init();
+        if (spectrum_init()) return 1;
+        if (CCCSkernel_init()) return 1;
+        if (FCBBkernel_init()) return 1;
     }
     catch(std::exception& e)
     {

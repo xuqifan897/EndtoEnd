@@ -30,3 +30,4 @@ gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
 
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/argparse.cpp:65
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/kernelInit.cpp:81
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/phantom.cpp:91

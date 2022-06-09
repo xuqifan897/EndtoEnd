@@ -5,110 +5,102 @@ using namespace std;
 
 CCCSkernel::CCCSkernel(int NA): num_angles(NA)
 {
-    this->angles = new float[NA]{0};
-    this->Atheta = new float[NA]{0};
-    this->Btheta = new float[NA]{0};
-    this->atheta = new float[NA]{0};
-    this->btheta = new float[NA]{0};
+    this->angles = (float*)malloc(NA*sizeof(float));
+    this->Atheta = (float*)malloc(NA*sizeof(float));
+    this->Btheta = (float*)malloc(NA*sizeof(float));
+    this->atheta = (float*)malloc(NA*sizeof(float));
+    this->btheta = (float*)malloc(NA*sizeof(float));
 
-    this->angles_flag = true;
-    this->Atheta_flag = true;
-    this->Btheta_flag = true;
-    this->atheta_flag = true;
-    this->btheta_flag = true;
+    for(int i=0; i<this->num_angles; i++)
+    {
+        this->angles[i] = 0;
+        this->Atheta[i] = 0;
+        this->Btheta[i] = 0;
+        this->atheta[i] = 0;
+        this->btheta[i] = 0;
+    }
 }
 
 CCCSkernel::~CCCSkernel()
 {
-    if (this->angles_flag)
-        delete this->angles;
-    if (this->Atheta_flag)
-        delete this->Atheta;
-    if (this->Btheta_flag)
-        delete this->Btheta;
-    if (this->atheta_flag)
-        delete this->atheta;
-    if (this->btheta_flag)
-        delete this->btheta;
+    if (this->angles != nullptr)
+        free(this->angles);
+    if (this->Atheta != nullptr)
+        free(this->Atheta);
+    if (this->Btheta != nullptr)
+        free(this->Btheta);
+    if (this->atheta != nullptr)
+        free(this->atheta);
+    if (this->btheta != nullptr)
+        free(this->btheta);
 }
 
 CCCSkernel::CCCSkernel(CCCSkernel& old): num_angles{old.num_angles}
 {
-    this->angles_flag = old.angles_flag;
-    this->Atheta_flag = old.Atheta_flag;
-    this->Btheta_flag = old.Btheta_flag;
-    this->atheta_flag = old.atheta_flag;
-    this->btheta_flag = old.btheta_flag;
-
-    if (this->angles_flag)
+    if (old.angles != nullptr)
     {
-        this->angles = new float[this->num_angles];
+        this->angles = (float*)malloc(this->num_angles*sizeof(float));
         for (int i=0; i<this->num_angles; i++)
             this->angles[i] = old.angles[i];
     }
-    if (this->Atheta_flag)
+    else
+        this->angles = nullptr;
+    
+    if (old.Atheta != nullptr)
     {
-        this->Atheta = new float[this->num_angles];
+        this->Atheta = (float*)malloc(this->num_angles*sizeof(float));
         for (int i=0; i<this->num_angles; i++)
             this->Atheta[i] = old.Atheta[i];
     }
-    if (this->Btheta_flag)
+    else
+        this->Atheta = nullptr;
+    
+    if (old.Btheta != nullptr)
     {
-        this->Btheta = new float[this->num_angles];
+        this->Btheta = (float*)malloc(this->num_angles*sizeof(float));
         for (int i=0; i<this->num_angles; i++)
             this->Btheta[i] = old.Btheta[i];
     }
-    if (this->atheta_flag)
+    else
+        this->Btheta = nullptr;
+
+    if (old.atheta != nullptr)
     {
-        this->atheta = new float[this->num_angles];
+        this->atheta = (float*)malloc(this->num_angles*sizeof(float));
         for (int i=0; i<this->num_angles; i++)
             this->atheta[i] = old.atheta[i];
     }
-    if (this->btheta_flag)
+    else
+        this->atheta = nullptr;
+    
+    if (old.btheta != nullptr)
     {
-        this->btheta = new float[this->num_angles];
+        this->btheta = (float*)malloc(this->num_angles*sizeof(float));
         for (int i=0; i<this->num_angles; i++)
             this->btheta[i] = old.btheta[i];
     }
+    else
+        this->btheta = nullptr;
 }
 
 CCCSkernel::CCCSkernel(CCCSkernel&& old): num_angles(old.num_angles)
 {
-    this->angles_flag = old.angles_flag;
-    this->Atheta_flag = old.Atheta_flag;
-    this->Btheta_flag = old.Btheta_flag;
-    this->atheta_flag = old.atheta_flag;
-    this->btheta_flag = old.btheta_flag;
-
-    if (old.angles_flag)
-        this->angles = move(old.angles);
-    
-    if (old.Atheta_flag)
-        this->Atheta = move(old.Atheta);
-
-    if (old.Btheta_flag)
-        this->Btheta = move(old.Btheta);
-
-    if (old.atheta_flag)
-        this->atheta = move(old.atheta);
-
-    if (old.btheta_flag)
-        this->btheta = move(old.btheta);
-
-    old.angles_flag = false;
-    old.Atheta_flag = false;
-    old.Btheta_flag = false;
-    old.atheta_flag = false;
-    old.btheta_flag = false;
+    this->angles = exchange(old.angles, nullptr);
+    this->Atheta = exchange(old.Atheta, nullptr);
+    this->Btheta = exchange(old.Btheta, nullptr);
+    this->atheta = exchange(old.atheta, nullptr);
+    this->btheta = exchange(old.btheta, nullptr);
 }
 
 FCBBkernel::FCBBkernel(int ND): num_depths(ND)
 {
-    this->depths_flag = true;
-    this->doses_flag = true;
-
-    this->depths = new float[this->num_depths]{0};
-    this->doses = new float[this->num_depths]{0};
+    this->depths = (float*)malloc(this->num_depths*sizeof(float));
+    this->doses = (float*)malloc(this->num_depths*sizeof(float));
+    for (int i=0; i<this->num_depths; i++)
+    {
+        this->depths[i] = 0;
+        this->doses[i] = 0;
+    }
 
     this->A = 0;
     this->B = 0;
@@ -118,44 +110,37 @@ FCBBkernel::FCBBkernel(int ND): num_depths(ND)
 
 FCBBkernel::~FCBBkernel()
 {
-    if (this->depths_flag)
-        delete this->depths;
-    if (this->doses_flag)
-        delete this->doses;
+    if (this->depths != nullptr)
+        free(this->depths);
+    if (this->doses != nullptr)
+        free(this->doses);
 }
 
 FCBBkernel::FCBBkernel(FCBBkernel& old): \
 num_depths(old.num_depths), A(old.A), B(old.B), a(old.a), b(old.b)
 {
-    this->depths_flag = old.depths_flag;
-    this->doses_flag = old.doses_flag;
-
-    if (this->depths_flag)
+    if (old.depths != nullptr)
     {
-        this->depths = new float[this->num_depths];
+        this->depths = (float*)malloc(this->num_depths*sizeof(float));
         for (int i=0; i<this->num_depths; i++)
             this->depths[i] = old.depths[i];
     }
+    else
+        this->depths = nullptr;
 
-    if (this->doses_flag)
+    if (old.doses != nullptr)
     {
-        this->doses = new float[this->num_depths];
+        this->doses = (float*)malloc(this->num_depths*sizeof(float));
         for (int i=0; i<this->num_depths; i++)
             this->doses[i] = old.doses[i];
     }
+    else
+        this->doses = nullptr;
 }
 
 FCBBkernel::FCBBkernel(FCBBkernel&& old): \
 num_depths(old.num_depths), A(old.A), B(old.B), a(old.a), b(old.b)
 {
-    this->depths_flag = old.depths_flag;
-    this->doses_flag = old.doses_flag;
-
-    if (old.depths_flag)
-        this->depths = move(old.depths);
-    if (old.doses_flag)
-        this->doses = move(old.doses);
-    
-    old.depths_flag = false;
-    old.doses_flag = false;
+    this->depths = exchange(old.depths, nullptr);
+    this->doses = exchange(old.doses, nullptr);
 }

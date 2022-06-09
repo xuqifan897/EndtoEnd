@@ -98,7 +98,6 @@ T E2E::get_args(std::string key)
         std::cerr << "the key " << key << " is not initialized" << std::endl;
         exit;
     }
-    
 }
 
 #endif

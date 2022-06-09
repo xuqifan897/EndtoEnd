@@ -63,6 +63,7 @@ int E2E::spectrum_init()
         }
     }
 
+    // // for debug purposes
     // for (auto& spectrum : spectrums)
     // {
     //     for (int i=0; i<lines.size(); i++)
@@ -97,8 +98,12 @@ int E2E::CCCSkernel_init()
     int num_angles = 48;
     int num_kernels = 5;
     float angle_base = 1.875 * PI / 180;
-    CCCSkernel*** kernels = new CCCSkernel**[num_kernels]\
-        {&CCCS4MeV, &CCCS6MeV, &CCCS10MeV, &CCCS15MeV, &CCCS24MeV};
+    CCCSkernel*** kernels = (CCCSkernel***)malloc(num_kernels*sizeof(CCCSkernel**));
+    kernels[0] = &CCCS4MeV;
+    kernels[1] = &CCCS6MeV;
+    kernels[2] = &CCCS10MeV;
+    kernels[3] = &CCCS15MeV;
+    kernels[4] = &CCCS24MeV;
     
     for (int i=0; i<num_kernels; i++)
     {
@@ -218,7 +223,12 @@ int E2E::FCBBkernel_init()
     string depthDosePath = get_args<string>("depthDose-path");
 
     int num_kernels=4;
-    FCBBkernel*** kernels = new FCBBkernel**[num_kernels]{&FCBB4MeV, &FCBB6MeV, &FCBB10MeV, &FCBB15MeV};
+    FCBBkernel*** kernels = (FCBBkernel***)malloc(num_kernels*sizeof(FCBBkernel**));
+    kernels[0] = &FCBB4MeV;
+    kernels[1] = &FCBB6MeV;
+    kernels[2] = &FCBB10MeV;
+    kernels[3] = &FCBB15MeV;
+
     ifstream input_file(depthDosePath);
     if (! input_file.is_open())
     {
@@ -293,4 +303,6 @@ int E2E::FCBBkernel_init()
     //     FCBBkernel& kernel = (**(kernels[i]));
     //     cout << kernel.A << " " << kernel.B << " " << kernel.a << " " << kernel.b << endl;
     // }
+
+    return 0;
 }
