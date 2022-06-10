@@ -3,29 +3,29 @@
 
 #include <array>
 
-
 namespace E2E
 {
-    class phantom
-    {
-    public:
-        std::array<int, 3> dimension;
-        float voxelSize; // in cm
-        std::array<float, 3> isoCenter; // in cm
-        float* d_HU;
-        float* d_PTVtarget;
-        float* d_PTVweight;
-        // float* d_PTVtarget;
-        float* d_OARweight;
-        float* d_OARtarget;
 
-        phantom();
-        ~phantom();
-        phantom(phantom& old);
-        phantom(phantom&& old);
-    };
+class phantom
+{
+public:
+    std::array<int, 3> dimension;
+    std::array<float, 3> isocenter; // in cm
+    float voxelSize; // in cm, isotropic phantom is assumed
+    float* h_HU; // the water HU value is normalized to 1
+    float* h_PTVweight;
+    float* h_PTVtarget;
+    float* h_OARweight;
+    float* h_OARtarget;
 
-    int phantom_init_default(phantom& target);
+    phantom();
+    ~phantom();
+    phantom(phantom& old);
+    phantom(phantom&& old);
+};
+
+int phantom_init_default(phantom& Phtm);
+
 };
 
 #endif
