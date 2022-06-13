@@ -1,7 +1,9 @@
-file(GLOB SOURCES ./*.cpp)
+file(GLOB SOURCES ./*.cpp ./*.cu)
 file(GLOB HEADERS ./*.h)
 add_library(geom ${SOURCES} ${HEADERS})
 
-target_link_libraries(geom PRIVATE args)
+find_package(CUDA REQUIRED)
+
+target_link_libraries(geom PRIVATE args ${CUDA_LIBRARIES})
 target_include_directories(geom 
     PUBLIC .)

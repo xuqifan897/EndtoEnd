@@ -1,8 +1,16 @@
 cmake_minimum_required(VERSION 3.23.1)
-project(EndtoEnd3 VERSION 0.1.0)
+project(EndtoEnd3 VERSION 0.1.0 LANGUAGES CXX CUDA)
 
 include(CTest)
 enable_testing()
+
+set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS}
+    -gencode=arch=compute_61,code=sm_61)     # GeForce GTX 1080 TI
+
+set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS}
+    -g; -G;
+    )
+string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 
 add_subdirectory(args)
 add_subdirectory(geometry)
