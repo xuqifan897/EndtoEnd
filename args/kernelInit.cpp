@@ -258,6 +258,12 @@ int E2E::FCBBkernel_init()
         }
     }
 
+    for (int j=0; j<num_kernels; j++)
+    {
+        (**(kernels[j])).max_depth = (**(kernels[j])).depths[lines.size()-1];
+        (**(kernels[j])).min_depth = (**(kernels[j])).depths[0];
+    }
+
     input_file.open(FCBBkernelPath);
     if (! input_file.is_open())
     {
@@ -301,7 +307,8 @@ int E2E::FCBBkernel_init()
     // for (int i=0; i<num_kernels; i++)
     // {
     //     FCBBkernel& kernel = (**(kernels[i]));
-    //     cout << kernel.A << " " << kernel.B << " " << kernel.a << " " << kernel.b << endl;
+    //     cout << kernel.A << " " << kernel.B << " " << kernel.a << " " << \
+    //         kernel.b << " " << kernel.min_depth << " " << kernel.max_depth << endl;
     // }
 
     return 0;

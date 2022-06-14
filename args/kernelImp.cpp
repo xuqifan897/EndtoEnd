@@ -1,4 +1,6 @@
 #include "args.h"
+#include <cuda_runtime.h>
+#include <helper_cuda.h>
 
 using namespace E2E;
 using namespace std;
@@ -106,6 +108,10 @@ FCBBkernel::FCBBkernel(int ND): num_depths(ND)
     this->B = 0;
     this->a = 0;
     this->b = 0;
+
+    this->min_depth = 0;
+    this->max_depth = 0;
+    this->d_doses = 0;
 }
 
 FCBBkernel::~FCBBkernel()
@@ -114,6 +120,7 @@ FCBBkernel::~FCBBkernel()
         free(this->depths);
     if (this->doses != nullptr)
         free(this->doses);
+    texDecon();
 }
 
 FCBBkernel::FCBBkernel(FCBBkernel& old): \
@@ -143,4 +150,65 @@ num_depths(old.num_depths), A(old.A), B(old.B), a(old.a), b(old.b)
 {
     this->depths = exchange(old.depths, nullptr);
     this->doses = exchange(old.doses, nullptr);
+}
+
+void FCBBkernel::texInit()
+{
+    if (this->d_doses != 0)
+        checkCudaErrors(cudaFreeArray(this->d_doses));
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc( \
+        32, 0, 0, 0, cudaChannelFormatKindFloat);
+    checkCudaErrors(cudaMallocArray( \
+        &(this->d_doses), &channelDesc, this->num_depths));
+    checkCudaErrors(cudaMemcpyToArray(this->d_doses, 0, 0, \
+        this->doses, this->num_depths*sizeof(float), cudaMemcpyHostToDevice));
+
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = this->d_doses;
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    texDescr.normalizedCoords = true;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeBorder;
+    texDescr.readMode = cudaReadModeElementType;
+
+    checkCudaErrors(cudaCreateTextureObject(&(this->tex), &texRes, &texDescr, NULL));
+}
+
+void E2E::FCBBkernel::texDecon()
+{
+    if (this->tex)
+        checkCudaErrors(cudaDestroyTextureObject(this->tex));
+    if (this->d_doses != 0)
+        checkCudaErrors(cudaFreeArray(this->d_doses));
+}
+
+extern "C" void depthDose(dim3 gridSize, dim3 blockSize, float* output, \
+    uint nPoints, cudaTextureObject_t& texObj);
+
+void E2E::testDepthDose(FCBBkernel* kernel)
+{
+    (*kernel).texInit();
+    int nPoints = 512;
+    dim3 gridSize(8);
+    dim3 blockSize(64);
+    float* h_output = (float*)malloc(nPoints*sizeof(float));
+    float* d_output = nullptr;
+    checkCudaErrors(cudaMalloc((void**)&d_output, nPoints*sizeof(float)));
+    depthDose(gridSize, blockSize, d_output, nPoints, (*kernel).tex);
+
+    checkCudaErrors(cudaMemcpy(h_output, d_output, nPoints*sizeof(float), \
+        cudaMemcpyDeviceToHost));
+    string outputFile{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/depthDose.dat"};
+    ofstream outFile(outputFile);
+    if (! outFile.is_open())
+    {
+        cout << "Could not open this file: " << outputFile << endl;
+        exit;
+    }
+    outFile.write((char*)h_output, nPoints*sizeof(float));
+    outFile.close();
 }

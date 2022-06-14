@@ -48,6 +48,21 @@ public:
 int phantom_init_default(phantom& Phtm);
 void runTest(phantom& Phtm);
 
+class beam
+{
+public:
+    float zenith;
+    float azimuth;
+    std::array<float, 2> fluence_size;
+    std::array<float, 2> padded_fluence_size;
+
+    float* h_fluence_map;
+    float* h_padded_fluence_map;
+
+    float* d_fluence_map;
+    float* d_padded_fluence_map;
+};
+
 };
 
 #endif

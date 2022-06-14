@@ -5,6 +5,7 @@
 #include <vector>
 #include <boost/program_options.hpp>
 #include <iostream>
+#include <cuda_runtime.h>
 namespace po = boost::program_options;
 
 namespace E2E
@@ -49,10 +50,18 @@ namespace E2E
         bool depths_flag;
         bool doses_flag;
 
+        float min_depth; // should equal to 0.1
+        float max_depth; // should equal to 40
+        cudaArray* d_doses;
+        cudaTextureObject_t tex;
+
         FCBBkernel(int ND=400);
         ~FCBBkernel();
         FCBBkernel(FCBBkernel& old);
         FCBBkernel(FCBBkernel&& old);
+
+        void texInit();
+        void texDecon();
     };
 
     int spectrum_init();
@@ -77,6 +86,8 @@ namespace E2E
     extern FCBBkernel* FCBB6MeV;
     extern FCBBkernel* FCBB10MeV;
     extern FCBBkernel* FCBB15MeV;
+
+    void testDepthDose(FCBBkernel* kernel);
 };
 
 template<class T>

@@ -14,10 +14,13 @@ int main(int argc, char** argv)
         cerr << "Argument initialization failure." << endl;
         exit;
     }
-    phantom Phtm;
-    phantom_init_default(Phtm);
-    Phtm.to_device();
-    Phtm.textureInit();
-    Phtm.textureDecon();
-    runTest(Phtm);
+
+    testDepthDose(FCBB6MeV);
+
+    // phantom Phtm;
+    // phantom_init_default(Phtm);
+    // Phtm.to_device();
+    // Phtm.textureInit();
+    // Phtm.textureDecon();
+    // runTest(Phtm);
 }

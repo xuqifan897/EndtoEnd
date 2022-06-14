@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ./build/EndtoEnd3 --compression 9
+export CUDA_VISIBLE_DEVICES=3
 
 ./build/EndtoEnd3 \
     --phantom-dimension 200 200 197 \
