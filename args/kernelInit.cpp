@@ -27,6 +27,9 @@ FCBBkernel* E2E::FCBB6MeV = nullptr;
 FCBBkernel* E2E::FCBB10MeV = nullptr;
 FCBBkernel* E2E::FCBB15MeV = nullptr;
 
+int E2E::FM_convolution_radius = 16;
+int E2E::FM_dimension = 128;
+
 int E2E::spectrum_init()
 {
     string spectrum_path = get_args<string>("spectrum-path");
@@ -258,10 +261,29 @@ int E2E::FCBBkernel_init()
         }
     }
 
+    vector<int> fluence_map_convolution_radius = \
+        get_args<vector<int>>("fluence-map-convolution-radius");
+    if (fluence_map_convolution_radius[0]!=E2E::FM_convolution_radius || \
+        fluence_map_convolution_radius[1]!=E2E::FM_convolution_radius)
+    {
+        cout << "Sorry, we only support fluence map \
+            convolution radius of " << E2E::FM_convolution_radius << " at this time" << endl;
+        exit;
+    }
+    vector<int> fluence_map_dimension = get_args<vector<int>>("fluence-map-dimension");
+    if (fluence_map_dimension[0]!=E2E::FM_dimension || fluence_map_dimension[1]!=E2E::FM_dimension)
+    {
+        cout << "Sorry, we only support fluence map \
+            dimension of " << E2E::FM_dimension << " at this time" << endl;
+        exit;
+    }
+
     for (int j=0; j<num_kernels; j++)
     {
         (**(kernels[j])).max_depth = (**(kernels[j])).depths[lines.size()-1];
         (**(kernels[j])).min_depth = (**(kernels[j])).depths[0];
+        (**(kernels[j])).kernel_size = 2 * E2E::FM_convolution_radius - 1;
+        (**(kernels[j])).kernel_pitch = 2 * E2E::FM_convolution_radius;
     }
 
     input_file.open(FCBBkernelPath);

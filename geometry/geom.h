@@ -2,7 +2,9 @@
 #define GEOM
 
 #include <array>
+#include <vector>
 #include <cuda_runtime.h>
+#include "args.h"
 
 namespace E2E
 {
@@ -53,15 +55,26 @@ class beam
 public:
     float zenith;
     float azimuth;
-    std::array<float, 2> fluence_size;
-    std::array<float, 2> padded_fluence_size;
+    float SAD;
+    float pixel_size;
+
+    std::array<int, 2> fluence_map_dimension;
+    std::array<int, 2> convolved_fluence_map_dimension;
+    std::array<int, 2> extended_fluence_map_dimension;
 
     float* h_fluence_map;
-    float* h_padded_fluence_map;
 
-    float* d_fluence_map;
-    float* d_padded_fluence_map;
+    float* d_convolved_fluence_map;
+    float* d_extended_fluence_map;
+
+    beam();
+    void convolve(FCBBkernel* kernel); // convolve from d_extended_fluence_map to d_convolved_fluence_map
 };
+
+void beams_init(std::vector<beam>& beams);
+void test_convolve();
+void host_convolve(float* h_convolved_fluence_map, \
+    float* h_extended_fluence_map, float* convolution_kernel);
 
 };
 

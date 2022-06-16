@@ -15,6 +15,7 @@ export CUDA_VISIBLE_DEVICES=3
     --SAD 1000. \
     --number-of-beams 30 \
     --fluence-map-dimension 128 128 \
+    --fluence-map-convolution-radius 16 16 \
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 512 \
     --fluence-map-pixel-size 0.7815 0.7815 \
@@ -27,4 +28,5 @@ export CUDA_VISIBLE_DEVICES=3
     --BTheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperBTheta.csv \
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
-    --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv
+    --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
+    --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1/beamAngles.txt

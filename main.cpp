@@ -14,8 +14,10 @@ int main(int argc, char** argv)
         cerr << "Argument initialization failure." << endl;
         exit;
     }
+    // deviceProperty();
 
-    testDepthDose(FCBB6MeV);
+    // testDepthDose(FCBB6MeV);
+    // testConvKernel(FCBB6MeV);
 
     // phantom Phtm;
     // phantom_init_default(Phtm);
@@ -23,4 +25,9 @@ int main(int argc, char** argv)
     // Phtm.textureInit();
     // Phtm.textureDecon();
     // runTest(Phtm);
+
+    // vector<beam> beams;
+    // beams_init(beams);
+    
+    test_convolve();
 }

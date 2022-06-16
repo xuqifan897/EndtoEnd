@@ -1,6 +1,6 @@
 #!/bin/bash
 
-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
+cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --phantom-dimension 200 200 197 \
     --voxel-size 2. \
     --phantom-isocenter 205.95534 211.23352 162.16011 \
@@ -13,6 +13,7 @@ gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --SAD 1000. \
     --number-of-beams 30 \
     --fluence-map-dimension 128 128 \
+    --fluence-map-convolution-radius 16 16 \
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 512 \
     --fluence-map-pixel-size 0.7815 0.7815 \
@@ -25,9 +26,13 @@ gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --BTheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperBTheta.csv \
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
-    --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv
+    --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
+    --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1/beamAngles.txt
 
 
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/argparse.cpp:65
-# tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/kernelInit.cpp:81
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/kernelInit.cpp:266
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/phantom.cpp:45
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/depthDoseTest.cu:32
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/beam.cpp:157
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/renderTest.cu:96

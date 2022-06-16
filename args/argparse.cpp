@@ -35,6 +35,7 @@ int E2E::args_init(int argc, char** argv)
             ("number-of-beams", po::value<int>()->default_value(30), "Number of beams used in the optimization")
             ("fluence-map-dimension", po::value<vector<int>>()->multitoken(), "Fluence map dimension \
                 at reference plane, of size 2")
+            ("fluence-map-convolution-radius", po::value<vector<int>>()->multitoken(), "The radius of fluence map convolution kernel, in # pixel")
             ("fluence-map-sampling-range", po::value<vector<float>>()->multitoken(), "The sampling range along a ray in mm, of size 2")
             ("fluence-map-sampling-points", po::value<int>()->default_value(512), "the number of sampling points along a ray")
             ("fluence-map-pixel-size", po::value<vector<float>>()->multitoken(), "the pixel size of fluence map")
@@ -49,6 +50,7 @@ int E2E::args_init(int argc, char** argv)
             ("btheta-path", po::value<string>(), "The path to btheta file")
             ("pencil-path", po::value<string>(), "The path to the pencil beam lateral kernel file")
             ("depthDose-path", po::value<string>(), "The path to the depth dose table file")
+            ("beam-angle-config-path", po::value<string>(), "The path to the beam angle configuration file")
         ;
 
         E2E::args = new po::variables_map();
@@ -140,5 +142,24 @@ void log_arguments(po::variables_map& vm)
         
         HERE: int num_dots = num_chars - output.size() - output_.size();
         cout << output + string(max(num_dots, 10), '.') + output_ << endl;
+    }
+}
+
+void E2E::deviceProperty()
+{
+    int nDevices;
+    cudaGetDeviceCount(&nDevices);
+    for (int i=0; i<nDevices; i++)
+    {
+        cudaDeviceProp prop;
+        cudaGetDeviceProperties(&prop, i);
+        cout << "Global memory: " << prop.totalGlobalMem << endl;
+        cout << "Shared memory per block: " << prop.sharedMemPerBlock << endl;
+        cout << "Shared memory per multiprocessor: " << prop.sharedMemPerMultiprocessor << endl;
+        cout << "Warp size: " << prop.warpSize << endl;
+        cout << "Max threads per block: " << prop.maxThreadsPerBlock << endl;
+        cout << "Max threads per multiprocessor: " << prop.maxThreadsPerMultiProcessor << endl;
+        cout << "Max thread dimension: (" << prop.maxThreadsDim[0] << ", " \
+            << prop.maxThreadsDim[1] << ", " << prop.maxThreadsDim[2] << ")" << endl;
     }
 }

@@ -112,6 +112,10 @@ FCBBkernel::FCBBkernel(int ND): num_depths(ND)
     this->min_depth = 0;
     this->max_depth = 0;
     this->d_doses = 0;
+
+    this->kernel_size = 2 * FM_convolution_radius - 1;
+    this->kernel_pitch = 2 * FM_convolution_radius;
+    this->d_convolution_kernel = nullptr;
 }
 
 FCBBkernel::~FCBBkernel()
@@ -120,6 +124,8 @@ FCBBkernel::~FCBBkernel()
         free(this->depths);
     if (this->doses != nullptr)
         free(this->doses);
+    if (this->d_convolution_kernel != nullptr)
+        checkCudaErrors(cudaFree(this->d_convolution_kernel));
     texDecon();
 }
 
@@ -210,5 +216,47 @@ void E2E::testDepthDose(FCBBkernel* kernel)
         exit;
     }
     outFile.write((char*)h_output, nPoints*sizeof(float));
+    outFile.close();
+}
+
+extern "C"
+void convolution_kernel_init(dim3 gridSize, dim3 blockSize, float* data, int radius, \
+    int pitch, float A, float B, float a, float b, float pixelSize, int n_samples_per_dim);
+
+void FCBBkernel::d_conv_kernel_init()
+{
+    if (this->d_convolution_kernel!=nullptr)
+        checkCudaErrors(cudaFree(this->d_convolution_kernel));
+    
+    // mm to cm
+    float pixelSize = get_args<vector<float>>("fluence-map-pixel-size")[0] / 10;
+
+    size_t size = this->kernel_pitch * this->kernel_pitch * sizeof(float);
+    checkCudaErrors(cudaMalloc((void**)&(this->d_convolution_kernel), size));
+
+    int blockS = 8;
+    int gridS = this->kernel_pitch / blockS;
+    dim3 gridSize(gridS, gridS);
+    dim3 blockSize(blockS, blockS);
+    convolution_kernel_init(gridSize, blockSize, this->d_convolution_kernel, \
+        E2E::FM_convolution_radius, this->kernel_pitch, \
+        this->A, this->B, this->a, this->b, pixelSize, 10);
+}
+
+void E2E::testConvKernel(FCBBkernel* kernel)
+{
+    (*kernel).d_conv_kernel_init();
+    int pitch_size = (*kernel).kernel_pitch;
+    float* h_convolution_kernel = (float*)malloc(pitch_size*pitch_size*sizeof(float));
+    checkCudaErrors(cudaMemcpy(h_convolution_kernel, (*kernel).d_convolution_kernel, \
+        pitch_size*pitch_size*sizeof(float), cudaMemcpyDeviceToHost));
+    string output_file{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/convolutionKernel.dat"};
+    ofstream outFile(output_file);
+    if (! outFile.is_open())
+    {
+        cout << "Could not open this file: " << output_file << endl;
+        exit;
+    }
+    outFile.write((char*)h_convolution_kernel, pitch_size*pitch_size*sizeof(float));
     outFile.close();
 }

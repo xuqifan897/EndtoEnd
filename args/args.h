@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cuda_runtime.h>
 namespace po = boost::program_options;
+#define PI 3.141592653589793238
 
 namespace E2E
 {
@@ -62,6 +63,11 @@ namespace E2E
 
         void texInit();
         void texDecon();
+
+        int kernel_size;
+        int kernel_pitch;
+        float* d_convolution_kernel; // size: kernel_pitch * kernel_pitch
+        void d_conv_kernel_init();
     };
 
     int spectrum_init();
@@ -87,7 +93,12 @@ namespace E2E
     extern FCBBkernel* FCBB10MeV;
     extern FCBBkernel* FCBB15MeV;
 
+    extern int FM_convolution_radius;
+    extern int FM_dimension;
+
     void testDepthDose(FCBBkernel* kernel);
+    void testConvKernel(FCBBkernel* kernel);
+    void deviceProperty();
 };
 
 template<class T>
