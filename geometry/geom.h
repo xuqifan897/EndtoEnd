@@ -66,16 +66,26 @@ public:
 
     float* d_convolved_fluence_map;
     float* d_extended_fluence_map;
+    float* d_convolved_fluence_map_grad;
+    float* d_fluence_grad;
 
     beam();
-    void convolve(FCBBkernel* kernel); // convolve from d_extended_fluence_map to d_convolved_fluence_map
+    // convolve from d_extended_fluence_map to d_convolved_fluence_map
+    void convolve(FCBBkernel* kernel, cudaStream_t stream=0);
+
+    /* compute the chain rule for gradient calculation. Essentially, 
+    convolve with a convolution kernel rotated 180 degree. Here we 
+    assume the convolution kernel is 180-degree rotation invariant */
+    void convolveT(FCBBkernel* kernel, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);
 void test_convolve();
+void test_convolveT();
 void host_convolve(float* h_convolved_fluence_map, \
-    float* h_extended_fluence_map, float* convolution_kernel);
-
+    float* h_extended_fluence_map, float* convolution_kernel, \
+    uint target_prepend, uint source_prepend, uint kernel_prepend, uint convolved_fluence_map_size, \
+    uint extended_fluence_map_size);
 };
 
 #endif

@@ -24,6 +24,8 @@ beam::beam()
     this->h_fluence_map = nullptr;
     this->d_convolved_fluence_map = nullptr;
     this->d_extended_fluence_map = nullptr;
+    this->d_convolved_fluence_map_grad = nullptr;
+    this->d_fluence_grad = nullptr;
 }
 
 void E2E::beams_init(vector<beam>& beams)
@@ -94,10 +96,11 @@ void E2E::beams_init(vector<beam>& beams)
 
 
 extern "C"
-void convolve_kernel(dim3 gridSize, dim3 blockSize, float* convolvedFluenceMap, \
-    float* extendedFluenceMap, float* convolutionKernel, int ConvRad, int globalPitch);
+void convolve_kernel(dim3 gridSize, dim3 blockSize, cudaStream_t stream, float* convolvedFluenceMap, \
+    float* extendedFluenceMap, float* convolutionKernel, int ConvRad, int globalPitch,  
+    int target_prepend=0, int source_prepend=0, int kernel_prepend=0);
 
-void beam::convolve(FCBBkernel* kernel)
+void beam::convolve(FCBBkernel* kernel, cudaStream_t stream)
 {
     // float* d_convolution_kernel = (*kernel).d_convolution_kernel;
     int blockS = 16;
@@ -105,32 +108,40 @@ void beam::convolve(FCBBkernel* kernel)
     dim3 gridSize(this->convolved_fluence_map_dimension[0]/blockS, \
         this->convolved_fluence_map_dimension[1]/blockS);
     int globalPitch = FM_dimension + 4 * FM_convolution_radius;
-    convolve_kernel(gridSize, blockSize, this->d_convolved_fluence_map, this->d_extended_fluence_map, \
-        (*kernel).d_convolution_kernel, FM_convolution_radius, globalPitch);
+    convolve_kernel(gridSize, blockSize, stream, this->d_convolved_fluence_map, this->d_extended_fluence_map, \
+        (*kernel).d_convolution_kernel, FM_convolution_radius, globalPitch, 0, 0, 0);
 }
 
+void beam::convolveT(FCBBkernel* kernel, cudaStream_t stream)
+{   
+    if (this->d_convolved_fluence_map_grad == nullptr)
+    {
+        cout << "member d_convolved_fluence_map_grad is not initialized." << endl;
+        exit;
+    }
+    if (this->d_fluence_grad != nullptr)
+        checkCudaErrors(cudaFree(this->d_fluence_grad));
+    uint fluence_grad_size = FM_dimension * FM_dimension;
+    checkCudaErrors(cudaMalloc((void**)(&(this->d_fluence_grad)), fluence_grad_size*sizeof(float)));
+    uint blockS = 16;
+    dim3 blockSize(blockS, blockS);
+    dim3 gridSize(FM_dimension/blockS, FM_dimension/blockS);
+    uint d_convolved_fluence_map_pitch = FM_dimension + 2 * FM_convolution_radius;
+    convolve_kernel(gridSize, blockSize, stream, this->d_fluence_grad, this->d_convolved_fluence_map_grad, \
+        (*kernel).d_convolution_kernel, FM_convolution_radius, d_convolved_fluence_map_pitch, 0, 0, 1);
+}
 
 void E2E::test_convolve()
 {
     FCBBkernel* kernel = FCBB6MeV;
     (*kernel).d_conv_kernel_init();
 
-    // // for debug purposes
-    // uint kernel_size = (*kernel).kernel_pitch;
-    // float* h_convolution_kernel = (float*)malloc(kernel_size*kernel_size*sizeof(float));
-    // checkCudaErrors(cudaMemcpy(h_convolution_kernel, (*kernel).d_convolution_kernel, \
-    //     kernel_size*kernel_size*sizeof(float), cudaMemcpyDeviceToHost));
-    // string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/convolutionKernel1.dat"};
-    // ofstream outFile(outputPath);
-    // outFile.write((char*)h_convolution_kernel, kernel_size*kernel_size*sizeof(float));
-    // outFile.close();
-    // exit;
-
     beam Beam;
     array<int, 2> convolved_fluence_map_dimension({FM_dimension+2*FM_convolution_radius, \
         FM_dimension+2*FM_convolution_radius});
     array<int, 2> extended_fluence_map_dimension({FM_dimension+4*FM_convolution_radius, \
         FM_dimension+4*FM_convolution_radius});
+    Beam.fluence_map_dimension = array<int, 2>({FM_dimension, FM_dimension});
     Beam.convolved_fluence_map_dimension = convolved_fluence_map_dimension;
     Beam.extended_fluence_map_dimension = extended_fluence_map_dimension;
     
@@ -170,7 +181,8 @@ void E2E::test_convolve()
 
     // for debug purposes
     cout << "host code begin" << endl;
-    host_convolve(h_convolved_fluence_map, h_extended_fluence_map, h_convolution_kernel);
+    host_convolve(h_convolved_fluence_map, h_extended_fluence_map, h_convolution_kernel, 0, 0, 0,\
+        convolved_fluence_map_dimension[0], extended_fluence_map_dimension[0]);
     cout << "host code end" << endl;
     outputPath = "/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/convTest_host.dat";
     outFile.open(outputPath);
@@ -178,25 +190,86 @@ void E2E::test_convolve()
     outFile.close();
 }
 
+void E2E::test_convolveT()
+{
+    FCBBkernel* kernel = FCBB6MeV;
+    (*kernel).d_conv_kernel_init();
+
+    beam Beam;
+    array<int, 2> convolved_fluence_map_dimension({FM_dimension+2*FM_convolution_radius, \
+        FM_dimension+2*FM_convolution_radius});
+    array<int, 2> extended_fluence_map_dimension({FM_dimension+4*FM_convolution_radius, \
+        FM_dimension+4*FM_convolution_radius});
+    Beam.fluence_map_dimension = array<int, 2>({FM_dimension, FM_dimension});
+    Beam.convolved_fluence_map_dimension = convolved_fluence_map_dimension;
+    Beam.extended_fluence_map_dimension = extended_fluence_map_dimension;
+
+    checkCudaErrors(cudaMalloc((void**)(&(Beam.d_convolved_fluence_map_grad)), \
+        convolved_fluence_map_dimension[0] * convolved_fluence_map_dimension[1] * sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)(&(Beam.d_fluence_grad)), \
+        FM_dimension*FM_dimension*sizeof(float)));
+
+    float* h_convolved_fluence_map_grad = (float*)malloc(convolved_fluence_map_dimension[0] * \
+        convolved_fluence_map_dimension[1] * sizeof(float));
+    float* h_fluence_map_grad = (float*)malloc(FM_dimension * FM_dimension * sizeof(float));
+    float* h_convolution_kernel = (float*)malloc((*kernel).kernel_pitch * \
+        (*kernel).kernel_pitch * sizeof(float));
+    
+    string convolved_FM_grad_path{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/"
+        "convolved_FM_grad.dat"};
+    string kernelTpath{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/kernelT.dat"};
+    ifstream inFile(convolved_FM_grad_path);
+    inFile.read((char*)h_convolved_fluence_map_grad, convolved_fluence_map_dimension[0] * \
+        convolved_fluence_map_dimension[1] * sizeof(float));
+    inFile.close();
+    inFile.open(kernelTpath);
+    inFile.read((char*)h_convolution_kernel, (*kernel).kernel_pitch * \
+        (*kernel).kernel_pitch * sizeof(float));
+    inFile.close();
+
+    checkCudaErrors(cudaMemcpy(Beam.d_convolved_fluence_map_grad, h_convolved_fluence_map_grad, \
+        convolved_fluence_map_dimension[0] * \
+        convolved_fluence_map_dimension[1] * sizeof(float), cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy((*kernel).d_convolution_kernel, h_convolution_kernel, \
+        (*kernel).kernel_pitch * (*kernel).kernel_pitch * sizeof(float),
+        cudaMemcpyHostToDevice));
+    Beam.convolveT(kernel);
+    checkCudaErrors(cudaMemcpy(h_fluence_map_grad, Beam.d_fluence_grad, \
+        FM_dimension*FM_dimension*sizeof(float), cudaMemcpyDeviceToHost));
+    string d_FM_grad_path{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/d_FM_grad.dat"};
+    ofstream outFile(d_FM_grad_path);
+    outFile.write((char*)h_fluence_map_grad, FM_dimension*FM_dimension*sizeof(float));
+    outFile.close();
+
+    host_convolve(h_fluence_map_grad, h_convolved_fluence_map_grad, h_convolution_kernel,
+        0, 0, 1, FM_dimension, convolved_fluence_map_dimension[0]);
+    string h_FM_grad_path{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/h_FM_grad.dat"};
+    outFile.open(h_FM_grad_path);
+    outFile.write((char*)h_fluence_map_grad, FM_dimension*FM_dimension*sizeof(float));
+}
 
 void E2E::host_convolve(float* h_convolved_fluence_map, \
-    float* h_extended_fluence_map, float* convolution_kernel)
+    float* h_extended_fluence_map, float* convolution_kernel, \
+    uint target_prepend, uint source_prepend, uint kernel_prepend, \
+    uint convolved_fluence_map_size, uint extended_fluence_map_size)
 {
     uint kernelSize = 2 * FM_convolution_radius;
-    uint convolved_fluence_map_size = FM_dimension + 2 * FM_convolution_radius;
-    uint extended_fluence_map_size = FM_dimension + 4 * FM_convolution_radius;
+    // uint convolved_fluence_map_size = FM_dimension + 2 * FM_convolution_radius;
+    // uint extended_fluence_map_size = FM_dimension + 4 * FM_convolution_radius;
     for (uint i=0; i<convolved_fluence_map_size; i++)
     {
         for (uint j=0; j<convolved_fluence_map_size; j++)
         {   
-            size_t convolved_fluence_map_idx = i * convolved_fluence_map_size + j;
+            size_t convolved_fluence_map_idx = (i + target_prepend) * \
+                convolved_fluence_map_size + j + target_prepend;
             h_convolved_fluence_map[convolved_fluence_map_idx] = 0;
             for (uint k=0; k<kernelSize-1; k++)
             {
                 for (uint l=0; l<kernelSize-1; l++)
                 {
-                    size_t extended_fluence_map_idx = (i + k + 1) * extended_fluence_map_size + j + l + 1;
-                    size_t convolution_kernel_idx = k * kernelSize + l;
+                    size_t extended_fluence_map_idx = (i + k + 1 + source_prepend) * \
+                        extended_fluence_map_size + j + l + 1 + source_prepend;
+                    size_t convolution_kernel_idx = (k + kernel_prepend) * kernelSize + l + kernel_prepend;
                     h_convolved_fluence_map[convolved_fluence_map_idx] += \
                         h_extended_fluence_map[extended_fluence_map_idx] * convolution_kernel[convolution_kernel_idx];
                 }

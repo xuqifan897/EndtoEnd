@@ -34,5 +34,5 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/kernelInit.cpp:266
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/phantom.cpp:45
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/depthDoseTest.cu:32
-# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/beam.cpp:157
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/beam.cpp:231
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/renderTest.cu:96
