@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <array>
+#include <math.h>
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 #include "args.h"
@@ -26,12 +27,25 @@ beam::beam()
     this->d_extended_fluence_map = nullptr;
     this->d_convolved_fluence_map_grad = nullptr;
     this->d_fluence_grad = nullptr;
+
+    this->pitch_module = E2E::pitch_module;
+    vector<int> dimension_ = get_args<vector<int>>("phantom-dimension");
+    this->dimension = array<int, 3>({dimension_[0], dimension_[1], dimension_[2]});
+    this->pitch = ceil((float)(this->dimension[2]) / this->pitch_module) * this->pitch_module;
+    vector<float> sampling_range_ = get_args<vector<float>>("fluence-map-sampling-range");
+    this->sampling_range = array<float, 2>({sampling_range_[0] / 10, sampling_range_[1] / 10});
+    this->sampling_points = get_args<int>("fluence-map-sampling-points");
+
+    this->FCBB_PVCS_dose = nullptr;
+    this->FCBB_BEV_dose_array = 0;
+    this->FCBB_BEV_dose_surface = 0;
+    this->FCBB_BEV_dose_texture = 0;
 }
 
 void E2E::beams_init(vector<beam>& beams)
 {
     float SAD = get_args<float>("SAD") / 10; // mm to cm
-    float fluence_map_pixel_size = get_args<float>("fluence-map-pixel-size");
+    float fluence_map_pixel_size = get_args<vector<float>>("fluence-map-pixel-size")[0] / 10;
     vector<int> fluence_map_convolution_radius = \
         get_args<vector<int>>("fluence-map-convolution-radius");
     if (fluence_map_convolution_radius[0]!=E2E::FM_convolution_radius || \

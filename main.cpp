@@ -23,12 +23,17 @@ int main(int argc, char** argv)
     // phantom_init_default(Phtm);
     // Phtm.to_device();
     // Phtm.textureInit();
-    // Phtm.textureDecon();
+    // // Phtm.textureDecon();
     // runTest(Phtm);
 
     // vector<beam> beams;
     // beams_init(beams);
     
-    test_convolve();
+    // test_convolve();
     // test_convolveT();
+
+    // test_volume_rendering();
+    // test_FCBB_init();
+
+    test_BEV_dose_forward();
 }

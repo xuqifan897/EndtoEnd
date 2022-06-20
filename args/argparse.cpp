@@ -9,6 +9,7 @@
 namespace po = boost::program_options;
 using namespace std;
 po::variables_map* E2E::args=nullptr;
+uint E2E::pitch_module=8;
 
 void log_arguments(po::variables_map& vm);
 void iterate_args_str();

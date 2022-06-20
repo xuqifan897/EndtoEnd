@@ -93,6 +93,8 @@ namespace E2E
     extern FCBBkernel* FCBB10MeV;
     extern FCBBkernel* FCBB15MeV;
 
+    extern uint pitch_module;
+
     extern int FM_convolution_radius;
     extern int FM_dimension;
 

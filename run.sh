@@ -17,7 +17,7 @@ export CUDA_VISIBLE_DEVICES=3
     --fluence-map-dimension 128 128 \
     --fluence-map-convolution-radius 16 16 \
     --fluence-map-sampling-range 680 1320 \
-    --fluence-map-sampling-points 512 \
+    --fluence-map-sampling-points 640 \
     --fluence-map-pixel-size 0.7815 0.7815 \
     --fluence-map-output-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/fluence_map.dat \
     --zenith-range 30 150 \

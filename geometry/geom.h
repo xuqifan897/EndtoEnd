@@ -55,8 +55,8 @@ class beam
 public:
     float zenith;
     float azimuth;
-    float SAD;
-    float pixel_size;
+    float SAD; // in cm
+    float pixel_size; // in cm
 
     std::array<int, 2> fluence_map_dimension;
     std::array<int, 2> convolved_fluence_map_dimension;
@@ -77,6 +77,20 @@ public:
     convolve with a convolution kernel rotated 180 degree. Here we 
     assume the convolution kernel is 180-degree rotation invariant */
     void convolveT(FCBBkernel* kernel, cudaStream_t stream=0);
+
+    uint pitch_module;
+    uint pitch;
+    std::array<int, 3> dimension;
+    std::array<float, 2> sampling_range;
+    uint sampling_points;
+
+    float* FCBB_PVCS_dose; // x y z order
+    cudaArray* FCBB_BEV_dose_array;
+    cudaSurfaceObject_t FCBB_BEV_dose_surface;
+    cudaTextureObject_t FCBB_BEV_dose_texture;
+    void FCBBinit(phantom& Phtm);
+
+    void BEV_dose_forward(phantom& Phtm);
 };
 
 void beams_init(std::vector<beam>& beams);
@@ -86,6 +100,13 @@ void host_convolve(float* h_convolved_fluence_map, \
     float* h_extended_fluence_map, float* convolution_kernel, \
     uint target_prepend, uint source_prepend, uint kernel_prepend, uint convolved_fluence_map_size, \
     uint extended_fluence_map_size);
+
+void test_volume_rendering();
+void test_BEV_dose_forward();
+
+// for debug purposes
+extern float* HU_debug;
+extern float* dose_debug;
 };
 
 #endif

@@ -19,7 +19,7 @@ phantom::phantom()
     this->isocenter = array<float, 3>({0, 0, 0});
     this->voxelSize = 0;
 
-    this->pitch_module = 8;
+    this->pitch_module = E2E::pitch_module;
     this->pitch = 0;
     this->pitchPadding = false;
 
@@ -141,7 +141,7 @@ void phantom::to_device()
     // copy data to 3D array
     cudaMemcpy3DParms copyParams = {0};
     copyParams.srcPtr = make_cudaPitchedPtr((void*)(this->h_HU),\
-        volumeSize_.width*sizeof(float), (this->dimension)[2], (this->dimension)[1]);
+        volumeSize_.width*sizeof(float), volumeSize_.width, (this->dimension)[1]);
     copyParams.dstArray = this->d_HU;
     copyParams.extent = volumeSize_;
     copyParams.kind = cudaMemcpyHostToDevice;
@@ -225,8 +225,10 @@ int E2E::phantom_init_default(phantom& Phtm)
     return 0;
 }
 
-extern "C" void render_kernel(dim3 gridSize, dim3 blockSize, \
-    float* output, int y_points, int z_points, float x, cudaTextureObject_t& texObj);
+extern "C"
+void render_kernel(dim3 gridSize, dim3 blockSize, \
+    float* output, int y_points, int z_points, float y_scale, float z_scale, \
+    float x, cudaTextureObject_t& texObj);
 
 void E2E::runTest(phantom& Phtm)
 {
@@ -241,7 +243,8 @@ void E2E::runTest(phantom& Phtm)
 
     const dim3 blockSize(Phtm.pitch_module, Phtm.pitch_module);
     const dim3 gridSize(y_points/Phtm.pitch_module, z_points/Phtm.pitch_module);
-    render_kernel(gridSize, blockSize, d_slice, y_points, z_points, x, Phtm.tex);
+    render_kernel(gridSize, blockSize, d_slice, y_points, z_points, 1., \
+        (float)(Phtm.dimension[2]) / Phtm.pitch, x, Phtm.tex);
 
     checkCudaErrors(cudaMemcpy(h_slice, d_slice, y_points*z_points*sizeof(float),\
         cudaMemcpyDeviceToHost));
