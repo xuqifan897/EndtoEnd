@@ -35,5 +35,7 @@ int main(int argc, char** argv)
     // test_volume_rendering();
     // test_FCBB_init();
 
-    test_BEV_dose_forward();
+    // test_BEV_dose_forward();
+    // test_PVCS_surface();
+    test_PVCS_dose_forward();
 }

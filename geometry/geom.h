@@ -12,6 +12,7 @@ namespace E2E
 class phantom
 {
 public:
+    // std::array<int, 3> dimension_org;
     std::array<int, 3> dimension;
     std::array<float, 3> isocenter; // in cm
     float voxelSize; // in cm, isotropic phantom is assumed
@@ -84,13 +85,21 @@ public:
     std::array<float, 2> sampling_range;
     uint sampling_points;
 
-    float* FCBB_PVCS_dose; // x y z order
+    // logical order: (z, x, y), cudaExtent order: (y, x, z)
     cudaArray* FCBB_BEV_dose_array;
     cudaSurfaceObject_t FCBB_BEV_dose_surface;
     cudaTextureObject_t FCBB_BEV_dose_texture;
+
+    // logical order: (x, y, z), cudaExtent order: (z, y, x)
+    cudaArray* FCBB_PVCS_dose_grad_array;
+    cudaSurfaceObject_t FCBB_PVCS_dose_grad_surface;
+    cudaTextureObject_t FCBB_PVCS_dose_grad_texture;
+
+    float* d_FCBB_PVCS_dose;
     void FCBBinit(phantom& Phtm);
 
     void BEV_dose_forward(phantom& Phtm);
+    void PVCS_dose_forward(phantom& Phtm);
 };
 
 void beams_init(std::vector<beam>& beams);
@@ -103,6 +112,8 @@ void host_convolve(float* h_convolved_fluence_map, \
 
 void test_volume_rendering();
 void test_BEV_dose_forward();
+void test_PVCS_surface();
+void test_PVCS_dose_forward();
 
 // for debug purposes
 extern float* HU_debug;

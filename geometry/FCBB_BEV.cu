@@ -87,15 +87,16 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
         float HU = tex3D<float>(phantom_texture, PVCS_coords[2], PVCS_coords[1], PVCS_coords[0]);
         radiological_path += HU * radiological_path_step;
         float normalized_radiological_path = radiological_path / max_depth;
-        float dose = tex1D<float>(depthDose_texture, normalized_radiological_path) * HU / (scale * scale);
+        float dose = tex1D<float>(depthDose_texture, normalized_radiological_path) * \
+            fluence * HU / (scale * scale);
 
-        // for debug purposes
-        uint debug_idx = (x_idx * fluence_map_dimension + y_idx) * sampling_points + i;
+        // // for debug purposes
+        // uint debug_idx = (x_idx * fluence_map_dimension + y_idx) * sampling_points + i;
         // d_HU_debug[debug_idx] = HU;
         // d_dose_debug[debug_idx] = dose;
 
         // BEV_dose_surface follow (y, x, z) order
-        surf3Dwrite(dose, dose_surface, y_idx*sizeof(float), x_idx, i);
+        surf3Dwrite(dose, dose_surface, y_idx*sizeof(float), x_idx, i, cudaBoundaryModeZero);
     }
 }
 
@@ -138,7 +139,7 @@ d_writeSurface(cudaSurfaceObject_t surface, float* data)
     uint y_pitch = blockDim.z * gridDim.z;
     uint x_pitch = blockDim.y * gridDim.y;
     uint data_idx = (x * x_pitch + y) * y_pitch + z;
-    surf3Dwrite(data[data_idx], surface, z * sizeof(float), y, x);
+    surf3Dwrite(data[data_idx], surface, z * sizeof(float), y, x, cudaBoundaryModeZero);
 }
 
 
@@ -187,7 +188,7 @@ d_readSurface(cudaSurfaceObject_t surface, float* data)
 
     uint x_dim = blockDim.x * gridDim.x;
     uint y_dim = blockDim.y * gridDim.y;
-    uint z_dim = blockDim.z * gridDim.z;
+    // uint z_dim = blockDim.z * gridDim.z;
 
     uint data_idx = (z * x_dim + x) * y_dim + y;
     // data[data_idx] = surf3Dread(surface, y*sizeof(float), x, z, cudaBoundaryModeTrap);

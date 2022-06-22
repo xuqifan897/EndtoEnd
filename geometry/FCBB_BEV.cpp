@@ -48,10 +48,40 @@ void beam::FCBBinit(phantom& Phtm)
     checkCudaErrors(cudaCreateTextureObject(&(this->FCBB_BEV_dose_texture), \
         &texRes, &texDescr, NULL));
     
-    // if (this->FCBB_PVCS_dose != nullptr)
-    //     checkCudaErrors(cudaFree(this->FCBB_PVCS_dose));
-    // checkCudaErrors(cudaMalloc((void**)&(this->FCBB_PVCS_dose), \
-    //     Phtm.pitch * Phtm.dimension[1] * Phtm.dimension[0] * sizeof(float)));
+    
+    /* Here we are to initialize PVCS data. We use logical order (x, y, z) and CudaExtent order (z, y, x)*/
+    const cudaExtent _volumeSize = make_cudaExtent(Phtm.pitch, Phtm.dimension[1], Phtm.dimension[0]);
+
+    cudaChannelFormatDesc _channelDesc = cudaCreateChannelDesc<float>();
+    checkCudaErrors(cudaMalloc3DArray(&(this->FCBB_PVCS_dose_grad_array), &_channelDesc, \
+        _volumeSize, cudaArraySurfaceLoadStore));
+    
+    cudaResourceDesc _surfRes;
+    memset(&_surfRes, 0, sizeof(cudaResourceDesc));
+    _surfRes.resType = cudaResourceTypeArray;
+    _surfRes.res.array.array = this->FCBB_PVCS_dose_grad_array;
+    checkCudaErrors(cudaCreateSurfaceObject(&(this->FCBB_PVCS_dose_grad_surface), &_surfRes));
+
+    cudaResourceDesc _texRes;
+    memset(&_texRes, 0, sizeof(cudaResourceDesc));
+    _texRes.resType = cudaResourceTypeArray;
+    _texRes.res.array.array = this->FCBB_PVCS_dose_grad_array;
+
+    cudaTextureDesc _texDescr;
+    memset(&_texDescr, 0, sizeof(cudaTextureDesc));
+
+    _texDescr.normalizedCoords = false;
+    _texDescr.filterMode = cudaFilterModePoint;
+    _texDescr.addressMode[0] = cudaAddressModeBorder;
+    _texDescr.addressMode[1] = cudaAddressModeBorder;
+    _texDescr.addressMode[2] = cudaAddressModeBorder;
+    _texDescr.readMode = cudaReadModeElementType;
+
+    checkCudaErrors(cudaCreateTextureObject(&(this->FCBB_PVCS_dose_grad_texture), \
+        &_texRes, &_texDescr, NULL));
+    
+    checkCudaErrors(cudaMalloc(&(this->d_FCBB_PVCS_dose), \
+        Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch * sizeof(float)));
     
     /* Ensure that the phantom voxel size is larger than the largest 
     dimension of a beam cell, so that during gradient calculation, each beam 

@@ -36,10 +36,15 @@ beam::beam()
     this->sampling_range = array<float, 2>({sampling_range_[0] / 10, sampling_range_[1] / 10});
     this->sampling_points = get_args<int>("fluence-map-sampling-points");
 
-    this->FCBB_PVCS_dose = nullptr;
     this->FCBB_BEV_dose_array = 0;
     this->FCBB_BEV_dose_surface = 0;
     this->FCBB_BEV_dose_texture = 0;
+
+    this->FCBB_PVCS_dose_grad_array = 0;
+    this->FCBB_PVCS_dose_grad_surface = 0;
+    this->FCBB_PVCS_dose_grad_texture = 0;
+
+    this->d_FCBB_PVCS_dose = nullptr;
 }
 
 void E2E::beams_init(vector<beam>& beams)

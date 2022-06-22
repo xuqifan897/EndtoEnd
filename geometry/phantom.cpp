@@ -14,7 +14,8 @@ using namespace E2E;
 using namespace std;
 
 phantom::phantom()
-{
+{   
+    // this->dimension_org = array<int, 3>({0, 0, 0});
     this->dimension = array<int, 3>({0, 0, 0});
     this->isocenter = array<float, 3>({0, 0, 0});
     this->voxelSize = 0;
@@ -99,6 +100,49 @@ void phantom::pitchPad()
         *(pointers[i]) = ptr_temp;
     }
 }
+
+// void phantom::pitchPad()
+// {
+//     this->pitchPadding = true;
+//     array<int, 3> new_dimension;
+//     new_dimension[0] = ceil((float)(this->dimension[0]) / this->pitch_module) * this->pitch_module;
+//     new_dimension[1] = ceil((float)(this->dimension[1]) / this->pitch_module) * this->pitch_module;
+//     new_dimension[2] = ceil((float)(this->dimension[2]) / this->pitch_module) * this->pitch_module;
+//     this->pitch = new_dimension[2];
+
+//     size_t new_size = new_dimension[0] * new_dimension[1] * new_dimension[2];
+//     vector<float**> pointers{&(this->h_HU), &(this->h_PTVweight), &(this->h_PTVtarget), &(this->h_OARweight), &(this->h_OARtarget)};
+//     for (int i=0; i<pointers.size(); i++)
+//     {
+//         if (*(pointers[i]) == nullptr)
+//             continue;
+        
+//         float* ptr_temp = (float*)malloc(new_size * sizeof(float));
+//         for (int j=0; j<new_size; j++)
+//             ptr_temp[j] = 0;
+        
+//         for (int j=0; j<this->dimension[0]; j++)
+//         {
+//             size_t Xterm = j * this->dimension[1];
+//             size_t new_Xterm = j * new_dimension[1];
+//             for (int k=0; k<this->dimension[1]; k++)
+//             {
+//                 size_t Yterm = (Xterm + k) * this->dimension[2];
+//                 size_t new_Yterm = (new_Xterm + k) * new_dimension[2];
+//                 for (int l=0; l<this->dimension[2]; l++)
+//                 {
+//                     size_t idx = Yterm + l;
+//                     size_t new_idx = new_Yterm + l;
+//                     ptr_temp[new_idx] = (*(pointers[i]))[idx];
+//                 }
+//             }
+//         }
+//         free(*(pointers[i]));
+//         *(pointers[i]) = ptr_temp;
+//     }
+//     this->dimension_org = this->dimension;
+//     this->dimension = new_dimension;
+// }
 
 void phantom::Dose_init()
 {
@@ -243,8 +287,8 @@ void E2E::runTest(phantom& Phtm)
 
     const dim3 blockSize(Phtm.pitch_module, Phtm.pitch_module);
     const dim3 gridSize(y_points/Phtm.pitch_module, z_points/Phtm.pitch_module);
-    render_kernel(gridSize, blockSize, d_slice, y_points, z_points, 1., \
-        (float)(Phtm.dimension[2]) / Phtm.pitch, x, Phtm.tex);
+    render_kernel(gridSize, blockSize, d_slice, y_points, z_points, \
+        1, (float)Phtm.dimension[2] / Phtm.pitch, x, Phtm.tex);
 
     checkCudaErrors(cudaMemcpy(h_slice, d_slice, y_points*z_points*sizeof(float),\
         cudaMemcpyDeviceToHost));
