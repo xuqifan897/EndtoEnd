@@ -93,7 +93,7 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
         // // for debug purposes
         // uint debug_idx = (x_idx * fluence_map_dimension + y_idx) * sampling_points + i;
         // d_HU_debug[debug_idx] = HU;
-        // d_dose_debug[debug_idx] = dose;
+        // d_dose_debug[debug_idx] = normalized_radiological_path;
 
         // BEV_dose_surface follow (y, x, z) order
         surf3Dwrite(dose, dose_surface, y_idx*sizeof(float), x_idx, i, cudaBoundaryModeZero);
@@ -107,6 +107,7 @@ void BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     float phantom_size[3], float phantom_iso[3], \
     cudaTextureObject_t phantom_texture, \
     float* convolved_fluence_map, \
+    FCBBkernel* FCBB_kernel, \
     cudaStream_t stream=0)
 {
     uint blockS = 16;
@@ -121,11 +122,11 @@ void BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
         phantom_size[0], phantom_size[1], phantom_size[2], \
         phantom_iso[0], phantom_iso[1], phantom_iso[2], \
         phantom_texture, \
-        (*FCBB6MeV).max_depth, (*FCBB6MeV).tex, \
+        (*FCBB_kernel).max_depth, (*FCBB_kernel).tex, \
         convolved_fluence_map);
-        // // for debug purposes
+        // // // for debug purposes
         // HU_debug, dose_debug \
-        );
+        // );
 }
 
 

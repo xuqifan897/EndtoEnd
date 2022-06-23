@@ -123,9 +123,10 @@ void BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     float phantom_size[3], float phantom_iso[3], \
     cudaTextureObject_t phantom_texture, \
     float* convolved_fluence_map, \
+    FCBBkernel* FCBB_kernel, \
     cudaStream_t stream=0);
 
-void beam::BEV_dose_forward(phantom& Phtm)
+void beam::BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBB_kernel)
 {
     float phantom_size[3]{Phtm.dimension[0] * Phtm.voxelSize, Phtm.dimension[1] * \
         Phtm.voxelSize, Phtm.pitch * Phtm.voxelSize};
@@ -135,7 +136,8 @@ void beam::BEV_dose_forward(phantom& Phtm)
         this->FCBB_BEV_dose_surface, \
         phantom_size, phantom_iso, \
         Phtm.tex, \
-        this->d_convolved_fluence_map);
+        this->d_convolved_fluence_map, \
+        FCBB_kernel);
 }
 
 extern "C"

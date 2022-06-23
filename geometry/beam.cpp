@@ -147,7 +147,7 @@ void beam::convolveT(FCBBkernel* kernel, cudaStream_t stream)
     dim3 gridSize(FM_dimension/blockS, FM_dimension/blockS);
     uint d_convolved_fluence_map_pitch = FM_dimension + 2 * FM_convolution_radius;
     convolve_kernel(gridSize, blockSize, stream, this->d_fluence_grad, this->d_convolved_fluence_map_grad, \
-        (*kernel).d_convolution_kernel, FM_convolution_radius, d_convolved_fluence_map_pitch, 0, 0, 1);
+        (*kernel).d_convolution_kernel, FM_convolution_radius, d_convolved_fluence_map_pitch, 0, 0, 0);
 }
 
 void E2E::test_convolve()
@@ -261,7 +261,7 @@ void E2E::test_convolveT()
     outFile.close();
 
     host_convolve(h_fluence_map_grad, h_convolved_fluence_map_grad, h_convolution_kernel,
-        0, 0, 1, FM_dimension, convolved_fluence_map_dimension[0]);
+        0, 0, 0, FM_dimension, convolved_fluence_map_dimension[0]);
     string h_FM_grad_path{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/h_FM_grad.dat"};
     outFile.open(h_FM_grad_path);
     outFile.write((char*)h_fluence_map_grad, FM_dimension*FM_dimension*sizeof(float));

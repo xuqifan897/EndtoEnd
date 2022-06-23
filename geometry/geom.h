@@ -98,7 +98,7 @@ public:
     float* d_FCBB_PVCS_dose;
     void FCBBinit(phantom& Phtm);
 
-    void BEV_dose_forward(phantom& Phtm);
+    void BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBBkernel=FCBB6MeV);
     void PVCS_dose_forward(phantom& Phtm);
 };
 
@@ -114,6 +114,7 @@ void test_volume_rendering();
 void test_BEV_dose_forward();
 void test_PVCS_surface();
 void test_PVCS_dose_forward();
+void test_FCBB_water_phantom();
 
 // for debug purposes
 extern float* HU_debug;
