@@ -59,13 +59,32 @@ d_convolution_kernel_normalization(float* data, int coord0, int coord1, int pitc
     data[idx] = value;
 }
 
+__global__ void
+d_convolution_kernel_init_even(float* data, int radius, int pitch, \
+    float A, float B, float a, float b, float pixelSize)
+{
+    float center = ((float)pitch - 1) / 2;
+    uint idx_x = blockIdx.x * blockDim.x + threadIdx.x;
+    uint idx_y = blockIdx.y * blockDim.y + threadIdx.y;
+    uint idx = idx_x * pitch + idx_y;
+    
+    float centerCoord_x = ((float)idx_x - center) * pixelSize;
+    float centerCoord_y = ((float)idx_y - center) * pixelSize;
+    float rho = sqrt(centerCoord_x * centerCoord_x + centerCoord_y * centerCoord_y);
+    float value = A * exp(-a * rho) + B * exp(-b * rho);
+    data[idx] = value;
+}
+
 extern "C"
 void convolution_kernel_init(dim3 gridSize, dim3 blockSize, float* data, int radius, \
     int pitch, float A, float B, float a, float b, float pixelSize, int n_samples_per_dim)
 {   
-    assert(n_samples_per_dim % 2 == 0);
-    d_convolution_kernel_init<<<gridSize, blockSize>>>( \
-        data, radius, pitch, A, B, a, b, pixelSize, n_samples_per_dim);
+    // assert(n_samples_per_dim % 2 == 0);
+    // d_convolution_kernel_init<<<gridSize, blockSize>>>( \
+    //     data, radius, pitch, A, B, a, b, pixelSize, n_samples_per_dim);
+
+    d_convolution_kernel_init_even<<<gridSize, blockSize>>>( \
+        data, radius, pitch, A, B, a, b, pixelSize);
     d_convolution_kernel_normalization<<<gridSize, blockSize>>>( \
         data, radius-1, radius-1, pitch);
 }

@@ -11,22 +11,20 @@ PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
     float phantom_iso[3], \
     float zenith, float azimuth, float SAD, \
     float sampling_start, float sampling_end, uint sampling_points, \
-    float fluence_map_size_x, float fluence_map_size_y, 
+    float fluence_map_pixel_size, uint fluence_map_dimension, 
     float* FCBB_PVCS_dose, \
-    cudaTextureObject_t BEV_dose_texture,
+    cudaTextureObject_t BEV_dose_texture, \
     cudaStream_t stream=0);
 
 void beam::PVCS_dose_forward(phantom& Phtm)
 {
     uint phantom_dim[3]{(Phtm.dimension)[0], (Phtm.dimension)[1], (Phtm.dimension)[2]};
     float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
-    float fluence_map_size[2]{this->convolved_fluence_map_dimension[0] * this->pixel_size, \
-        this->convolved_fluence_map_dimension[1] * this->pixel_size};
     PVCSDoseForward(Phtm.voxelSize, phantom_dim, Phtm.pitch, \
         phantom_iso, \
         this->zenith, this->azimuth, this->SAD, \
         this->sampling_range[0], this->sampling_range[1], this->sampling_points, \
-        fluence_map_size[0], fluence_map_size[1], \
+        this->pixel_size, this->convolved_fluence_map_dimension[0], \
         this->d_FCBB_PVCS_dose, \
         this->FCBB_BEV_dose_texture);
 }

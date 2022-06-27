@@ -107,8 +107,8 @@ void test_convolve();
 void test_convolveT();
 void host_convolve(float* h_convolved_fluence_map, \
     float* h_extended_fluence_map, float* convolution_kernel, \
-    uint target_prepend, uint source_prepend, uint kernel_prepend, uint convolved_fluence_map_size, \
-    uint extended_fluence_map_size);
+    uint convolved_fluence_map_size, \
+    uint extended_fluence_map_size, uint source_prepend=0);
 
 void test_volume_rendering();
 void test_BEV_dose_forward();

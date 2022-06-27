@@ -55,8 +55,10 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     assert(fluence_map_dimension == blockDim.y * gridDim.y);
 
     float fluence = convolved_fluence_map[x_idx * fluence_map_dimension + y_idx];
-    float x_from_center = ((float)x_idx - ((float)fluence_map_dimension - 1)/2) * pixel_size;
-    float y_from_center = ((float)y_idx - ((float)fluence_map_dimension - 1)/2) * pixel_size;
+    // float x_from_center = ((float)x_idx - ((float)fluence_map_dimension - 1)/2) * pixel_size;
+    // float y_from_center = ((float)y_idx - ((float)fluence_map_dimension - 1)/2) * pixel_size;
+    float x_from_center = ((float)x_idx - (float)(fluence_map_dimension - 2) / 2) * pixel_size;
+    float y_from_center = ((float)y_idx - (float)(fluence_map_dimension - 2) / 2) * pixel_size;
     float radiological_path_step = sqrt(SAD*SAD + x_from_center*x_from_center + \
         y_from_center*y_from_center) * sampling_step / SAD;
     float radiological_path = 0;

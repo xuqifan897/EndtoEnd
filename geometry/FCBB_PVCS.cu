@@ -29,7 +29,7 @@ d_PVCSDoseForward(float voxel_size, \
     float phantom_iso0, float phantom_iso1, float phantom_iso2, \
     float zenith, float azimuth, float SAD, \
     float sampling_start, float sampling_end, float sampling_step, \
-    float fluence_map_size_x, float fluence_map_size_y, \
+    float fluence_map_pixel_size, uint fluence_map_dimension, \
     float* FCBB_PVCS_dose, \
     cudaTextureObject_t BEV_dose_texture)
 {
@@ -50,15 +50,17 @@ d_PVCSDoseForward(float voxel_size, \
     d_PVCS_to_BEV(BEV_point_minus_iso, PVCS_point_minus_iso, zenith, azimuth);
 
     float BEV_point[3]{BEV_point_minus_iso[0], BEV_point_minus_iso[1], BEV_point_minus_iso[2] + SAD};
+    float fluence_map_pixel_size_at_this_depth = fluence_map_pixel_size * BEV_point[2] / SAD;
 
-    float fluence_map_size_x_at_this_depth = fluence_map_size_x * BEV_point[2] / SAD;
-    float fluence_map_size_y_at_this_depth = fluence_map_size_y * BEV_point[2] / SAD;
-    // float normalized_BEV_point[3]{BEV_point[0] / fluence_map_size_x_at_this_depth + half, \
-    //     BEV_point[1] / fluence_map_size_y_at_this_depth + half, \
-    //     (BEV_point[2] + half * sampling_step) / (sampling_end - sampling_start + sampling_step)};
-
-    float normalized_BEV_point[3]{BEV_point[0] / fluence_map_size_x_at_this_depth + half, \
-        BEV_point[1] / fluence_map_size_y_at_this_depth + half, \
+    // Here, we assume the fluence_map_dimension to be 2 * FM_fluence_map_radius, with the last
+    // pixel discarded. So the index range is 0, 1, ..., 2 * FM_fluence_map_radius - 2.
+    // The middle point is 0.5 * fluence_map_dimension - 1.
+    // However, taking into account the texture memory properties, the "coordinate" of the middle
+    // point should be 0.5 * fluence_map_diemnsion - 0.5
+    float normalized_BEV_point[3]{(BEV_point[0] - half * fluence_map_pixel_size_at_this_depth) / \
+        (fluence_map_dimension * fluence_map_pixel_size_at_this_depth) + half, \
+        (BEV_point[1] - half * fluence_map_pixel_size_at_this_depth) / \
+        (fluence_map_dimension * fluence_map_pixel_size_at_this_depth) + half, \
         (BEV_point[2] - sampling_start + half * sampling_step) / \
         (sampling_end - sampling_start + sampling_step)};
     
@@ -76,7 +78,7 @@ PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
     float phantom_iso[3], \
     float zenith, float azimuth, float SAD, \
     float sampling_start, float sampling_end, uint sampling_points, \
-    float fluence_map_size_x, float fluence_map_size_y, 
+    float fluence_map_pixel_size, uint fluence_map_dimension, 
     float* FCBB_PVCS_dose, \
     cudaTextureObject_t BEV_dose_texture, \
     cudaStream_t stream=0)
@@ -94,7 +96,7 @@ PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
         phantom_iso[0], phantom_iso[1], phantom_iso[2], \
         zenith, azimuth, SAD, \
         sampling_start, sampling_end, sampling_step, \
-        fluence_map_size_x, fluence_map_size_y, \
+        fluence_map_pixel_size, fluence_map_dimension, \
         FCBB_PVCS_dose, BEV_dose_texture);
 }
 

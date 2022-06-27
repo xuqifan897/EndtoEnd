@@ -27,7 +27,7 @@ FCBBkernel* E2E::FCBB6MeV = nullptr;
 FCBBkernel* E2E::FCBB10MeV = nullptr;
 FCBBkernel* E2E::FCBB15MeV = nullptr;
 
-int E2E::FM_convolution_radius = 16;
+int E2E::FM_convolution_radius = 32;
 int E2E::FM_dimension = 128;
 
 int E2E::spectrum_init()
@@ -282,6 +282,7 @@ int E2E::FCBBkernel_init()
     {
         (**(kernels[j])).max_depth = (**(kernels[j])).depths[lines.size()-1];
         (**(kernels[j])).min_depth = (**(kernels[j])).depths[0];
+        // kernel_size is no use now, left it as legacy
         (**(kernels[j])).kernel_size = 2 * E2E::FM_convolution_radius - 1;
         (**(kernels[j])).kernel_pitch = 2 * E2E::FM_convolution_radius;
     }
