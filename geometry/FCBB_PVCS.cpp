@@ -16,7 +16,7 @@ PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
     cudaTextureObject_t BEV_dose_texture, \
     cudaStream_t stream=0);
 
-void beam::PVCS_dose_forward(phantom& Phtm)
+void beam::PVCS_dose_forward(phantom& Phtm, cudaStream_t stream)
 {
     uint phantom_dim[3]{(Phtm.dimension)[0], (Phtm.dimension)[1], (Phtm.dimension)[2]};
     float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
@@ -26,7 +26,8 @@ void beam::PVCS_dose_forward(phantom& Phtm)
         this->sampling_range[0], this->sampling_range[1], this->sampling_points, \
         this->pixel_size, this->convolved_fluence_map_dimension[0], \
         this->d_FCBB_PVCS_dose, \
-        this->FCBB_BEV_dose_texture);
+        this->FCBB_BEV_dose_texture, \
+        stream);
 }
 
 extern "C"

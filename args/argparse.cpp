@@ -52,6 +52,7 @@ int E2E::args_init(int argc, char** argv)
             ("pencil-path", po::value<string>(), "The path to the pencil beam lateral kernel file")
             ("depthDose-path", po::value<string>(), "The path to the depth dose table file")
             ("beam-angle-config-path", po::value<string>(), "The path to the beam angle configuration file")
+            ("iterations", po::value<int>()->default_value(10000), "The number of iterations in the optimization")
         ;
 
         E2E::args = new po::variables_map();

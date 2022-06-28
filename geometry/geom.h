@@ -98,8 +98,8 @@ public:
     float* d_FCBB_PVCS_dose;
     void FCBBinit(phantom& Phtm);
 
-    void BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBBkernel=FCBB6MeV);
-    void PVCS_dose_forward(phantom& Phtm);
+    void BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBBkernel=FCBB6MeV, cudaStream_t stream=0);
+    void PVCS_dose_forward(phantom& Phtm, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);

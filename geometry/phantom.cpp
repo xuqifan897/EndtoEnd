@@ -93,6 +93,8 @@ void phantom::pitchPad()
                 size_t Ydimension2 = (jXdimension1 + k) * this->pitch;
                 for (int l=0; l<this->dimension[2]; l++)
                     ptr_temp[Ydimension2 + l] = (*(pointers[i]))[Xdimension2 + l];
+                for (int l=this->dimension[2]; l<this->pitch; l++)
+                    ptr_temp[Ydimension2 + l] = 0;
             }
         }
 

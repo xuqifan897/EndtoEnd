@@ -29,6 +29,7 @@ cuda-gdb --args ./build/EndtoEnd3 \
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
-    --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/water/beamAngles.txt
+    --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/water/beamAngles.txt \
+    --iterations 10000
 
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_BEV.cu:119

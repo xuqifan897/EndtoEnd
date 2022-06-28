@@ -29,4 +29,5 @@ export CUDA_VISIBLE_DEVICES=3
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
-    --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1/beamAngles.txt
+    --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1/beamAngles.txt \
+    --iterations 10000

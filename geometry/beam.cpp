@@ -110,6 +110,10 @@ void E2E::beams_init(vector<beam>& beams)
             convolved_fluence_map_dimension[0]*convolved_fluence_map_dimension[1]*sizeof(float)));
         checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_extended_fluence_map)), \
             extended_fluence_map_dimension[0]*extended_fluence_map_dimension[1]*sizeof(float)));
+        checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_convolved_fluence_map_grad)), \
+            convolved_fluence_map_dimension[0]*convolved_fluence_map_dimension[1]*sizeof(float)));
+        checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_fluence_grad)), \
+            fluence_map_dimension[0]*fluence_map_dimension[1]*sizeof(float)));
     }
 }
 

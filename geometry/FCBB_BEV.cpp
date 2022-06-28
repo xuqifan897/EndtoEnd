@@ -91,8 +91,10 @@ void beam::FCBBinit(phantom& Phtm)
     float vector_x[3]{pixel_size_at_the_furthest_range, 0, 0};
     float vector_y[3]{0, pixel_size_at_the_furthest_range, 0};
 
-    float vector_z_prime[3]{-(this->dimension[0] / 2 - 1) * this->pixel_size, \
-        -(this->dimension[1] / 2 - 1) * this->pixel_size, -this->SAD};
+    // float vector_z_prime[3]{-(this->dimension[0] / 2 - 1) * this->pixel_size, \
+    //     -(this->dimension[1] / 2 - 1) * this->pixel_size, -this->SAD};
+    float vector_z_prime[3]{-(float)(this->convolved_fluence_map_dimension[0] - 4) / 2 * this->pixel_size, \
+        (float)(this->convolved_fluence_map_dimension[1] - 4) / 2 * this->pixel_size, -this->SAD};
     float scaling_factor = (this->sampling_range[1] - this->sampling_range[0]) \
         / (this->sampling_points - 1) / this->SAD;
     vector_z_prime[0] = vector_z_prime[0] * scaling_factor;
@@ -126,7 +128,7 @@ void BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     FCBBkernel* FCBB_kernel, \
     cudaStream_t stream=0);
 
-void beam::BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBB_kernel)
+void beam::BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBB_kernel, cudaStream_t stream)
 {
     float phantom_size[3]{Phtm.dimension[0] * Phtm.voxelSize, Phtm.dimension[1] * \
         Phtm.voxelSize, Phtm.pitch * Phtm.voxelSize};
@@ -137,7 +139,8 @@ void beam::BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBB_kernel)
         phantom_size, phantom_iso, \
         Phtm.tex, \
         this->d_convolved_fluence_map, \
-        FCBB_kernel);
+        FCBB_kernel, \
+        stream);
 }
 
 extern "C"
