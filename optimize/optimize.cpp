@@ -15,6 +15,8 @@ void fluence_map_init(vector<beam>& beams, phantom& Phtm)
     array<int, 2> extended_fluence_map_dimension{FM_dimension + 4 * FM_convolution_radius, \
         FM_dimension + 4 * FM_convolution_radius};
     uint extended_size = extended_fluence_map_dimension[0] * extended_fluence_map_dimension[1];
+    // assign the initial value of the convolved fluence map to be 1/beams.size()
+    float value = 1. / beams.size();
     float* h_extended_fluence_map = (float*)malloc(extended_size*sizeof(float));
     for (uint i=0; i<extended_size; i++)
         h_extended_fluence_map[i] = 0;
@@ -26,7 +28,7 @@ void fluence_map_init(vector<beam>& beams, phantom& Phtm)
             -2*FM_convolution_radius; j++)
         {
             uint idx = IDX + j;
-            h_extended_fluence_map[idx] = 1;
+            h_extended_fluence_map[idx] = value;
         }
     }
 
@@ -67,6 +69,9 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
     // the valid fluence map zone is set to 1
     fluence_map_init(beams, Phtm);
 
+    // intermediate data initialization
+    float* d_total_dose = nullptr;
+
     // initialize streams and graphs
     vector<cudaStream_t> stream_beams(beams.size());
     vector<cudaEvent_t> event_beams(beams.size());
@@ -99,6 +104,7 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
                 checkCudaErrors(cudaStreamWaitEvent(stream_beams[0], event_beams[i], 0));
             }
         }
+        
         checkCudaErrors(cudaStreamEndCapture(stream_beams[0], &graph_beams));
         checkCudaErrors(cudaGraphInstantiate(&graphExec_beams, graph_beams, NULL, NULL, 0));
         graph_beams_initialized = true;

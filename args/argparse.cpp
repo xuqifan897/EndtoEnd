@@ -161,6 +161,7 @@ void E2E::deviceProperty()
         cout << "Warp size: " << prop.warpSize << endl;
         cout << "Max threads per block: " << prop.maxThreadsPerBlock << endl;
         cout << "Max threads per multiprocessor: " << prop.maxThreadsPerMultiProcessor << endl;
+        cout << "Number of multiprocessors: " << prop.multiProcessorCount << endl;
         cout << "Max thread dimension: (" << prop.maxThreadsDim[0] << ", " \
             << prop.maxThreadsDim[1] << ", " << prop.maxThreadsDim[2] << ")" << endl;
     }

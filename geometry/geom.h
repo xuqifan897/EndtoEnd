@@ -100,6 +100,7 @@ public:
 
     void BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBBkernel=FCBB6MeV, cudaStream_t stream=0);
     void PVCS_dose_forward(phantom& Phtm, cudaStream_t stream=0);
+    void calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);
@@ -115,6 +116,7 @@ void test_BEV_dose_forward();
 void test_PVCS_surface();
 void test_PVCS_dose_forward();
 void test_FCBB_water_phantom();
+void test_calc_FCBB_PVCS_dose_grad(std::vector<beam>& beams, phantom& Phtm);
 
 // for debug purposes
 extern float* HU_debug;

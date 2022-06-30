@@ -8,6 +8,7 @@
 #include <cuda_runtime.h>
 namespace po = boost::program_options;
 #define PI 3.141592653589793238
+#define REDUCTION_BLOCK_SIZE 256
 
 namespace E2E
 {

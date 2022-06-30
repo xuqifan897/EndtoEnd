@@ -24,7 +24,6 @@ int main(int argc, char** argv)
     Phtm.to_device();
     Phtm.textureInit();
     // Phtm.textureDecon();
-    // runTest(Phtm);
 
     // beam initialization
     vector<beam> beams;
@@ -35,7 +34,9 @@ int main(int argc, char** argv)
     (*kernel).d_conv_kernel_init();
     (*kernel).texInit();
 
-    optimize_stationary(beams, Phtm);
+    // optimize_stationary(beams, Phtm);
+    // test_dose_sum(beams, Phtm);
+    test_calc_FCBB_PVCS_dose_grad(beams, Phtm);
 }
 
 

@@ -42,4 +42,5 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB.cu:71
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS.cpp:64
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS.cu:36
-# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_BEV.cpp:98
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/utils.cpp:19
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS_backward.cu:32
