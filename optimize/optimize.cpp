@@ -40,7 +40,11 @@ void fluence_map_init(vector<beam>& beams, phantom& Phtm)
     }
 }
 
-void optimize_stationary_view_results(vector<beam>& beams, phantom& Phtm)
+extern "C"
+void testReadPVCSTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t texture, float* output);
+
+void optimize_stationary_view_results(vector<beam>& beams, phantom& Phtm, \
+    float* d_PVCS_total_dose, float* d_element_wise_loss)
 {
     string results_dir{"/data/qifan/projects_qlyu/EndtoEnd3/data/optimize_stationary"};
     uint dose_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
@@ -61,16 +65,79 @@ void optimize_stationary_view_results(vector<beam>& beams, phantom& Phtm)
         outFile.write((char*)h_PVCS_dose, dose_size*sizeof(float));
         outFile.close();
     }
+
+    checkCudaErrors(cudaMemcpy(h_PVCS_dose, d_PVCS_total_dose, \
+        dose_size*sizeof(float), cudaMemcpyDeviceToHost));
+    stringstream output_file_stream;
+    output_file_stream << results_dir << "/totalDose.dat";
+    string output_file = output_file_stream.str();
+    ofstream outFile(output_file);
+    outFile.write((char*)h_PVCS_dose, dose_size*sizeof(float));
+    outFile.close();
+
+    checkCudaErrors(cudaMemcpy(h_PVCS_dose, d_element_wise_loss, \
+        dose_size*sizeof(float), cudaMemcpyDeviceToHost));
+    output_file_stream.str(string());
+    output_file_stream << results_dir << "/elementWiseLoss.dat";
+    output_file = output_file_stream.str();
+    outFile.open(output_file);
+    outFile.write((char*)h_PVCS_dose, dose_size*sizeof(float));
+    outFile.close();
+
+    float* d_FCBB_PVCS_dose_grad = nullptr;
+    float* h_FCBB_PVCS_dose_grad = (float*)malloc(dose_size*sizeof(float));
+    checkCudaErrors(cudaMalloc((void**)&d_FCBB_PVCS_dose_grad, dose_size*sizeof(float)));
+    dim3 blockSize(8, 8, 8);
+    dim3 gridSize(Phtm.dimension[0] / blockSize.x, Phtm.dimension[1] / blockSize.y, \
+        Phtm.pitch / blockSize.z);
+    testReadPVCSTexture(gridSize, blockSize, beam::FCBB_PVCS_dose_grad_texture, d_FCBB_PVCS_dose_grad);
+    checkCudaErrors(cudaMemcpy(h_FCBB_PVCS_dose_grad, d_FCBB_PVCS_dose_grad, \
+        dose_size*sizeof(float), cudaMemcpyDeviceToHost));
+    output_file_stream.str(string());
+    output_file_stream << results_dir << "/FCBBPVCSDoseGrad.dat";
+    output_file = output_file_stream.str();
+    outFile.open(output_file);
+    outFile.write((char*)h_FCBB_PVCS_dose_grad, dose_size*sizeof(float));
+    outFile.close();
 }
 
 void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
 {
     // initialize the extended fluence map of beams
     // the valid fluence map zone is set to 1
+    beam::FCBBStaticInit(Phtm);
     fluence_map_init(beams, Phtm);
 
     // intermediate data initialization
-    float* d_total_dose = nullptr;
+    // int iterations = get_args<float>("iterations");
+    int iterations = 1;
+    int iter = 0;
+    uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
+    float* d_PVCS_total_dose = nullptr;
+    float* d_element_wise_loss = nullptr;
+    checkCudaErrors(cudaMalloc((void**)&d_PVCS_total_dose, phantom_size*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)&d_element_wise_loss, phantom_size*sizeof(float)));
+    float* d_out0 = nullptr; // intermediate result for reduction
+    float* loss = nullptr; // the final loss array
+    float* h_loss = (float*)malloc(iterations*sizeof(float));
+    checkCudaErrors(cudaMalloc((void**)&d_out0, REDUCTION_BLOCK_SIZE*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)&loss, iterations*sizeof(float)));
+
+    // d_sources and h_sources are to the arrays to contain the d_FCBB_PVCS_dose
+    float** h_sources = (float**)malloc(beams.size()*sizeof(float*));
+    float** d_sources = nullptr;
+    for (int i=0; i<beams.size(); i++)
+    {
+        if (beams[i].d_FCBB_PVCS_dose == nullptr)
+        {
+            cout << "The " << i << "th beam has not called FCBBinit()" << endl;
+            exit;
+        }
+        h_sources[i] = beams[i].d_FCBB_PVCS_dose;
+    }
+    checkCudaErrors(cudaMalloc((void***)&d_sources, beams.size()*sizeof(float*)));
+    checkCudaErrors(cudaMemcpy(d_sources, h_sources, beams.size()*sizeof(float*), \
+        cudaMemcpyHostToDevice));
 
     // initialize streams and graphs
     vector<cudaStream_t> stream_beams(beams.size());
@@ -104,6 +171,9 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
                 checkCudaErrors(cudaStreamWaitEvent(stream_beams[0], event_beams[i], 0));
             }
         }
+        dose_sum(beams, Phtm, &d_PVCS_total_dose, d_sources, stream_beams[0]);
+        beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_element_wise_loss, d_PVCS_total_dose, stream_beams[0]);
+        reduction(d_element_wise_loss, phantom_size, d_out0, loss, iter, stream_beams[0]);
         
         checkCudaErrors(cudaStreamEndCapture(stream_beams[0], &graph_beams));
         checkCudaErrors(cudaGraphInstantiate(&graphExec_beams, graph_beams, NULL, NULL, 0));
@@ -112,17 +182,16 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
 
     cudaStream_t streamForGraph;
     checkCudaErrors(cudaStreamCreate(&streamForGraph));
-    // int iterations = get_args<float>("iterations");
-    // for (int i=0; i<iterations; i++)
-    // {
-    //     checkCudaErrors(cudaGraphLaunch(graphExec_beams, streamForGraph));
-    // }
-    
-    // for debug purposes, here we only launch the graph for 1 iteration, 
-    // and visualize the results
-    checkCudaErrors(cudaGraphLaunch(graphExec_beams, streamForGraph));
+    for (iter=0; iter<iterations; iter++)
+        checkCudaErrors(cudaGraphLaunch(graphExec_beams, streamForGraph));
     cudaStreamSynchronize(streamForGraph);
-    optimize_stationary_view_results(beams, Phtm);
+    checkCudaErrors(cudaMemcpy(h_loss, loss, iterations*sizeof(float), cudaMemcpyDeviceToHost));
+    for (int i=0; i<iterations; i++)
+        cout << h_loss[i] << " ";
+    cout << endl;
+    
+    // Visualize the results
+    optimize_stationary_view_results(beams, Phtm, d_PVCS_total_dose, d_element_wise_loss);
 
     // deconstruct streams and graphs
     checkCudaErrors(cudaGraphExecDestroy(graphExec_beams));

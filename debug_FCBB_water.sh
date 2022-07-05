@@ -15,7 +15,7 @@ cuda-gdb --args ./build/EndtoEnd3 \
     --SAD 1000. \
     --number-of-beams 30 \
     --fluence-map-dimension 128 128 \
-    --fluence-map-convolution-radius 16 16 \
+    --fluence-map-convolution-radius 64 64 \
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 640 \
     --fluence-map-pixel-size 0.7815 0.7815 \

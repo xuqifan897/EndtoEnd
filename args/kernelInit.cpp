@@ -27,7 +27,7 @@ FCBBkernel* E2E::FCBB6MeV = nullptr;
 FCBBkernel* E2E::FCBB10MeV = nullptr;
 FCBBkernel* E2E::FCBB15MeV = nullptr;
 
-int E2E::FM_convolution_radius = 32;
+int E2E::FM_convolution_radius = 64;
 int E2E::FM_dimension = 128;
 
 int E2E::spectrum_init()

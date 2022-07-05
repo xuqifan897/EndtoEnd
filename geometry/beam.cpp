@@ -40,10 +40,11 @@ beam::beam()
     this->FCBB_BEV_dose_surface = 0;
     this->FCBB_BEV_dose_texture = 0;
 
-    this->FCBB_PVCS_dose_grad_array = 0;
-    this->FCBB_PVCS_dose_grad_surface = 0;
-    this->FCBB_PVCS_dose_grad_texture = 0;
-
+    // // The following member variables have been changed to static
+    // this->FCBB_PVCS_dose_grad_array = 0;
+    // this->FCBB_PVCS_dose_grad_surface = 0;
+    // this->FCBB_PVCS_dose_grad_texture = 0;
+    
     this->d_FCBB_PVCS_dose = nullptr;
 }
 

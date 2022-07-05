@@ -45,7 +45,7 @@ __device__ void warpReduce(volatile float* sdata, uint tid)
 
 
 __global__ void
-d_Reduction(float* out, float* in, uint size)
+d_Reduction(float* out, float* in, uint size, uint idx)
 {
     __shared__ float sdata[REDUCTION_BLOCK_SIZE];
     uint tid = threadIdx.x;
@@ -84,12 +84,12 @@ d_Reduction(float* out, float* in, uint size)
     if (tid < 32)
         warpReduce(sdata, tid);
     if (tid == 0)
-        out[blockIdx.x] = sdata[0];
+        out[blockIdx.x + idx] = sdata[0];
 }
 
 extern "C"
 void Reduction(dim3 gridSize, dim3 blockSize, float* out, \
-    float* source, uint size, cudaStream_t stream)
+    float* source, uint size, uint idx, cudaStream_t stream)
 {
-    d_Reduction<<<gridSize, blockSize, 0, stream>>>(out, source, size);
+    d_Reduction<<<gridSize, blockSize, 0, stream>>>(out, source, size, idx);
 }

@@ -14,7 +14,8 @@ void FCBBPVCSDoseGrad(cudaSurfaceObject_t FCBB_PVCS_dose_grad_surface, float* el
     float* d_FCBB_PVCS_dose, float* PTV_weight, float* PTV_target, \
     float* OAR_weight, float* OAR_target, uint dimension[3], cudaStream_t stream);
 
-void beam::calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, cudaStream_t stream)
+void beam::calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, \
+        float* d_PVCS_total_dose, cudaStream_t stream)
 {
     /* the loss function is defined as $$PTV_weight .* ||PVCS_dose - PTV_target||_2^2 +
      OAR_weight .* ||(PVCS_dose - OAR_target)_+||_2^2$$. So the loss function should be 
@@ -25,14 +26,21 @@ void beam::calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, cu
         cout << "It is required that pitchPad() must be called" << endl;
         exit;
     }
+
+    if (! FCBB_PVCS_dose_grad_init)
+    {
+        cout << "FCBBStaticInit static member function is not called!" << endl;
+        exit;
+    }
+
     if (*d_elementWiseLoss == nullptr)
     {
-        size_t size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
-        checkCudaErrors(cudaMalloc((void**)d_elementWiseLoss, size*sizeof(float)));
+        cout << "d_elementWiseLoss has not been initialized" << endl;
+        exit;
     }
     uint dimension[3]{Phtm.dimension[0], Phtm.dimension[1], Phtm.pitch};
-    FCBBPVCSDoseGrad(this->FCBB_PVCS_dose_grad_surface, *d_elementWiseLoss, \
-        this->d_FCBB_PVCS_dose, Phtm.d_PTVweight, Phtm.d_PTVtarget, \
+    FCBBPVCSDoseGrad(FCBB_PVCS_dose_grad_surface, *d_elementWiseLoss, \
+        d_PVCS_total_dose, Phtm.d_PTVweight, Phtm.d_PTVtarget, \
         Phtm.d_OARweight, Phtm.d_OARtarget, dimension, stream);
 }
 
@@ -41,6 +49,9 @@ void testReadPVCSTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t text
 
 void E2E::test_calc_FCBB_PVCS_dose_grad(vector<beam>& beams, phantom& Phtm)
 {
+    if (! beam::FCBB_PVCS_dose_grad_init)
+        beam::FCBBStaticInit(Phtm);
+
     beams[0].FCBBinit(Phtm);
 
     string inputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/optimize_stationary/doseRand.dat"};
@@ -63,14 +74,15 @@ void E2E::test_calc_FCBB_PVCS_dose_grad(vector<beam>& beams, phantom& Phtm)
     checkCudaErrors(cudaMemcpy(Phtm.d_OARtarget, h_OARtarget, size*sizeof(float), cudaMemcpyHostToDevice));
 
     float* d_elementWiseLoss = nullptr;
+    checkCudaErrors(cudaMalloc((void**)&d_elementWiseLoss, size*sizeof(float)));
     float* h_elementWiseLoss = (float*)malloc(size*sizeof(float));
 
     // // for debug purposes
     // checkCudaErrors(cudaMalloc((void**)&dose_debug, size*sizeof(float)));
 
-    beams[0].calc_FCBB_PVCS_dose_grad(Phtm, &d_elementWiseLoss);
-    float reduce_value = reduction(d_elementWiseLoss, size);
-    cout << reduce_value << endl;
+    beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_elementWiseLoss, beams[0].d_FCBB_PVCS_dose);
+    // float reduce_value = reduction(d_elementWiseLoss, size);
+    // cout << reduce_value << endl;
 
     // // for debug purposes
     // float* h_dose_debug = (float*)malloc(size*sizeof(float));
@@ -87,7 +99,7 @@ void E2E::test_calc_FCBB_PVCS_dose_grad(vector<beam>& beams, phantom& Phtm)
     dim3 blockSize(8, 8, 8);
     dim3 gridSize(Phtm.dimension[0] / blockSize.x, Phtm.dimension[1] / blockSize.y, \
         Phtm.pitch / blockSize.z);
-    testReadPVCSTexture(gridSize, blockSize, beams[0].FCBB_PVCS_dose_grad_texture, d_FCBB_PVCS_dose_grad);
+    testReadPVCSTexture(gridSize, blockSize, beam::FCBB_PVCS_dose_grad_texture, d_FCBB_PVCS_dose_grad);
 
     checkCudaErrors(cudaMemcpy(h_FCBB_PVCS_dose_grad, d_FCBB_PVCS_dose_grad, size*sizeof(float), cudaMemcpyDeviceToHost));
     string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/optimize_stationary/FCBB_PVCS_dose_grad.dat"};

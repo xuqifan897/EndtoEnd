@@ -1,4 +1,6 @@
 #include <boost/program_options.hpp>
+#include <cuda_runtime.h>
+#include <helper_cuda.h>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -150,6 +152,7 @@ void log_arguments(po::variables_map& vm)
 void E2E::deviceProperty()
 {
     int nDevices;
+    int deviceSupportsMemoryPools;
     cudaGetDeviceCount(&nDevices);
     for (int i=0; i<nDevices; i++)
     {
@@ -164,5 +167,8 @@ void E2E::deviceProperty()
         cout << "Number of multiprocessors: " << prop.multiProcessorCount << endl;
         cout << "Max thread dimension: (" << prop.maxThreadsDim[0] << ", " \
             << prop.maxThreadsDim[1] << ", " << prop.maxThreadsDim[2] << ")" << endl;
+        
+        // checkCudaErrors(cudaDeviceGetArribute(&deviceSupportsMemoryPools, \
+        //     cudaDevAttrMemoryPoolsSupported, i));
     }
 }

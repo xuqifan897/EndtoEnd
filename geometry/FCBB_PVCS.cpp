@@ -6,6 +6,47 @@
 using namespace E2E;
 using namespace std;
 
+bool beam::FCBB_PVCS_dose_grad_init = false;
+cudaArray* beam::FCBB_PVCS_dose_grad_array = 0;
+cudaSurfaceObject_t beam::FCBB_PVCS_dose_grad_surface = 0;
+cudaTextureObject_t beam::FCBB_PVCS_dose_grad_texture = 0;
+
+void beam::FCBBStaticInit(phantom& Phtm)
+{
+    FCBB_PVCS_dose_grad_init = true;
+    
+    /* Here we are to initialize PVCS data. We use logical order (x, y, z) and CudaExtent order (z, y, x)*/
+    const cudaExtent _volumeSize = make_cudaExtent(Phtm.pitch, Phtm.dimension[1], Phtm.dimension[0]);
+
+    cudaChannelFormatDesc _channelDesc = cudaCreateChannelDesc<float>();
+    checkCudaErrors(cudaMalloc3DArray(&(FCBB_PVCS_dose_grad_array), &_channelDesc, \
+        _volumeSize, cudaArraySurfaceLoadStore));
+    
+    cudaResourceDesc _surfRes;
+    memset(&_surfRes, 0, sizeof(cudaResourceDesc));
+    _surfRes.resType = cudaResourceTypeArray;
+    _surfRes.res.array.array = FCBB_PVCS_dose_grad_array;
+    checkCudaErrors(cudaCreateSurfaceObject(&(FCBB_PVCS_dose_grad_surface), &_surfRes));
+
+    cudaResourceDesc _texRes;
+    memset(&_texRes, 0, sizeof(cudaResourceDesc));
+    _texRes.resType = cudaResourceTypeArray;
+    _texRes.res.array.array = FCBB_PVCS_dose_grad_array;
+
+    cudaTextureDesc _texDescr;
+    memset(&_texDescr, 0, sizeof(cudaTextureDesc));
+
+    _texDescr.normalizedCoords = false;
+    _texDescr.filterMode = cudaFilterModePoint;
+    _texDescr.addressMode[0] = cudaAddressModeBorder;
+    _texDescr.addressMode[1] = cudaAddressModeBorder;
+    _texDescr.addressMode[2] = cudaAddressModeBorder;
+    _texDescr.readMode = cudaReadModeElementType;
+
+    checkCudaErrors(cudaCreateTextureObject(&(FCBB_PVCS_dose_grad_texture), \
+        &_texRes, &_texDescr, NULL));
+}
+
 extern "C" void
 PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
     float phantom_iso[3], \

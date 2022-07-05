@@ -91,16 +91,20 @@ public:
     cudaTextureObject_t FCBB_BEV_dose_texture;
 
     // logical order: (x, y, z), cudaExtent order: (z, y, x)
-    cudaArray* FCBB_PVCS_dose_grad_array;
-    cudaSurfaceObject_t FCBB_PVCS_dose_grad_surface;
-    cudaTextureObject_t FCBB_PVCS_dose_grad_texture;
+    static bool FCBB_PVCS_dose_grad_init;
+    static cudaArray* FCBB_PVCS_dose_grad_array;
+    static cudaSurfaceObject_t FCBB_PVCS_dose_grad_surface;
+    static cudaTextureObject_t FCBB_PVCS_dose_grad_texture;
 
     float* d_FCBB_PVCS_dose;
+
     void FCBBinit(phantom& Phtm);
+    static void FCBBStaticInit(phantom& Phtm);
 
     void BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBBkernel=FCBB6MeV, cudaStream_t stream=0);
     void PVCS_dose_forward(phantom& Phtm, cudaStream_t stream=0);
-    void calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, cudaStream_t stream=0);
+    static void calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, \
+        float* d_PVCS_total_dose, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);
