@@ -154,29 +154,28 @@ void writeSurface(dim3 gridSize, dim3 blockSize, cudaSurfaceObject_t surface, fl
 
 
 __global__ void
-d_readTexture(cudaTextureObject_t texture, float* data)
+d_readTexture(cudaTextureObject_t texture, float* data, uint dim0, uint dim1, uint dim2)
 {
     uint x = blockDim.x * blockIdx.x + threadIdx.x;
     uint y = blockDim.y * blockIdx.y + threadIdx.y;
     uint z = blockDim.z * blockIdx.z + threadIdx.z;
 
-    uint x_dim = blockDim.x * gridDim.x;
-    uint y_dim = blockDim.y * gridDim.y;
-    uint z_dim = blockDim.z * gridDim.z;
+    if (x >= dim0 || y >= dim1 || z>= dim2) return;
 
-    uint data_idx = (x * y_dim + y) * z_dim + z;
+    uint data_idx = (x * dim1 + y) * dim2 + z;
 
-    float x_norm = (float)x / x_dim;
-    float y_norm = (float)y / y_dim;
-    float z_norm = (float)z / z_dim;
+    float x_norm = (float)x / dim0;
+    float y_norm = (float)y / dim1;
+    float z_norm = (float)z / dim2;
 
     data[data_idx] = tex3D<float>(texture, z_norm, y_norm, x_norm);
 }
 
 extern "C"
-void readTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t texture, float* data)
+void readTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t texture, float* data, \
+    uint dim0, uint dim1, uint dim2)
 {
-    d_readTexture<<<gridSize, blockSize>>>(texture, data);
+    d_readTexture<<<gridSize, blockSize>>>(texture, data, dim0, dim1, dim2);
 }
 
 

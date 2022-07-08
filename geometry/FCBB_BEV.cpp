@@ -48,8 +48,11 @@ void beam::FCBBinit(phantom& Phtm)
     checkCudaErrors(cudaCreateTextureObject(&(this->FCBB_BEV_dose_texture), \
         &texRes, &texDescr, NULL));
 
-    checkCudaErrors(cudaMalloc(&d_FCBB_PVCS_dose, \
+    checkCudaErrors(cudaMalloc((void**)&(this->d_FCBB_PVCS_dose), \
     Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch * sizeof(float)));
+    uint FCBB_BEV_dose_grad_size = this->convolved_fluence_map_dimension[0] * \
+        this->convolved_fluence_map_dimension[1] * this->sampling_points;
+    checkCudaErrors(cudaMalloc((void**)&(this->d_FCBB_BEV_dose_grad), FCBB_BEV_dose_grad_size*sizeof(float)));
     
     /* Ensure that the phantom voxel size is larger than the largest 
     dimension of a beam cell, so that during gradient calculation, each beam 
@@ -114,13 +117,14 @@ void beam::BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBB_kernel, cudaStream_t
 extern "C"
 void writeSurface(dim3 gridSize, dim3 blockSize, cudaSurfaceObject_t surface, float* data);
 extern "C"
-void readTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t texture, float* data);
+void readTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t texture, float* data, \
+    uint dim0, uint dim1, uint dim2);
 
 void E2E::test_volume_rendering()
 {
     // array<int, 3> volumeSize({128, 128, 128});
-    array<int, 3> volumeSize({64, 64, 128});
-    uint volume = volumeSize[0] * volumeSize[2] * volumeSize[2];
+    array<int, 3> volumeSize({64, 64, 64});
+    uint volume = volumeSize[0] * volumeSize[1] * volumeSize[2];
     float* h_volume = (float*)malloc(volume*sizeof(float));
     string volumeIn{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/volumeIn.dat"};
     ifstream inFile(volumeIn);
@@ -165,14 +169,14 @@ void E2E::test_volume_rendering()
     dim3 gridSize(volumeSize[0] / blockSize.x, volumeSize[1] / blockSize.y, volumeSize[2] / blockSize.z);
     writeSurface(gridSize, blockSize, volumeSurf, d_volume);
 
-    array<int, 3> outputVolume({96, 96, 96});
+    array<uint, 3> outputVolume({111, 111, 111});
     volume = outputVolume[0] * outputVolume[1] * outputVolume[2];
-    gridSize = dim3(outputVolume[0] / blockSize.x, outputVolume[1] / blockSize.y, \
-        outputVolume[2] / blockSize.z);
+    gridSize = dim3(ceil((float)outputVolume[0] / blockSize.x), ceil((float)outputVolume[1] / blockSize.y), \
+        ceil((float)outputVolume[2] / blockSize.z));
     float* h_output = (float*)malloc(volume*sizeof(float));
     float* d_output;
     checkCudaErrors(cudaMalloc(&d_output, volume*sizeof(float)));
-    readTexture(gridSize, blockSize, volumeTex, d_output);
+    readTexture(gridSize, blockSize, volumeTex, d_output, outputVolume[0], outputVolume[1], outputVolume[2]);
     checkCudaErrors(cudaMemcpy(h_output, d_output, volume*sizeof(float), cudaMemcpyDeviceToHost));
 
     string volumeOut{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/volumeOut.dat"};

@@ -52,8 +52,8 @@ d_PVCSDoseForward(float voxel_size, \
     float BEV_point[3]{BEV_point_minus_iso[0], BEV_point_minus_iso[1], BEV_point_minus_iso[2] + SAD};
     float fluence_map_pixel_size_at_this_depth = fluence_map_pixel_size * BEV_point[2] / SAD;
 
-    // Here, we assume the fluence_map_dimension to be 2 * FM_fluence_map_radius, with the last
-    // pixel discarded. So the index range is 0, 1, ..., 2 * FM_fluence_map_radius - 2.
+    // Here, we assume the fluence_map_dimension to be FM_dimension + 2 * FM_fluence_map_radius, with the last
+    // pixel discarded. So the index range is 0, 1, ..., FM_dimension + 2 * FM_fluence_map_radius - 2.
     // The middle point is 0.5 * fluence_map_dimension - 1.
     // However, taking into account the texture memory properties, the "coordinate" of the middle
     // point should be 0.5 * fluence_map_diemnsion - 0.5

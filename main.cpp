@@ -36,7 +36,9 @@ int main(int argc, char** argv)
 
     // optimize_stationary(beams, Phtm);
     // test_dose_sum(beams, Phtm);
-    test_calc_FCBB_PVCS_dose_grad(beams, Phtm);
+    // test_calc_FCBB_PVCS_dose_grad(beams, Phtm);
+    test_FCBB_PVCS_backward(beams, Phtm);
+    // test_volume_rendering();
 }
 
 

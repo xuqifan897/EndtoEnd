@@ -46,6 +46,7 @@ beam::beam()
     // this->FCBB_PVCS_dose_grad_texture = 0;
     
     this->d_FCBB_PVCS_dose = nullptr;
+    this->d_FCBB_BEV_dose_grad = nullptr;
 }
 
 void E2E::beams_init(vector<beam>& beams)

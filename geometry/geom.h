@@ -105,6 +105,11 @@ public:
     void PVCS_dose_forward(phantom& Phtm, cudaStream_t stream=0);
     static void calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, \
         float* d_PVCS_total_dose, cudaStream_t stream=0);
+
+    /* Following FCBB_BEV_dose_array, d_FCBB_BEV_dose_grad 
+    follows logical order: (z, x, y) */
+    float* d_FCBB_BEV_dose_grad;
+    void PVCS_dose_backward(phantom& Phtm, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);
@@ -121,10 +126,12 @@ void test_PVCS_surface();
 void test_PVCS_dose_forward();
 void test_FCBB_water_phantom();
 void test_calc_FCBB_PVCS_dose_grad(std::vector<beam>& beams, phantom& Phtm);
+void test_FCBB_PVCS_backward(std::vector<beam>& beams, phantom& Phtm);
 
 // for debug purposes
 extern float* HU_debug;
 extern float* dose_debug;
+extern bool* valid_debug;
 };
 
 #endif

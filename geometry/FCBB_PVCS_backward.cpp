@@ -113,3 +113,182 @@ void E2E::test_calc_FCBB_PVCS_dose_grad(vector<beam>& beams, phantom& Phtm)
     outFile.write((char*)h_elementWiseLoss, size*sizeof(float));
     outFile.close();
 }
+
+extern "C"
+void PVCSDoseBackward(float voxel_size, float phantom_iso[3], \
+    float zenith, float azimuth, float SAD, \
+    float sampling_start, float sampling_end, uint sampling_points, \
+    float fluence_map_pixel_size, uint fluence_map_dimension, \
+    float* d_FCBB_BEV_dose_grad, cudaTextureObject_t PVCSDoseGradTexture, \
+    cudaStream_t stream);
+
+void beam::PVCS_dose_backward(phantom& Phtm, cudaStream_t stream)
+{
+    if (this->d_FCBB_BEV_dose_grad == nullptr)
+    {
+        cout << "d_FCBB_BEV_dose_grad is not initialized, beam::FCBBinit() not called" << endl;
+        exit;
+    }
+    float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
+    PVCSDoseBackward(Phtm.voxelSize, phantom_iso, \
+        this->zenith, this->azimuth, this->SAD, \
+        this->sampling_range[0], this->sampling_range[1], this->sampling_points, \
+        this->pixel_size, this->convolved_fluence_map_dimension[0], \
+        this->d_FCBB_BEV_dose_grad, this->FCBB_PVCS_dose_grad_texture, \
+        stream);
+}
+
+extern "C"
+void writeFCBBPVCSDoseGradSurface(cudaSurfaceObject_t surface, float* input, \
+    uint dim_x, uint dim_y, uint dim_z, cudaStream_t stream=0);
+
+extern "C"
+void testReadPVCSTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t texture, float* output);
+
+inline uint
+get_idx(uint idx_x, uint idx_y, uint idx_z, uint dim_x, uint dim_y, uint dim_z)
+{
+    return (idx_x * dim_y + idx_y) * dim_z + idx_z;
+}
+
+inline void
+get_coords(array<uint, 3>& coords, uint idx, uint dim_x, uint dim_y, uint dim_z)
+{
+    coords[0] = idx / (dim_y * dim_z);
+    idx -= coords[0] * dim_y * dim_z;
+    coords[1] = idx / dim_z;
+    coords[2] = idx - coords[1] * dim_z;
+}
+
+void E2E::test_FCBB_PVCS_backward(std::vector<beam>& beams, phantom& Phtm)
+{
+    if (! beam::FCBB_PVCS_dose_grad_init)
+        beam::FCBBStaticInit(Phtm);
+
+    beams[0].FCBBinit(Phtm);
+
+    uint part = 2;
+
+    if (part == 1)
+    {
+        // first, we conduct trivial backward experiment. In other words, 
+        // we set beam::FCBB_PVCS_dose_grad_surface to all 1
+        uint input_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
+        float* h_input = (float*)malloc(input_size * sizeof(float));
+        for (uint i=0; i<input_size; i++)
+            h_input[i] = 1;
+
+        float* d_input = nullptr;
+        checkCudaErrors(cudaMalloc((void**)&d_input, input_size*sizeof(float)));
+        checkCudaErrors(cudaMemcpy(d_input, h_input, input_size*sizeof(float), cudaMemcpyHostToDevice));
+        writeFCBBPVCSDoseGradSurface(beam::FCBB_PVCS_dose_grad_surface, d_input, \
+            Phtm.dimension[0], Phtm.dimension[1], Phtm.pitch, 0);
+        
+        beams[0].PVCS_dose_backward(Phtm);
+        
+        uint output_size = beams[0].convolved_fluence_map_dimension[0] * \
+            beams[0].convolved_fluence_map_dimension[1] * beams[0].sampling_points;
+        float* h_output = (float*)malloc(output_size*sizeof(float));
+        checkCudaErrors(cudaMemcpy(h_output, beams[0].d_FCBB_BEV_dose_grad, \
+            output_size*sizeof(float), cudaMemcpyDeviceToHost));
+        
+        string output_file{"/data/qifan/projects_qlyu/EndtoEnd3/data/optimize_stationary/testFCBBPVCSBackward.dat"};
+        ofstream outFile(output_file);
+        if (! outFile.is_open())
+        {
+            cout << "Could not open this file: " << output_file << endl;
+            exit;
+        }
+        outFile.write((char*)h_output, output_size*sizeof(float));
+        outFile.close();
+
+        // clean up
+        free(h_input);
+        free(h_output);
+        checkCudaErrors(cudaFree(d_input));
+    }
+    else if(part == 2)
+    {
+        /* In this part, we randomly select some points in FCBB_BEV_dose_surface to 1, 
+        then calculate its dose deposition to d_FCBB_PVCS_dose. In theory, the non-zero 
+        values in d_FCBB_PVCS_dose should be the coefficients of trililnear interpolation. 
+        So we iteratively set the corresponding elements in FCBB_PVCS_dose_grad_surface to 1, 
+        then calculate the backward pass. The expected value of should be the coefficient.*/
+
+        // firstly, we randomly selects points from PVCS space. i.e., x, y, z, range 1 .. 199
+        beam& this_beam = beams[0];
+        vector<array<uint, 3>> points{{6, 80, 120}, {32, 79, 110}, {50, 62, 95}, \
+            {80, 140, 99}, {120, 128, 130}, {150, 97, 105}};
+        uint BEV_size = this_beam.sampling_points * this_beam.convolved_fluence_map_dimension[0] * \
+            this_beam.convolved_fluence_map_dimension[1];
+        uint PVCS_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
+        float* h_BEV_array = (float*)malloc(BEV_size * sizeof(float));
+        float* h_PVCS_array = (float*)malloc(PVCS_size * sizeof(float));
+        float* d_BEV_array = nullptr;
+        checkCudaErrors(cudaMalloc((void**)&d_BEV_array, BEV_size*sizeof(float)));
+        float* d_PVCS_array = nullptr;
+        checkCudaErrors(cudaMalloc((void**)&d_PVCS_array, PVCS_size*sizeof(float)));
+
+        for (uint i=0; i<points.size(); i++)
+        {
+            array<uint, 3>& point = points[i];
+            uint temp_PVCS_idx = get_idx(point[0], point[1], point[2], \
+                Phtm.dimension[0], Phtm.dimension[1], Phtm.pitch);
+            // clean up h_PVCS_array
+            for (uint j=0; j< PVCS_size; j++)
+                h_PVCS_array[j] = 0;
+            h_PVCS_array[temp_PVCS_idx] = 1.;
+            checkCudaErrors(cudaMemcpy(d_PVCS_array, h_PVCS_array, PVCS_size*sizeof(float), cudaMemcpyHostToDevice));
+            writeFCBBPVCSDoseGradSurface(beam::FCBB_PVCS_dose_grad_surface, d_PVCS_array, \
+                Phtm.dimension[0], Phtm.dimension[1], Phtm.pitch);
+            
+            this_beam.PVCS_dose_backward(Phtm);
+            checkCudaErrors(cudaMemcpy(h_BEV_array, this_beam.d_FCBB_BEV_dose_grad, \
+                BEV_size*sizeof(float), cudaMemcpyDeviceToHost));
+            
+            // theoretically, a PVCS point should have 8 associative BEV points (or less)
+            vector<array<uint, 3>> non_zero_BEV_coords;
+            vector<uint> non_zero_BEV_index;
+            vector<float> non_zero_coefficients;
+            for (uint j=0; j<BEV_size; j++)
+            {
+                if (h_BEV_array[j] != 0)
+                {
+                    non_zero_BEV_index.push_back(j);
+                    non_zero_coefficients.push_back(h_BEV_array[j]);
+                    non_zero_BEV_coords.push_back(array<uint, 3>());
+                    get_coords(non_zero_BEV_coords.back(), j, this_beam.sampling_points, \
+                        this_beam.convolved_fluence_map_dimension[0], this_beam.convolved_fluence_map_dimension[1]);
+                    // cout << "(" << non_zero_BEV_coords.back()[0] << ", " << non_zero_BEV_coords.back()[1] << ", " \
+                    //     << non_zero_BEV_coords.back()[2] << "): " << h_BEV_array[j] << endl;
+                }
+            }
+            
+            vector<float> test_coefficients;
+            float std = 0;
+            for (uint j=0; j<8; j++)
+            {
+                // clean up h_BEV_array
+                for (uint k=0; k<BEV_size; k++)
+                    h_BEV_array[k] = 0;
+                h_BEV_array[non_zero_BEV_index[j]] = 1;
+                checkCudaErrors(cudaMemcpy(d_BEV_array, h_BEV_array, BEV_size*sizeof(float), cudaMemcpyHostToDevice));
+                writeFCBBPVCSDoseGradSurface(this_beam.FCBB_BEV_dose_surface, d_BEV_array, this_beam.sampling_points, \
+                    this_beam.convolved_fluence_map_dimension[0], this_beam.convolved_fluence_map_dimension[1]);
+                
+                this_beam.PVCS_dose_forward(Phtm);
+
+                checkCudaErrors(cudaMemcpy(h_PVCS_array, this_beam.d_FCBB_PVCS_dose, \
+                    PVCS_size*sizeof(float), cudaMemcpyDeviceToHost));
+                test_coefficients.push_back(h_PVCS_array[temp_PVCS_idx]);
+
+                std += (non_zero_coefficients[j] - test_coefficients[j]) * (non_zero_coefficients[j] - test_coefficients[j]);
+                cout << "(" << non_zero_BEV_coords[j][0] << ", " << non_zero_BEV_coords[j][1] << ", " \
+                    << non_zero_BEV_coords[j][2] << "): " << non_zero_coefficients[j] << " " << \
+                    test_coefficients[j] << endl;
+            }
+            std = sqrt(std / 8);
+            cout << "standard deviation: " << std << endl << endl;
+        }
+    }
+}
