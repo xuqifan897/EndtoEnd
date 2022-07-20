@@ -72,6 +72,9 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     float PVCS_reference[3];
     d_BEV_to_PVCS(PVCS_reference, BEV_reference, zenith, azimuth);
 
+    // the last pixel of FCBB_convolved_fluence_map is discarded
+    if (x_idx == fluence_map_dimension || y_idx == fluence_map_dimension)
+        return;
     
     for (uint i=0; i<sampling_points; i++)
     {

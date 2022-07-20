@@ -110,6 +110,7 @@ public:
     follows logical order: (z, x, y) */
     float* d_FCBB_BEV_dose_grad;
     void PVCS_dose_backward(phantom& Phtm, cudaStream_t stream=0);
+    void BEV_dose_backward(phantom& Phtm, FCBBkernel* kernel=FCBB6MeV, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);
@@ -127,6 +128,8 @@ void test_PVCS_dose_forward();
 void test_FCBB_water_phantom();
 void test_calc_FCBB_PVCS_dose_grad(std::vector<beam>& beams, phantom& Phtm);
 void test_FCBB_PVCS_backward(std::vector<beam>& beams, phantom& Phtm);
+void test_minus_coordinates_of_texture_memory_out_of_curiosity();
+void test_FCBB_BEV_backward(std::vector<beam>& beams, phantom& Phtm);
 
 // for debug purposes
 extern float* HU_debug;

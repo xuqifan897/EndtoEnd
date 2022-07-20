@@ -292,3 +292,74 @@ void E2E::test_FCBB_PVCS_backward(std::vector<beam>& beams, phantom& Phtm)
         }
     }
 }
+
+extern "C"
+void textureMinusCoordinate(cudaTextureObject_t texture, float* d_output, \
+    float coord0, float coord1, float coord2);
+extern "C"
+void writeSurface(dim3 gridSize, dim3 blockSize, cudaSurfaceObject_t surface, float* data);
+
+void E2E::test_minus_coordinates_of_texture_memory_out_of_curiosity()
+{
+    array<int, 3> volumeSize({64, 64, 64});
+    uint volume = volumeSize[0] * volumeSize[1] * volumeSize[2];
+    float* h_volume = (float*)malloc(volume*sizeof(float));
+    string volumeIn{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/volumeIn.dat"};
+    ifstream inFile(volumeIn);
+    inFile.read((char*)h_volume, volume*sizeof(float));
+    inFile.close();
+
+    float* d_volume;
+    checkCudaErrors(cudaMalloc(&d_volume, volume*sizeof(float)));
+    checkCudaErrors(cudaMemcpy(d_volume, h_volume, volume*sizeof(float), cudaMemcpyHostToDevice));
+
+    // volume_ initialization
+    cudaExtent volumeSize_ = make_cudaExtent(volumeSize[2], volumeSize[1], volumeSize[0]);
+    cudaArray* content;
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
+    checkCudaErrors(cudaMalloc3DArray(&content, &channelDesc, volumeSize_, cudaArraySurfaceLoadStore));
+
+    cudaSurfaceObject_t volumeSurf;
+    cudaResourceDesc surfRes;
+    memset(&surfRes, 0, sizeof(cudaResourceDesc));
+    surfRes.resType = cudaResourceTypeArray;
+    surfRes.res.array.array = content;
+    checkCudaErrors(cudaCreateSurfaceObject(&volumeSurf, &surfRes));
+
+    cudaTextureObject_t volumeTex;
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = content;
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    texDescr.normalizedCoords = true;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeBorder;
+    texDescr.addressMode[1] = cudaAddressModeBorder;
+    texDescr.addressMode[2] = cudaAddressModeBorder;
+    texDescr.readMode = cudaReadModeElementType;
+
+    checkCudaErrors(cudaCreateTextureObject(&volumeTex, &texRes, &texDescr, NULL));
+
+    dim3 blockSize(1, 16, 16);
+    dim3 gridSize(volumeSize[0] / blockSize.x, volumeSize[1] / blockSize.y, volumeSize[2] / blockSize.z);
+    writeSurface(gridSize, blockSize, volumeSurf, d_volume);
+
+    float* d_output = nullptr;
+    checkCudaErrors(cudaMalloc((void**)&d_output, sizeof(float)));
+    float coord0 = - 1. / volumeSize[0] / 8;
+    float coord1 = 0.5;
+    float coord2 = 0.5;
+    textureMinusCoordinate(volumeTex, d_output, coord0, coord1, coord2);
+
+    float h_output;
+    checkCudaErrors(cudaMemcpy(&h_output, d_output, sizeof(float), cudaMemcpyDeviceToHost));
+    cout << h_output << endl;
+
+    coord0 = 0.;
+    textureMinusCoordinate(volumeTex, d_output, coord0, coord1, coord2);
+    checkCudaErrors(cudaMemcpy(&h_output, d_output, sizeof(float), cudaMemcpyDeviceToHost));
+    cout << h_output << endl;
+}

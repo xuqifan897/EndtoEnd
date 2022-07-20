@@ -230,3 +230,19 @@ void writeFCBBPVCSDoseGradSurface(cudaSurfaceObject_t surface, float* input, \
     dim3 gridSize(ceil((float)dim_x / blockSize.x), ceil((float)dim_y / blockSize.y), ceil((float)dim_z / blockSize.z));
     d_writeFCBBPVCSDoseGradSurface<<<gridSize, blockSize, 0, stream>>>(surface, input, dim_x, dim_y, dim_z);
 }
+
+__global__ void
+d_textureMinusCoordinate(cudaTextureObject_t texture, float* d_output, \
+    float coord0, float coord1, float coord2)
+{
+    d_output[0] = tex3D<float>(texture, coord2, coord1, coord0);
+}
+
+extern "C"
+void textureMinusCoordinate(cudaTextureObject_t texture, float* d_output, \
+    float coord0, float coord1, float coord2)
+{
+    dim3 blockSize(1);
+    dim3 gridSize(1);
+    d_textureMinusCoordinate<<<gridSize, blockSize>>>(texture, d_output, coord0, coord1, coord2);
+}
