@@ -84,7 +84,7 @@ d_BEVDoseBackward(float zenith, float azimuth, float SAD, float pixel_size, \
         fluence_grad += tex1D<float>(depthDoseTexture, normalized_radiological_path) * HU / (scale * scale) * BEV_dose_grad;
     }
     d_convolved_fluence_grad[FCBB_BEV_dose_grad_offset] = fluence_grad * \
-        !(idx_x == fluence_map_dimension || idx_y == fluence_map_dimension);
+        !(idx_x == fluence_map_dimension-1 || idx_y == fluence_map_dimension-1);
     // the last pixel of the convolved fluence map is discarded
 }
 
