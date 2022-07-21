@@ -1,6 +1,7 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <iostream>
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 #include "args.h"
@@ -46,6 +47,7 @@ void testReadPVCSTexture(dim3 gridSize, dim3 blockSize, cudaTextureObject_t text
 void optimize_stationary_view_results(vector<beam>& beams, phantom& Phtm, \
     float* d_PVCS_total_dose, float* d_element_wise_loss)
 {
+    // this function examines the forward results
     string results_dir{"/data/qifan/projects_qlyu/EndtoEnd3/data/optimize_stationary"};
     uint dose_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
     float* h_PVCS_dose = (float*)malloc(dose_size * sizeof(float));
@@ -101,6 +103,66 @@ void optimize_stationary_view_results(vector<beam>& beams, phantom& Phtm, \
     outFile.close();
 }
 
+void optimize_stationary_view_backward_results(vector<beam>& beams)
+{
+    // this function examines the backward results
+    uint convolved_fluence_map_size = beams[0].convolved_fluence_map_dimension[0] * \
+        beams[0].convolved_fluence_map_dimension[1];
+    uint fluence_map_size = beams[0].fluence_map_dimension[0] * beams[0].fluence_map_dimension[0];
+    uint BEV_dose_size = convolved_fluence_map_size * beams[0].sampling_points;
+    string results_dir{"/data/qifan/projects_qlyu/EndtoEnd3/data/optimize_stationary"};
+    ofstream outFile;
+
+    float* h_convolved_fluence_map_grad = (float*)malloc(convolved_fluence_map_size*sizeof(float));
+    float* h_fluence_map_grad = (float*)malloc(fluence_map_size*sizeof(float));
+    float* h_BEV_dose_grad = (float*)malloc(BEV_dose_size*sizeof(float));
+    for (uint i=0; i<beams.size(); i++)
+    {
+        beam& this_beam = beams[i];
+        checkCudaErrors(cudaMemcpy(h_convolved_fluence_map_grad, this_beam.d_convolved_fluence_map_grad, \
+            convolved_fluence_map_size*sizeof(float), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(h_fluence_map_grad, this_beam.d_fluence_grad, \
+            fluence_map_size*sizeof(float), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(h_BEV_dose_grad, this_beam.d_FCBB_BEV_dose_grad, \
+            BEV_dose_size*sizeof(float), cudaMemcpyDeviceToHost));
+        stringstream output_file_stream;
+        output_file_stream << results_dir << "/convolved_fluence_grad_" << i << ".dat";
+        string output_file{output_file_stream.str()};
+        outFile.open(output_file);
+        if (! outFile.is_open())
+        {
+            cout << "Could not open this file: " << output_file << endl;
+            exit;
+        }
+        outFile.write((char*)h_convolved_fluence_map_grad, convolved_fluence_map_size*sizeof(float));
+        outFile.close();
+
+        output_file_stream.str(string());
+        output_file_stream << results_dir << "/fluence_grad_" << i << ".dat";
+        output_file = output_file_stream.str();
+        outFile.open(output_file);
+        if (! outFile.is_open())
+        {
+            cout << "Could not open this file: " << output_file << endl;
+            exit;
+        }
+        outFile.write((char*)h_fluence_map_grad, fluence_map_size*sizeof(float));
+        outFile.close();
+
+        output_file_stream.str(string());
+        output_file_stream << results_dir << "/BEV_dose_grad_" << i << ".dat";
+        output_file = output_file_stream.str();
+        outFile.open(output_file);
+        if (! outFile.is_open())
+        {
+            cout << "Could not open this file: " << output_file << endl;
+            exit;
+        }
+        outFile.write((char*)h_BEV_dose_grad, BEV_dose_size*sizeof(float));
+        outFile.close();
+    }
+}
+
 void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
 {
     // initialize the extended fluence map of beams
@@ -140,15 +202,18 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
         cudaMemcpyHostToDevice));
 
     // initialize streams and graphs
-    vector<cudaStream_t> stream_beams(beams.size());
+    vector<cudaStream_t> stream_beams(beams.size()+1); // the last stream for reduction
     vector<cudaEvent_t> event_beams(beams.size());
+    vector<cudaEvent_t> new_event_beams(beams.size()+1);
     cudaGraph_t graph_beams;
     cudaGraphExec_t graphExec_beams;
     bool graph_beams_initialized = false;
-    for (int i=0; i<beams.size(); i++)
+    for (int i=0; i<stream_beams.size(); i++)
         checkCudaErrors(cudaStreamCreate(&(stream_beams[i])));
-    for (int i=0; i<beams.size(); i++)
+    for (int i=0; i<event_beams.size(); i++)
         checkCudaErrors(cudaEventCreate(&(event_beams[i])));
+    for (int i=0; i<new_event_beams.size(); i++)
+        checkCudaErrors(cudaEventCreate(&(new_event_beams[i])));
     
     // if graph_beams is not initialized, initialize it
     if (! graph_beams_initialized)
@@ -173,7 +238,28 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
         }
         dose_sum(beams, Phtm, &d_PVCS_total_dose, d_sources, stream_beams[0]);
         beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_element_wise_loss, d_PVCS_total_dose, stream_beams[0]);
-        reduction(d_element_wise_loss, phantom_size, d_out0, loss, iter, stream_beams[0]);
+
+        checkCudaErrors(cudaEventRecord(new_event_beams[0], stream_beams[0]));
+        for (int i=1; i<stream_beams.size(); i++)
+            checkCudaErrors(cudaStreamWaitEvent(stream_beams[i], new_event_beams[0], 0));
+        
+        for (int i=0; i<beams.size(); i++)
+        {
+            beams[i].PVCS_dose_backward(Phtm, stream_beams[i]);
+            beams[i].BEV_dose_backward(Phtm, FCBB6MeV, stream_beams[i]);
+            beams[i].convolveT(FCBB6MeV, stream_beams[i]);
+            // beams[i].fluence_map_update(i, )
+            
+            if (i != 0)
+            {
+                checkCudaErrors(cudaEventRecord(new_event_beams[i], stream_beams[i]));
+                checkCudaErrors(cudaStreamWaitEvent(stream_beams[0], new_event_beams[i], 0));
+            }
+        }
+
+        reduction(d_element_wise_loss, phantom_size, d_out0, loss, iter, stream_beams.back());
+        checkCudaErrors(cudaEventRecord(new_event_beams.back(), stream_beams.back()));
+        checkCudaErrors(cudaStreamWaitEvent(stream_beams[0], new_event_beams.back(), 0));
         
         checkCudaErrors(cudaStreamEndCapture(stream_beams[0], &graph_beams));
         checkCudaErrors(cudaGraphInstantiate(&graphExec_beams, graph_beams, NULL, NULL, 0));
@@ -190,8 +276,9 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
         cout << h_loss[i] << " ";
     cout << endl;
     
-    // Visualize the results
-    optimize_stationary_view_results(beams, Phtm, d_PVCS_total_dose, d_element_wise_loss);
+    // // Visualize the results
+    // optimize_stationary_view_results(beams, Phtm, d_PVCS_total_dose, d_element_wise_loss);
+    optimize_stationary_view_backward_results(beams);
 
     // deconstruct streams and graphs
     checkCudaErrors(cudaGraphExecDestroy(graphExec_beams));

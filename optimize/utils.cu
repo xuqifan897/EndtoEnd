@@ -93,3 +93,49 @@ void Reduction(dim3 gridSize, dim3 blockSize, float* out, \
 {
     d_Reduction<<<gridSize, blockSize, 0, stream>>>(out, source, size, idx);
 }
+
+__global__ void
+d_elementWiseSquare(float* d_output, float* d_input, uint size)
+{
+    uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx>=size) return;
+    d_output[idx] = d_input[idx] * d_input[idx];
+}
+
+extern "C"
+void elementWiseSquare(dim3 gridSize, dim3 blockSize, float* d_output, \
+    float* d_input, uint size, cudaStream_t stream)
+{
+    d_elementWiseSquare<<<gridSize, blockSize, 0, stream>>>(d_output, d_input, size);
+}
+
+__global__ void
+d_fluenceMapUpdate(uint fluence_map_dimension, uint extended_fluence_map_dimension, uint extended_fluence_map_offset, \
+    uint idx, float* d_extended_fluence_map, float* d_fluence_map_grad, float* d_norm, float step_size)
+{
+    uint idx_x = blockIdx.x * blockDim.x + threadIdx.x;
+    uint idx_y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx_x >= fluence_map_dimension || idx_y >= fluence_map_dimension)
+        return;
+    
+    float real_norm = d_norm[idx];
+    real_norm = real_norm / (fluence_map_dimension * fluence_map_dimension);
+    real_norm = sqrt(real_norm);
+
+    uint fluence_map_idx = idx_x * fluence_map_dimension + idx_y;
+    uint extended_fluence_map_idx = (idx_x + extended_fluence_map_offset) * \
+        extended_fluence_map_dimension + idx_y + extended_fluence_map_offset;
+    d_extended_fluence_map[extended_fluence_map_idx] -= d_fluence_map_grad[fluence_map_idx] * step_size / real_norm;
+}
+
+extern "C"
+void fluenceMapUpdate(uint fluence_map_dimension, uint extended_fluence_map_dimension, uint extended_fluence_map_offset, \
+    uint idx, float* d_extended_fluence_map, float* d_fluence_map_grad, float* d_norm, float step_size, \
+    cudaStream_t stream)
+{
+    dim3 blockSize(32, 32);
+    dim3 gridSize((uint)ceil((float)fluence_map_dimension / blockSize.x), \
+        (uint)ceil((float)fluence_map_dimension / blockSize.y));
+    d_fluenceMapUpdate<<<gridSize, blockSize, 0, stream>>>(fluence_map_dimension, extended_fluence_map_dimension, extended_fluence_map_offset, \
+        idx, d_extended_fluence_map, d_fluence_map_grad, d_norm, step_size);
+}
