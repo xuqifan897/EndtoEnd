@@ -34,7 +34,8 @@ int main(int argc, char** argv)
     (*kernel).d_conv_kernel_init();
     (*kernel).texInit();
 
-    // optimize_stationary(beams, Phtm);
+    optimize_stationary(beams, Phtm);
+    // optimize_stationary_graph(beams, Phtm);
     // test_dose_sum(beams, Phtm);
     // test_calc_FCBB_PVCS_dose_grad(beams, Phtm);
     // test_FCBB_PVCS_backward(beams, Phtm);
@@ -42,7 +43,7 @@ int main(int argc, char** argv)
     // test_minus_coordinates_of_texture_memory_out_of_curiosity();
     // test_FCBB_BEV_backward(beams, Phtm);
     // test_element_wise_square();
-    test_fluence_map_update(beams);
+    // test_fluence_map_update(beams);
 }
 
 

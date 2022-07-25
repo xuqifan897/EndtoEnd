@@ -42,10 +42,11 @@ int E2E::args_init(int argc, char** argv)
             ("fluence-map-sampling-range", po::value<vector<float>>()->multitoken(), "The sampling range along a ray in mm, of size 2")
             ("fluence-map-sampling-points", po::value<int>()->default_value(512), "the number of sampling points along a ray")
             ("fluence-map-pixel-size", po::value<vector<float>>()->multitoken(), "the pixel size of fluence map")
-            ("fluence-map-output-path", po::value<string>(), "The output path of the fluence maps, in order n, x, y, where \
-                n is the number of beams")
+            // ("fluence-map-output-path", po::value<string>(), "The output path of the fluence maps, in order n, x, y, where \
+            //     n is the number of beams")
+            ("output-folder", po::value<string>(), "Output folder path")
             ("zenith-range", po::value<vector<float>>()->multitoken(), "The zenith range of the beam to avoid physical collision")
-            ("dose-path", po::value<string>(), "The path to which the dose is stored")
+            // ("dose-path", po::value<string>(), "The path to which the dose is stored")
             ("spectrum-path", po::value<string>(), "The path to spectrum data")
             ("ATheta-path", po::value<string>(), "The path to ATheta file")
             ("atheta-path", po::value<string>(), "The path to atheta file")
@@ -55,6 +56,7 @@ int E2E::args_init(int argc, char** argv)
             ("depthDose-path", po::value<string>(), "The path to the depth dose table file")
             ("beam-angle-config-path", po::value<string>(), "The path to the beam angle configuration file")
             ("iterations", po::value<int>()->default_value(10000), "The number of iterations in the optimization")
+            ("step-size", po::value<float>()->default_value(1e-4), "fluence map update step size (learning rate)")
         ;
 
         E2E::args = new po::variables_map();

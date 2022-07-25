@@ -163,7 +163,7 @@ void optimize_stationary_view_backward_results(vector<beam>& beams)
     }
 }
 
-void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
+void E2E::optimize_stationary_graph(vector<beam>& beams, phantom& Phtm)
 {
     // initialize the extended fluence map of beams
     // the valid fluence map zone is set to 1
@@ -172,7 +172,8 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
 
     // intermediate data initialization
     // int iterations = get_args<float>("iterations");
-    int iterations = 1;
+    int iterations = 2;
+    float step_size = get_args<float>("step-size");
     int iter = 0;
     uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
     float* d_PVCS_total_dose = nullptr;
@@ -184,6 +185,13 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
     float* h_loss = (float*)malloc(iterations*sizeof(float));
     checkCudaErrors(cudaMalloc((void**)&d_out0, REDUCTION_BLOCK_SIZE*sizeof(float)));
     checkCudaErrors(cudaMalloc((void**)&loss, iterations*sizeof(float)));
+
+    // for fluence map update
+    float** d_squared_grad = (float**)malloc(beams.size() * sizeof(float*));
+    for (uint i=0; i<beams.size(); i++)
+        checkCudaErrors(cudaMalloc(d_squared_grad+i, FM_dimension*FM_dimension*sizeof(float)));
+    float* d_norm_final;
+    checkCudaErrors(cudaMalloc(&d_norm_final, beams.size()*sizeof(float)));
 
     // d_sources and h_sources are to the arrays to contain the d_FCBB_PVCS_dose
     float** h_sources = (float**)malloc(beams.size()*sizeof(float*));
@@ -248,7 +256,7 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
             beams[i].PVCS_dose_backward(Phtm, stream_beams[i]);
             beams[i].BEV_dose_backward(Phtm, FCBB6MeV, stream_beams[i]);
             beams[i].convolveT(FCBB6MeV, stream_beams[i]);
-            // beams[i].fluence_map_update(i, )
+            beams[i].fluence_map_update(i, d_norm_final, d_squared_grad[i], step_size, stream_beams[i]);
             
             if (i != 0)
             {
@@ -278,7 +286,7 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
     
     // // Visualize the results
     // optimize_stationary_view_results(beams, Phtm, d_PVCS_total_dose, d_element_wise_loss);
-    optimize_stationary_view_backward_results(beams);
+    // optimize_stationary_view_backward_results(beams);
 
     // deconstruct streams and graphs
     checkCudaErrors(cudaGraphExecDestroy(graphExec_beams));
@@ -286,4 +294,156 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
     for (int i=0; i<beams.size(); i++)
         checkCudaErrors(cudaStreamDestroy(stream_beams[i]));
     checkCudaErrors(cudaStreamDestroy(streamForGraph));
+}
+
+void log_result(vector<beam>& beams, phantom& Phtm, float* h_PVCS_total_dose, float* h_loss)
+{
+    string output_folder = get_args<string>("output-folder");
+    ofstream outFile;
+    stringstream output_path_ss;
+    string output_path;
+
+    // store the fluence_map of each beam
+    uint fluence_map_size = FM_dimension * FM_dimension;
+    uint extended_fluence_map_size = (FM_dimension + 4 * FM_convolution_radius) * \
+        (FM_dimension + 4 * FM_convolution_radius);
+    float* h_fluence_map = (float*)malloc(fluence_map_size*sizeof(float));
+    float* h_extended_fluence_map = (float*)malloc(extended_fluence_map_size*sizeof(float));
+
+    for (uint i=0; i<beams.size(); i++)
+    {
+        beam& this_beam = beams[i];
+        checkCudaErrors(cudaMemcpy(h_extended_fluence_map, this_beam.d_extended_fluence_map, \
+            extended_fluence_map_size*sizeof(float), cudaMemcpyDeviceToHost));
+        // copy to h_fluence_map
+        for (uint j=0; j<FM_dimension; j++)
+        {
+            uint fluence_map_row = j * FM_dimension;
+            uint extended_fluence_map_row = (j + 2 * FM_convolution_radius) * \
+                (FM_dimension + 4 * FM_convolution_radius);
+            for (uint k=0; k<FM_dimension; k++)
+            {
+                uint fluence_map_idx = fluence_map_row + k;
+                uint extended_fluence_map_idx = extended_fluence_map_row + k + 2 * FM_convolution_radius;
+                h_fluence_map[fluence_map_idx] = h_extended_fluence_map[extended_fluence_map_idx];
+            }
+        }
+        output_path_ss.str(string());
+        output_path_ss << output_folder << "/fluence_map_" << i << ".dat";
+        output_path = output_path_ss.str();
+        outFile.open(output_path);
+        outFile.write((char*)h_fluence_map, fluence_map_size*sizeof(float));
+        outFile.close();
+    }
+
+    output_path_ss.str(string());
+    output_path_ss << output_folder << "/PVCS_total_dose.dat";
+    output_path = output_path_ss.str();
+    outFile.open(output_path);
+    uint PVCS_total_dose_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
+    outFile.write((char*)h_PVCS_total_dose, PVCS_total_dose_size*sizeof(float));
+    outFile.close();
+
+    output_path_ss.str(string());
+    output_path_ss << output_folder << "/loss.dat";
+    output_path = output_path_ss.str();
+    uint iterations = get_args<int>("iterations");
+    outFile.open(output_path);
+    outFile.write((char*)h_loss, iterations*sizeof(float));
+    outFile.close();
+
+    free(h_fluence_map);
+    free(h_extended_fluence_map);
+}
+
+void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
+{
+    // initialize the extended fluence map of beams
+    // the valid fluence map zone is set to 1
+    beam::FCBBStaticInit(Phtm);
+    fluence_map_init(beams, Phtm);
+
+    // intermediate data initialization
+    int iterations = get_args<int>("iterations");
+    // int iterations = 2;
+    float step_size = get_args<float>("step-size");
+    int iter = 0;
+    uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
+    float* d_PVCS_total_dose = nullptr;
+    float* d_element_wise_loss = nullptr;
+    checkCudaErrors(cudaMalloc((void**)&d_PVCS_total_dose, phantom_size*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)&d_element_wise_loss, phantom_size*sizeof(float)));
+    float* d_out0 = nullptr; // intermediate result for reduction
+    float* loss = nullptr; // the final loss array
+    float* h_loss = (float*)malloc(iterations*sizeof(float));
+    checkCudaErrors(cudaMalloc((void**)&d_out0, REDUCTION_BLOCK_SIZE*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)&loss, iterations*sizeof(float)));
+
+    // for fluence map update
+    float** d_squared_grad = (float**)malloc(beams.size() * sizeof(float*));
+    for (uint i=0; i<beams.size(); i++)
+        checkCudaErrors(cudaMalloc(d_squared_grad+i, FM_dimension*FM_dimension*sizeof(float)));
+    float* d_norm_final;
+    checkCudaErrors(cudaMalloc(&d_norm_final, beams.size()*sizeof(float)));
+
+    // d_sources and h_sources are to the arrays to contain the d_FCBB_PVCS_dose
+    float** h_sources = (float**)malloc(beams.size()*sizeof(float*));
+    float** d_sources = nullptr;
+    for (int i=0; i<beams.size(); i++)
+    {
+        if (beams[i].d_FCBB_PVCS_dose == nullptr)
+        {
+            cout << "The " << i << "th beam has not called FCBBinit()" << endl;
+            exit;
+        }
+        h_sources[i] = beams[i].d_FCBB_PVCS_dose;
+    }
+    checkCudaErrors(cudaMalloc((void***)&d_sources, beams.size()*sizeof(float*)));
+    checkCudaErrors(cudaMemcpy(d_sources, h_sources, beams.size()*sizeof(float*), \
+        cudaMemcpyHostToDevice));
+    
+    for (iter=0; iter<iterations; iter++)
+    {
+        for (uint i=0; i<beams.size(); i++)
+        {
+            beams[i].convolve(FCBB6MeV);
+            beams[i].BEV_dose_forward(Phtm, FCBB6MeV);
+            beams[i].PVCS_dose_forward(Phtm);
+        }
+
+        dose_sum(beams, Phtm, &d_PVCS_total_dose, d_sources);
+        beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_element_wise_loss, d_PVCS_total_dose);
+        reduction(d_element_wise_loss, phantom_size, d_out0, loss, iter);
+
+        for (int i=0; i<beams.size(); i++)
+        {
+            beams[i].PVCS_dose_backward(Phtm);
+            beams[i].BEV_dose_backward(Phtm, FCBB6MeV);
+            beams[i].convolveT(FCBB6MeV);
+            beams[i].fluence_map_update(i, d_norm_final, d_squared_grad[i], step_size);
+        }
+
+        // checkCudaErrors(cudaMemcpy(h_loss+iter, loss+iter, sizeof(float), cudaMemcpyDeviceToHost));
+        cudaStreamSynchronize(0);
+        // cout << "iteration: " << iter << ", loss: " << h_loss[iter] << endl;
+        cout << "iteration: " << iter+1 << endl;
+    }
+
+    checkCudaErrors(cudaMemcpy(h_loss, loss, iterations*sizeof(float), cudaMemcpyDeviceToHost));
+    // uint PVCS_total_dose_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
+    float* h_PVCS_total_dose = (float*)malloc(phantom_size * sizeof(float));
+    checkCudaErrors(cudaMemcpy(h_PVCS_total_dose, d_PVCS_total_dose, \
+        phantom_size*sizeof(float), cudaMemcpyDeviceToHost));
+    log_result(beams, Phtm, h_PVCS_total_dose, h_loss);
+
+    // cleanup
+    checkCudaErrors(cudaFree(d_PVCS_total_dose));
+    checkCudaErrors(cudaFree(d_element_wise_loss));
+    checkCudaErrors(cudaFree(d_out0));
+    checkCudaErrors(cudaFree(loss));
+    checkCudaErrors(cudaFree(d_sources));
+
+    free(h_loss);
+    free(h_sources);
+    free(h_PVCS_total_dose);
 }

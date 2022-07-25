@@ -17,9 +17,8 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 640 \
     --fluence-map-pixel-size 0.7815 0.7815 \
-    --fluence-map-output-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/fluence_map.dat \
+    --output-folder /data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out \
     --zenith-range 30 150 \
-    --dose-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1_out/dose.dat \
     --spectrum-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/Spectrum.csv \
     --ATheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperATheta.csv \
     --atheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerATheta.csv \
@@ -28,7 +27,8 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
     --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1/beamAngles.txt \
-    --iterations 10000
+    --iterations 10000 \
+    --step-size 1e-4
 
 
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/argparse.cpp:65
@@ -45,3 +45,4 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/utils.cpp:19
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS_backward.cu:222
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS_backward.cpp:171
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/optimize.cpp:301

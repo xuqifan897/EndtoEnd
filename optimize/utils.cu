@@ -126,6 +126,10 @@ d_fluenceMapUpdate(uint fluence_map_dimension, uint extended_fluence_map_dimensi
     uint extended_fluence_map_idx = (idx_x + extended_fluence_map_offset) * \
         extended_fluence_map_dimension + idx_y + extended_fluence_map_offset;
     d_extended_fluence_map[extended_fluence_map_idx] -= d_fluence_map_grad[fluence_map_idx] * step_size / real_norm;
+
+    // to ensure positive
+    d_extended_fluence_map[extended_fluence_map_idx] = d_extended_fluence_map[extended_fluence_map_idx] * \
+        (d_extended_fluence_map[extended_fluence_map_idx] > 0);
 }
 
 extern "C"
