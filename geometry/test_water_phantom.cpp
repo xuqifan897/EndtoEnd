@@ -40,15 +40,16 @@ void fluence_map_init(beam& Beam)
 
     checkCudaErrors(cudaMemcpy(Beam.d_extended_fluence_map, h_extended_fluence_map, \
         extended_size*sizeof(float), cudaMemcpyHostToDevice));
+    free(h_extended_fluence_map);
 }
 
-void E2E::test_FCBB_water_phantom()
+void E2E::test_FCBB_water_phantom(phantom& Phtm)
 {
-    // phantom initialization
-    phantom Phtm;
-    phantom_init_default(Phtm);
-    Phtm.to_device();
-    Phtm.textureInit();
+    // // phantom initialization
+    // phantom Phtm;
+    // phantom_init_default(Phtm);
+    // Phtm.to_device();
+    // Phtm.textureInit();
 
     // beam initialization
     beam Beam;
@@ -65,8 +66,8 @@ void E2E::test_FCBB_water_phantom()
 
     // convolved_fluence_map, extended_fluence_map initialization
     fluence_map_init(Beam);
-    (*FCBB6MeV).d_conv_kernel_init();
-    (*FCBB6MeV).texInit();
+    // (*FCBB6MeV).d_conv_kernel_init();
+    // (*FCBB6MeV).texInit();
     Beam.convolve(FCBB6MeV);
 
     Beam.BEV_dose_forward(Phtm);

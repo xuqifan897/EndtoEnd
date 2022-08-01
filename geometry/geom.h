@@ -62,6 +62,8 @@ public:
     std::array<int, 2> fluence_map_dimension;
     std::array<int, 2> convolved_fluence_map_dimension;
     std::array<int, 2> extended_fluence_map_dimension;
+    std::array<float, 3> isocenter; /* in cm. Beams are allowed to have different 
+        isocenter than phantom to enable a larger optimization space */
 
     float* h_fluence_map;
 
@@ -126,7 +128,7 @@ void test_volume_rendering();
 void test_BEV_dose_forward();
 void test_PVCS_surface();
 void test_PVCS_dose_forward();
-void test_FCBB_water_phantom();
+void test_FCBB_water_phantom(phantom& Phtm);
 void test_calc_FCBB_PVCS_dose_grad(std::vector<beam>& beams, phantom& Phtm);
 void test_FCBB_PVCS_backward(std::vector<beam>& beams, phantom& Phtm);
 void test_minus_coordinates_of_texture_memory_out_of_curiosity();

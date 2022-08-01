@@ -71,7 +71,7 @@ d_convolution_kernel_init_even(float* data, int radius, int pitch, \
     float centerCoord_x = ((float)idx_x - center) * pixelSize;
     float centerCoord_y = ((float)idx_y - center) * pixelSize;
     float rho = sqrt(centerCoord_x * centerCoord_x + centerCoord_y * centerCoord_y);
-    float value = A * exp(-a * rho) + B * exp(-b * rho);
+    float value = (A * exp(-a * rho) + B * exp(-b * rho)) / rho;
     data[idx] = value;
 }
 

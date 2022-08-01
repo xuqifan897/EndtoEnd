@@ -129,7 +129,7 @@ void beam::PVCS_dose_backward(phantom& Phtm, cudaStream_t stream)
         cout << "d_FCBB_BEV_dose_grad is not initialized, beam::FCBBinit() not called" << endl;
         exit;
     }
-    float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
+    float phantom_iso[3]{this->isocenter[0], this->isocenter[1], this->isocenter[2]};
     PVCSDoseBackward(Phtm.voxelSize, phantom_iso, \
         this->zenith, this->azimuth, this->SAD, \
         this->sampling_range[0], this->sampling_range[1], this->sampling_points, \

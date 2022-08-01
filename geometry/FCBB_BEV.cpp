@@ -103,7 +103,7 @@ void beam::BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBB_kernel, cudaStream_t
 {
     float phantom_size[3]{Phtm.dimension[0] * Phtm.voxelSize, Phtm.dimension[1] * \
         Phtm.voxelSize, Phtm.pitch * Phtm.voxelSize};
-    float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
+    float phantom_iso[3]{this->isocenter[0], this->isocenter[1], this->isocenter[2]};
     BEVDoseForward(this->zenith, this->azimuth, this->SAD, this->pixel_size, \
         this->sampling_range[0], this->sampling_range[1], this->sampling_points, \
         this->FCBB_BEV_dose_surface, \

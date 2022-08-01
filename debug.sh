@@ -27,8 +27,8 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
     --beam-angle-config-path /data/qifan/projects_qlyu/EndtoEnd3/data/patient1/beamAngles.txt \
-    --iterations 10000 \
-    --step-size 1e-4
+    --iterations 100 \
+    --step-size 1e-2
 
 
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/args/argparse.cpp:65
@@ -46,3 +46,4 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS_backward.cu:222
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS_backward.cpp:171
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/optimize.cpp:301
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/module_test_BEV_dose_forward.cpp:291

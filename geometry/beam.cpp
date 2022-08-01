@@ -21,6 +21,7 @@ beam::beam()
     this->fluence_map_dimension = array<int, 2>({0, 0});
     this->convolved_fluence_map_dimension = array<int, 2>({0, 0});
     this->extended_fluence_map_dimension = array<int, 2>({0, 0});
+    this->isocenter = array<float, 3>({0, 0});
 
     this->h_fluence_map = nullptr;
     this->d_convolved_fluence_map = nullptr;
@@ -55,6 +56,11 @@ void E2E::beams_init(vector<beam>& beams)
     float fluence_map_pixel_size = get_args<vector<float>>("fluence-map-pixel-size")[0] / 10;
     vector<int> fluence_map_convolution_radius = \
         get_args<vector<int>>("fluence-map-convolution-radius");
+    
+    vector<float> isocenter = get_args<vector<float>>("phantom-isocenter");
+    for (uint i=0; i<isocenter.size(); i++)
+        isocenter[i] /= 10; // convert mm to cm
+    
     if (fluence_map_convolution_radius[0]!=E2E::FM_convolution_radius || \
         fluence_map_convolution_radius[1]!=E2E::FM_convolution_radius)
     {
@@ -108,6 +114,7 @@ void E2E::beams_init(vector<beam>& beams)
             convolved_fluence_map_dimension[1]});
         new_beam.extended_fluence_map_dimension = array<int, 2>( \
             {extended_fluence_map_dimension[0], extended_fluence_map_dimension[1]});
+        new_beam.isocenter = array<float, 3>({isocenter[0], isocenter[1], isocenter[2]});
         checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_convolved_fluence_map)), \
             convolved_fluence_map_dimension[0]*convolved_fluence_map_dimension[1]*sizeof(float)));
         checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_extended_fluence_map)), \

@@ -16,6 +16,30 @@ int main(int argc, char** argv)
         cerr << "Argument initialization failure." << endl;
         exit;
     }
+
+    // the following code block is for testing
+    // phantom initialization
+    phantom Phtm;
+    phantom_init_default(Phtm);
+    Phtm.to_device();
+    Phtm.textureInit();
+
+    // kernel initialization
+    FCBBkernel* kernel = FCBB6MeV;
+    (*kernel).d_conv_kernel_init();
+    (*kernel).texInit();
+
+    test_modules(Phtm);
+}
+
+
+int main_round2_bcmk(int argc, char** argv)
+{
+    if (args_init(argc, argv))
+    {
+        cerr << "Argument initialization failure." << endl;
+        exit;
+    }
     // deviceProperty();
 
     // phantom initialization
@@ -34,6 +58,8 @@ int main(int argc, char** argv)
     (*kernel).d_conv_kernel_init();
     (*kernel).texInit();
 
+    // testConvKernel(FCBB6MeV);
+    test_FCBB_water_phantom(Phtm);
     optimize_stationary(beams, Phtm);
     // optimize_stationary_graph(beams, Phtm);
     // test_dose_sum(beams, Phtm);
@@ -78,5 +104,4 @@ int main_round1_bcmk(int argc, char** argv)
     // test_BEV_dose_forward();
     // test_PVCS_surface();
     // test_PVCS_dose_forward();
-    test_FCBB_water_phantom();
 }

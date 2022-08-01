@@ -225,7 +225,7 @@ int E2E::FCBBkernel_init()
     string FCBBkernelPath = get_args<string>("pencil-path");
     string depthDosePath = get_args<string>("depthDose-path");
 
-    int num_kernels=4;
+    constexpr int num_kernels=4;
     FCBBkernel*** kernels = (FCBBkernel***)malloc(num_kernels*sizeof(FCBBkernel**));
     kernels[0] = &FCBB4MeV;
     kernels[1] = &FCBB6MeV;

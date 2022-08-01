@@ -60,7 +60,7 @@ PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
 void beam::PVCS_dose_forward(phantom& Phtm, cudaStream_t stream)
 {
     uint phantom_dim[3]{(Phtm.dimension)[0], (Phtm.dimension)[1], (Phtm.dimension)[2]};
-    float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
+    float phantom_iso[3]{this->isocenter[0], this->isocenter[1], this->isocenter[2]};
     PVCSDoseForward(Phtm.voxelSize, phantom_dim, Phtm.pitch, \
         phantom_iso, \
         this->zenith, this->azimuth, this->SAD, \

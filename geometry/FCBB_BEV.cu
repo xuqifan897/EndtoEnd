@@ -59,8 +59,8 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     // float y_from_center = ((float)y_idx - ((float)fluence_map_dimension - 1)/2) * pixel_size;
     float x_from_center = ((float)x_idx - (float)(fluence_map_dimension - 2) / 2) * pixel_size;
     float y_from_center = ((float)y_idx - (float)(fluence_map_dimension - 2) / 2) * pixel_size;
-    float radiological_path_step = sqrt(SAD*SAD + x_from_center*x_from_center + \
-        y_from_center*y_from_center) * sampling_step / SAD;
+    float r0 = sqrt(SAD*SAD + x_from_center*x_from_center +  y_from_center*y_from_center);
+    float radiological_path_step = r0 * sampling_step / SAD;
     float radiological_path = 0;
 
     float BEV_source_to_isocenter[3]{0, 0, -SAD};
@@ -93,7 +93,7 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
         radiological_path += HU * radiological_path_step;
         float normalized_radiological_path = radiological_path / max_depth;
         float dose = tex1D<float>(depthDose_texture, normalized_radiological_path) * \
-            fluence * HU / (scale * scale);
+            fluence / (scale * scale);
 
         // // for debug purposes
         // uint debug_idx = (x_idx * fluence_map_dimension + y_idx) * sampling_points + i;

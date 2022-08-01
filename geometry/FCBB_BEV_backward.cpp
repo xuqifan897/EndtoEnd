@@ -21,7 +21,7 @@ void beam::BEV_dose_backward(phantom& Phtm, FCBBkernel* kernel, cudaStream_t str
 {
     float phantom_size[3]{Phtm.dimension[0]*Phtm.voxelSize, Phtm.dimension[1]*\
         Phtm.voxelSize, Phtm.pitch*Phtm.voxelSize};
-    float phantom_iso[3]{Phtm.isocenter[0], Phtm.isocenter[1], Phtm.isocenter[2]};
+    float phantom_iso[3]{this->isocenter[0], this->isocenter[1], this->isocenter[2]};
     if (this->d_convolved_fluence_map_grad == nullptr)
     {
         cout << "d_convolved_fluence_map_grad is not initialized. E2E::beams_init() not called." << endl;
