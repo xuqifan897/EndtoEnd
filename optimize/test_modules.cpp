@@ -120,7 +120,10 @@ void E2E::test_modules(phantom& Phtm)
 
     srand(1008611);
     // module_test_convolve(Beam);
-    module_test_BEV_dose_forward(Beam, Phtm);
+    // module_test_BEV_dose_forward(Beam, Phtm);
         // module_test_host_triliner(Phtm);
         // module_test_host_linear();
+    // module_test_BEV_dose_backward(Beam, Phtm);
+    // module_test_PVCS_dose_forward(Beam, Phtm);
+    module_test_PVCS_dose_backward(Beam, Phtm);
 }

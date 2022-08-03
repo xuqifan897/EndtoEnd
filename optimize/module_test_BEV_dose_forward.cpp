@@ -8,7 +8,7 @@
 using namespace E2E;
 using namespace std;
 
-float read_phantom(float coords[3], array<uint, 3>& phantom_dimension, float* phantom)
+float E2E::read_phantom(float coords[3], array<uint, 3>& phantom_dimension, float* phantom)
 {
     // coords are unitless, the same as phantom_dimension
     constexpr float shift = 0.5;
@@ -42,7 +42,7 @@ float read_phantom(float coords[3], array<uint, 3>& phantom_dimension, float* ph
     return value;
 }
 
-float read_depth_dose(float* h_depth_dose, float coord, uint size)
+float E2E::read_depth_dose(float* h_depth_dose, float coord, uint size)
 {
     // h_depth_dose stores the depth dose data
     // size is the number of elements of h_depth_dose
@@ -119,6 +119,9 @@ void E2E::module_test_host_triliner(phantom& Phtm)
 
     cout << "The MSE value between host and device results is " << MSE << ", while the scale of host result is " << base << endl;
 
+    // another test
+
+
     // cleanup
     free(h_result);
     free(h_result_d);
@@ -132,7 +135,7 @@ void E2E::module_test_host_linear()
 {
     uint n_samples = 107;
     uint num_depths = (*FCBB6MeV).num_depths;
-    float shift = 0.19;
+    float shift = -0.19;
     float* h_result = (float*)malloc(n_samples*sizeof(float));
     float* h_result_d = (float*)malloc(n_samples*sizeof(float));
     float* d_result;
@@ -168,6 +171,12 @@ void E2E::module_test_host_linear()
     base /= n_samples;
     base = sqrt(base);
 
+    // // for detailed comparison
+    // for (uint i=0; i<n_samples; i++)
+    // {
+    //     cout << "(" << h_result[i] << "," << h_result_d[i] - h_result[i] << ")" << endl;
+    // }
+
     cout << "The MSE value between host and device results is " << mse << ", while the scale of host result is " << base << endl;
 
     // cleanup
@@ -176,7 +185,7 @@ void E2E::module_test_host_linear()
     checkCudaErrors(cudaFree(d_result));
 }
 
-void host_BEV_to_PVCS(float PVCS_coords[3], float BEV_coords[3], float theta, float phi)
+void E2E::host_BEV_to_PVCS(float PVCS_coords[3], float BEV_coords[3], float theta, float phi)
 {
     float sin_theta = sin(theta);
     float cos_theta = cos(theta);
@@ -189,6 +198,8 @@ void host_BEV_to_PVCS(float PVCS_coords[3], float BEV_coords[3], float theta, fl
 }
 
 void module_test_BEV_dose_forward_host(beam& Beam, phantom& Phtm, float* h_FCBB_BEV_dose, float* convolved_fluence_map)
+    // // for debug purposes
+    // float* h_HU_debug, float* h_dose_debug)
 {
     // h_FCBB_BEV_dose is used for storing results
     assert(Phtm.pitchPadding);
@@ -199,7 +210,7 @@ void module_test_BEV_dose_forward_host(beam& Beam, phantom& Phtm, float* h_FCBB_
 
     float* depthDose = (*FCBB6MeV).doses;
     
-    uint depthDosePoints = 400;
+    uint depthDosePoints = (*FCBB6MeV).num_depths;
     uint sampling_points = Beam.sampling_points;
     float max_depth = (*FCBB6MeV).depths[depthDosePoints-1];
     float fluence_map_pixel_size = Beam.pixel_size;
@@ -222,7 +233,7 @@ void module_test_BEV_dose_forward_host(beam& Beam, phantom& Phtm, float* h_FCBB_
     float PVCS_coords_normalized[3];
     float x_center = (float)(convolved_fluence_map_dimension - 2) / 2;
     float y_center = (float)(convolved_fluence_map_dimension - 2) / 2;
-    float sampling_step = (sampling_range_end - sampling_range_start) / sampling_points;
+    float sampling_step = (sampling_range_end - sampling_range_start) / (sampling_points - 1);
 
     for (uint i=0; i<convolved_fluence_map_dimension; i++)
     {
@@ -260,6 +271,10 @@ void module_test_BEV_dose_forward_host(beam& Beam, phantom& Phtm, float* h_FCBB_
 
                 uint idx = k * convolved_fluence_map_dimension * convolved_fluence_map_dimension + idx_ij;
                 h_FCBB_BEV_dose[idx] = dose * convolved_fluence_map[idx_ij] / (scale * scale);
+
+                // // for debug purposes
+                // h_HU_debug[idx] = HU;
+                // h_dose_debug[idx] = radiological_path_length / max_depth;
             }
         }
     }
@@ -287,6 +302,12 @@ void E2E::module_test_BEV_dose_forward(beam& Beam, phantom& Phtm)
     float* d_FCBB_BEV_dose;
     checkCudaErrors(cudaMalloc((void**)&d_FCBB_BEV_dose, FCBB_BEV_dose_size*sizeof(float)));
 
+    // // for debug purposes
+    // checkCudaErrors(cudaMalloc((void**)&E2E::HU_debug, FCBB_BEV_dose_size*sizeof(float)));
+    // checkCudaErrors(cudaMalloc((void**)&E2E::dose_debug, FCBB_BEV_dose_size*sizeof(float)));
+    // float* h_HU_debug = (float*)malloc(FCBB_BEV_dose_size*sizeof(float));
+    // float* h_dose_debug = (float*)malloc(FCBB_BEV_dose_size*sizeof(float));
+
     // device compute
     Beam.BEV_dose_forward(Phtm, FCBB6MeV, 0);
 
@@ -303,6 +324,8 @@ void E2E::module_test_BEV_dose_forward(beam& Beam, phantom& Phtm)
     // host compute
     cout << "Host compute" << endl;
     module_test_BEV_dose_forward_host(Beam, Phtm, h_FCBB_BEV_dose, h_convolved_fluence_map);
+        // // for debug purposes
+        // h_HU_debug, h_dose_debug);
 
     // compare
     float mse = 0;
@@ -322,17 +345,34 @@ void E2E::module_test_BEV_dose_forward(beam& Beam, phantom& Phtm)
 
     cout << "The MSE value between host and device results is " << mse << ", while the scale of host result is " << base << endl;
 
-    // string host_result_path{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_debug/BEV_dose_host.dat"};
-    // string device_result_path{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_debug/BEV_dose_device.dat"};
-    // ofstream outFile(host_result_path);
-    // outFile.write((char*)h_FCBB_BEV_dose, FCBB_BEV_dose_size*sizeof(float));
+    // // for debug purposes;
+    // string HU_debug_host{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_debug/HU_debug_host.dat"};
+    // string HU_debug_device{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_debug/HU_debug_device.dat"};
+    // string dose_debug_host{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_debug/dose_debug_host.dat"};
+    // string dose_debug_device{"/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_debug/dose_debug_device.dat"};
+    // ofstream outFile(HU_debug_host);
+    // outFile.write((char*)h_HU_debug, FCBB_BEV_dose_size*sizeof(float));
     // outFile.close();
-    // outFile.open(device_result_path);
-    // outFile.write((char*)h_FCBB_BEV_dose_d, FCBB_BEV_dose_size*sizeof(float));
+    // outFile.open(dose_debug_host);
+    // outFile.write((char*)h_dose_debug, FCBB_BEV_dose_size*sizeof(float));
+    // outFile.close();
+    // checkCudaErrors(cudaMemcpy(h_HU_debug, E2E::HU_debug, FCBB_BEV_dose_size*sizeof(float), cudaMemcpyDeviceToHost));
+    // outFile.open(HU_debug_device);
+    // outFile.write((char*)h_HU_debug, FCBB_BEV_dose_size*sizeof(float));
+    // outFile.close();
+    // checkCudaErrors(cudaMemcpy(h_dose_debug, E2E::dose_debug, FCBB_BEV_dose_size*sizeof(float), cudaMemcpyDeviceToHost));
+    // outFile.open(dose_debug_device);
+    // outFile.write((char*)h_dose_debug, FCBB_BEV_dose_size*sizeof(float));
     // outFile.close();
 
     // cleanup
     free(h_convolved_fluence_map);
     free(h_FCBB_BEV_dose);
     free(h_FCBB_BEV_dose_d);
+
+    // // for debug purposes
+    // checkCudaErrors(cudaFree(E2E::HU_debug));
+    // checkCudaErrors(cudaFree(E2E::dose_debug));
+    // free(h_HU_debug);
+    // free(h_dose_debug);
 }

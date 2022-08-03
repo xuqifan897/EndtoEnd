@@ -19,10 +19,18 @@ namespace E2E
     void test_modules(phantom& Phtm);
 
     // the following functions are for computation verification
+    void host_BEV_to_PVCS(float PVCS_coords[3], float BEV_coords[3], float theta, float phi);
+    void host_PVCS_to_BEV(float BEV_coords[3], float PVCS_coords[3], float theta, float phi);
     void module_test_convolve(beam& Beam);
+    float read_phantom(float coords[3], std::array<uint, 3>& phantom_dimension, float* phantom);
     void module_test_host_triliner(phantom& Phtm);
+    float read_depth_dose(float* h_depth_dose, float coord, uint size);
     void module_test_host_linear();
     void module_test_BEV_dose_forward(beam& Beam, phantom& Phtm);
+    void module_test_BEV_dose_backward(beam& Beam, phantom& Phtm);
+    void module_test_PVCS_dose_forward(beam& Beam, phantom& Phtm);
+    void write_phantom(float coords[3], std::array<uint, 3>& phantom_dimension, float* phantom, float value);
+    void module_test_PVCS_dose_backward(beam& Beam, phantom& Phtm);
 }
 
 #endif

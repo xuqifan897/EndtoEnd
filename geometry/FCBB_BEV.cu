@@ -46,7 +46,7 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
     cudaTextureObject_t phantom_texture, \
     float max_depth, cudaTextureObject_t depthDose_texture, \
     float* convolved_fluence_map)
-    // // for debug purposes
+    // // // for debug purposes
     // float* d_HU_debug, float* d_dose_debug)
 {
     uint x_idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -96,7 +96,7 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
             fluence / (scale * scale);
 
         // // for debug purposes
-        // uint debug_idx = (x_idx * fluence_map_dimension + y_idx) * sampling_points + i;
+        // uint debug_idx = (i * fluence_map_dimension + x_idx) * fluence_map_dimension + y_idx;
         // d_HU_debug[debug_idx] = HU;
         // d_dose_debug[debug_idx] = normalized_radiological_path;
 
