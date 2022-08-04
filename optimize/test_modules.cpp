@@ -100,7 +100,6 @@ void test_modules_beam_init(beam& Beam, phantom& Phtm)
     Beam.extended_fluence_map_dimension = array<int, 2>({FM_dimension + 4 * FM_convolution_radius, \
         FM_dimension + 4 * FM_convolution_radius});
     Beam.FCBBinit(Phtm);
-    beam::FCBBStaticInit(Phtm);
 
     checkCudaErrors(cudaMalloc((void**)(&(Beam.d_convolved_fluence_map)), \
         Beam.convolved_fluence_map_dimension[0]*Beam.convolved_fluence_map_dimension[1]*sizeof(float)));
@@ -115,6 +114,7 @@ void test_modules_beam_init(beam& Beam, phantom& Phtm)
 void E2E::test_modules(phantom& Phtm)
 {
     // beam initialization
+    beam::FCBBStaticInit(Phtm);
     beam Beam;
     test_modules_beam_init(Beam, Phtm);
 
@@ -125,5 +125,13 @@ void E2E::test_modules(phantom& Phtm)
         // module_test_host_linear();
     // module_test_BEV_dose_backward(Beam, Phtm);
     // module_test_PVCS_dose_forward(Beam, Phtm);
-    module_test_PVCS_dose_backward(Beam, Phtm);
+    // module_test_PVCS_dose_backward(Beam, Phtm);
+    // module_test_PVCS_dose_grad(Phtm);
+    // module_test_reduction();
+    module_test_fluence_map_update(Beam);
+
+    // vector<beam> beams;
+    // beams_init(beams);
+    // fluence_map_init(beams, Phtm);
+    // module_test_dose_sum(beams, Phtm);
 }

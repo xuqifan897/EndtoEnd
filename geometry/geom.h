@@ -18,7 +18,7 @@ public:
     float voxelSize; // in cm, isotropic phantom is assumed
 
     int pitch_module;
-    int pitch; // pitch in number of floats
+    uint pitch; // pitch in number of floats
     bool pitchPadding; // whether the arrays are pitched;
 
     float* h_HU; // the water HU value is normalized to 1

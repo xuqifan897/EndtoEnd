@@ -11,7 +11,7 @@
 using namespace E2E;
 using namespace std;
 
-void fluence_map_init(vector<beam>& beams, phantom& Phtm)
+void E2E::fluence_map_init(vector<beam>& beams, phantom& Phtm)
 {
     array<int, 2> extended_fluence_map_dimension{FM_dimension + 4 * FM_convolution_radius, \
         FM_dimension + 4 * FM_convolution_radius};
@@ -442,6 +442,9 @@ void E2E::optimize_stationary(vector<beam>& beams, phantom& Phtm)
     checkCudaErrors(cudaFree(d_out0));
     checkCudaErrors(cudaFree(loss));
     checkCudaErrors(cudaFree(d_sources));
+
+    for (uint i=0; i<beams.size(); i++)
+        checkCudaErrors(cudaFree(d_squared_grad[i]));
 
     free(h_loss);
     free(h_sources);

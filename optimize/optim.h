@@ -17,6 +17,7 @@ namespace E2E
     void element_wise_square(float* d_output, float* d_input, uint size, cudaStream_t stream=0);
     void test_element_wise_square();
     void test_modules(phantom& Phtm);
+    void fluence_map_init(std::vector<beam>& beams, phantom& Phtm);
 
     // the following functions are for computation verification
     void host_BEV_to_PVCS(float PVCS_coords[3], float BEV_coords[3], float theta, float phi);
@@ -31,6 +32,10 @@ namespace E2E
     void module_test_PVCS_dose_forward(beam& Beam, phantom& Phtm);
     void write_phantom(float coords[3], std::array<uint, 3>& phantom_dimension, float* phantom, float value);
     void module_test_PVCS_dose_backward(beam& Beam, phantom& Phtm);
+    void module_test_dose_sum(std::vector<beam>& beams, phantom& Phtm);
+    void module_test_PVCS_dose_grad(phantom& Phtm);
+    void module_test_reduction();
+    void module_test_fluence_map_update(beam& Beam);
 }
 
 #endif
