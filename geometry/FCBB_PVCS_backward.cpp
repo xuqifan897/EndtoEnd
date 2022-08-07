@@ -122,6 +122,14 @@ void PVCSDoseBackward(float voxel_size, float phantom_iso[3], \
     float* d_FCBB_BEV_dose_grad, cudaTextureObject_t PVCSDoseGradTexture, \
     cudaStream_t stream);
 
+extern "C"
+void PVCSDoseBackward_new(float voxel_size, float phantom_iso[3], \
+    float zenith, float azimuth, float SAD, \
+    float sampling_start, float sampling_end, uint sampling_points, \
+    float fluence_map_pixel_size, uint fluence_map_dimension, \
+    float* d_FCBB_BEV_dose_grad, cudaTextureObject_t PVCSDoseGradTexture, \
+    cudaStream_t stream);
+
 void beam::PVCS_dose_backward(phantom& Phtm, cudaStream_t stream)
 {
     if (this->d_FCBB_BEV_dose_grad == nullptr)
@@ -130,7 +138,7 @@ void beam::PVCS_dose_backward(phantom& Phtm, cudaStream_t stream)
         exit;
     }
     float phantom_iso[3]{this->isocenter[0], this->isocenter[1], this->isocenter[2]};
-    PVCSDoseBackward(Phtm.voxelSize, phantom_iso, \
+    PVCSDoseBackward_new(Phtm.voxelSize, phantom_iso, \
         this->zenith, this->azimuth, this->SAD, \
         this->sampling_range[0], this->sampling_range[1], this->sampling_points, \
         this->pixel_size, this->convolved_fluence_map_dimension[0], \

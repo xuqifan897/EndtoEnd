@@ -199,8 +199,8 @@ void E2E::module_test_PVCS_dose_backward(beam& Beam, phantom& Phtm)
     module_test_PVCS_dose_backward_host(Beam, Phtm, h_FCBB_BEV_dose_grad, h_FCBB_PVCS_dose_grad);
 
     // compare
-    float mse = 0;
-    float base = 0;
+    double mse = 0;
+    double base = 0;
     for (uint i=0; i<sampling_points; i++)
     {
         uint idx_i = i * convolved_fluence_map_dimension;

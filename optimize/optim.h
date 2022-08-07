@@ -20,6 +20,7 @@ namespace E2E
     void fluence_map_init(std::vector<beam>& beams, phantom& Phtm);
 
     // the following functions are for computation verification
+    void test_modules_beam_init(beam& Beam, phantom& Phtm);
     void host_BEV_to_PVCS(float PVCS_coords[3], float BEV_coords[3], float theta, float phi);
     void host_PVCS_to_BEV(float BEV_coords[3], float PVCS_coords[3], float theta, float phi);
     void module_test_convolve(beam& Beam);

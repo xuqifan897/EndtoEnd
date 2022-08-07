@@ -87,7 +87,7 @@ void E2E::module_test_convolve(beam& Beam)
     free(h_convolved_fluence_map_d);
 }
 
-void test_modules_beam_init(beam& Beam, phantom& Phtm)
+void E2E::test_modules_beam_init(beam& Beam, phantom& Phtm)
 {
     Beam.zenith = PI / 2;
     Beam.azimuth = 0;
@@ -125,10 +125,10 @@ void E2E::test_modules(phantom& Phtm)
         // module_test_host_linear();
     // module_test_BEV_dose_backward(Beam, Phtm);
     // module_test_PVCS_dose_forward(Beam, Phtm);
-    // module_test_PVCS_dose_backward(Beam, Phtm);
+    module_test_PVCS_dose_backward(Beam, Phtm);
     // module_test_PVCS_dose_grad(Phtm);
     // module_test_reduction();
-    module_test_fluence_map_update(Beam);
+    // module_test_fluence_map_update(Beam);
 
     // vector<beam> beams;
     // beams_init(beams);

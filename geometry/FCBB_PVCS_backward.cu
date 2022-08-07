@@ -208,6 +208,150 @@ void PVCSDoseBackward(float voxel_size, float phantom_iso[3], \
 
 
 __global__ void
+d_PVCSDoseBackward_new(float voxel_size, float phantom_iso0, float phantom_iso1, float phantom_iso2, \
+    float zenith, float azimuth, float SAD, \
+    float sampling_start, float sampling_end, uint sampling_points, \
+    float fluence_map_pixel_size, uint fluence_map_dimension, \
+    float* d_FCBB_BEV_dose_grad, cudaTextureObject_t PVCSDoseGradTexture)
+{
+    uint idx_x = blockIdx.x * blockDim.x + threadIdx.x;
+    uint idx_y = blockIdx.y * blockDim.y + threadIdx.y;
+    uint segmentation_idx = blockIdx.z;
+    uint n_segmentations = gridDim.z;
+    uint n_sampling_points_per_segmentation = sampling_points / n_segmentations;
+    uint sampling_point_start = segmentation_idx * n_sampling_points_per_segmentation;
+    uint sampling_point_end = sampling_point_start + n_sampling_points_per_segmentation;
+    float sampling_step = (sampling_end - sampling_start) / (sampling_points - 1);
+
+    float PVCS_x_hat[3] = {voxel_size, 0, 0};
+    float PVCS_y_hat[3] = {0, voxel_size, 0};
+    float PVCS_z_hat[3] = {0, 0, voxel_size};
+
+    float BEV_x_hat[3];
+    float BEV_y_hat[3];
+    float BEV_z_hat[3];
+
+    d_PVCS_to_BEV(BEV_x_hat, PVCS_x_hat, zenith, azimuth);
+    d_PVCS_to_BEV(BEV_y_hat, PVCS_y_hat, zenith, azimuth);
+    d_PVCS_to_BEV(BEV_z_hat, PVCS_z_hat, zenith, azimuth);
+
+    float middle_point = (float)(fluence_map_dimension - 2) / 2;
+    float BEV_reference[3] = {((float)idx_x - middle_point) * fluence_map_pixel_size, \
+        ((float)idx_y - middle_point) * fluence_map_pixel_size, SAD};
+    float PVCS_reference[3];
+    d_BEV_to_PVCS(PVCS_reference, BEV_reference, zenith, azimuth);
+
+    float BEV_source[3] = {0, 0, -SAD};
+    float PVCS_source[3];
+    d_BEV_to_PVCS(PVCS_source, BEV_source, zenith, azimuth);
+    PVCS_source[0] += phantom_iso0;
+    PVCS_source[1] += phantom_iso1;
+    PVCS_source[2] += phantom_iso2;
+
+    bool global_valid = (idx_x < fluence_map_dimension - 1) && (idx_y < fluence_map_dimension - 1);
+    for (uint i=sampling_point_start; i<sampling_point_end; i++)
+    {   
+        float depth = sampling_start + i * sampling_step;
+        float scale = depth / SAD;
+
+        float BEV_coords_of_BEV_grid_point[3] = {BEV_reference[0] * scale, \
+            BEV_reference[1] * scale, \
+            BEV_reference[2] * scale};
+
+        float PVCS_coords_of_BEV_grid_point[3] = {PVCS_source[0] + PVCS_reference[0] * scale, \
+            PVCS_source[1] + PVCS_reference[1] * scale, \
+            PVCS_source[2] + PVCS_reference[2] * scale};
+
+        int PVCS_index_of_BEV_grid_point[3] = {(int)floorf(PVCS_coords_of_BEV_grid_point[0] / voxel_size - half), \
+            (int)floorf(PVCS_coords_of_BEV_grid_point[1] / voxel_size - half), \
+            (int)floorf(PVCS_coords_of_BEV_grid_point[2] / voxel_size - half)};
+        
+        float PVCS_coords_of_PVCS_grid_point[3] = {((float)PVCS_index_of_BEV_grid_point[0] + half) * voxel_size, \
+            ((float)PVCS_index_of_BEV_grid_point[1] + half) * voxel_size, \
+            ((float)PVCS_index_of_BEV_grid_point[2] + half) * voxel_size};
+
+        // unit: cm
+        float PVCS_offset[3] = {PVCS_coords_of_PVCS_grid_point[0] - PVCS_coords_of_BEV_grid_point[0], \
+            PVCS_coords_of_PVCS_grid_point[1] - PVCS_coords_of_BEV_grid_point[1], \
+            PVCS_coords_of_PVCS_grid_point[2] - PVCS_coords_of_BEV_grid_point[2]};
+        
+        // convert cm to unitless
+        PVCS_offset[0] /= voxel_size;
+        PVCS_offset[1] /= voxel_size;
+        PVCS_offset[2] /= voxel_size;
+        
+        float BEV_offset[3] = {PVCS_offset[0] * BEV_x_hat[0] + PVCS_offset[1] * BEV_y_hat[0] + PVCS_offset[2] * BEV_z_hat[0], \
+            PVCS_offset[0] * BEV_x_hat[1] + PVCS_offset[1] * BEV_y_hat[1] + PVCS_offset[2] * BEV_z_hat[1], \
+            PVCS_offset[0] * BEV_x_hat[2] + PVCS_offset[1] * BEV_y_hat[2] + PVCS_offset[2] * BEV_z_hat[2]};
+        
+        float BEV_coords_of_PVCS_grid_point[3] = {BEV_coords_of_BEV_grid_point[0] + BEV_offset[0], \
+            BEV_coords_of_BEV_grid_point[1] + BEV_offset[1], \
+            BEV_coords_of_BEV_grid_point[2] + BEV_offset[2]};
+        
+        uint dose_grad_idx = (i * fluence_map_dimension + idx_x) * fluence_map_dimension + idx_y;
+        d_FCBB_BEV_dose_grad[dose_grad_idx] = 0;
+        
+        #pragma unroll
+        for (uint j=0; j<2; j++)
+        {
+            float BEV_coords_j[3] = {BEV_coords_of_PVCS_grid_point[0] + j * BEV_x_hat[0], \
+                BEV_coords_of_PVCS_grid_point[1] + j * BEV_x_hat[1], \
+                BEV_coords_of_PVCS_grid_point[2] + j * BEV_x_hat[2]};
+            #pragma unroll
+            for (uint k=0; k<2; k++)
+            {
+                float BEV_coords_k[3] = {BEV_coords_j[0] + k * BEV_y_hat[0], \
+                    BEV_coords_j[1] + k * BEV_y_hat[1], \
+                    BEV_coords_j[2] + k * BEV_y_hat[2]};
+                #pragma unroll
+                for (uint l=0; l<2; l++)
+                {
+                    float BEV_coords_l[3] = {BEV_coords_k[0] + l * BEV_z_hat[0], \
+                        BEV_coords_k[1] + l * BEV_z_hat[1], \
+                        BEV_coords_k[2] + l * BEV_z_hat[2]};
+                    
+                    float scale_temp = BEV_coords_l[2] / SAD;
+                    float pixel_size_at_this_depth = fluence_map_pixel_size * scale_temp;
+                    float BEV_coords_normalized[3] = {middle_point + BEV_coords_l[0] / pixel_size_at_this_depth, \
+                        middle_point + BEV_coords_l[1] / pixel_size_at_this_depth, \
+                        (BEV_coords_l[2] - sampling_start) / sampling_step};
+                    
+                    float relative_coords[3] = {fabsf(BEV_coords_normalized[0] - idx_x), \
+                        fabsf(BEV_coords_normalized[1] - idx_y), \
+                        fabsf(BEV_coords_normalized[2] - i)};
+                    
+                    float coefficient = (1 - relative_coords[0]) * (1 - relative_coords[1]) * (1 - relative_coords[2]);
+                    bool valid = (relative_coords[0] < 1) && (relative_coords[1] < 1) && (relative_coords[2] < 1);
+                    float PVCS_grad = tex3D<float>(PVCSDoseGradTexture, PVCS_index_of_BEV_grid_point[2] + l, \
+                        PVCS_index_of_BEV_grid_point[1] + k, PVCS_index_of_BEV_grid_point[0] + j);
+                    d_FCBB_BEV_dose_grad[dose_grad_idx] += PVCS_grad * coefficient * valid * global_valid;
+                }
+            }
+        }
+    }
+}
+
+
+extern "C"
+void PVCSDoseBackward_new(float voxel_size, float phantom_iso[3], \
+    float zenith, float azimuth, float SAD, \
+    float sampling_start, float sampling_end, uint sampling_points, \
+    float fluence_map_pixel_size, uint fluence_map_dimension, \
+    float* d_FCBB_BEV_dose_grad, cudaTextureObject_t PVCSDoseGradTexture, \
+    cudaStream_t stream)
+{
+    dim3 blockSize(16, 16, 1);
+    dim3 gridSize(ceil((float)fluence_map_dimension / blockSize.x), ceil((float)fluence_map_dimension / blockSize.y), 4);
+    
+    assert(sampling_points % gridSize.z == 0);
+    d_PVCSDoseBackward_new<<<gridSize, blockSize, 0, stream>>>(voxel_size, \
+        phantom_iso[0], phantom_iso[1], phantom_iso[2], zenith, azimuth, SAD, \
+        sampling_start, sampling_end, sampling_points, fluence_map_pixel_size, \
+        fluence_map_dimension, d_FCBB_BEV_dose_grad, PVCSDoseGradTexture);
+}
+
+
+__global__ void
 d_writeFCBBPVCSDoseGradSurface(cudaSurfaceObject_t surface, float* input, uint dim_x, uint dim_y, uint dim_z)
 {
     uint idx_x = blockIdx.x * blockDim.x + threadIdx.x;

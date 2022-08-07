@@ -3,11 +3,12 @@
 #include <array>
 #include "args.h"
 #include "geom.h"
+#include "optim.h"
 
 using namespace E2E;
 using namespace std;
 
-void fluence_map_init(beam& Beam)
+void fluence_map_init_water(beam& Beam)
 {
     Beam.fluence_map_dimension = array<int, 2>({FM_dimension, FM_dimension});
     Beam.convolved_fluence_map_dimension = array<int, 2>( \
@@ -57,6 +58,7 @@ void E2E::test_FCBB_water_phantom(phantom& Phtm)
     Beam.azimuth = 0;
     Beam.SAD = get_args<float>("SAD") / 10;
     Beam.pixel_size = get_args<vector<float>>("fluence-map-pixel-size")[0] / 10;
+    Beam.isocenter = Phtm.isocenter;
     Beam.fluence_map_dimension = array<int, 2>({FM_dimension, FM_dimension});
     Beam.convolved_fluence_map_dimension = array<int, 2>({FM_dimension + 2 * FM_convolution_radius, \
         FM_dimension + 2 * FM_convolution_radius});
@@ -65,9 +67,9 @@ void E2E::test_FCBB_water_phantom(phantom& Phtm)
     Beam.FCBBinit(Phtm);
 
     // convolved_fluence_map, extended_fluence_map initialization
-    fluence_map_init(Beam);
-    // (*FCBB6MeV).d_conv_kernel_init();
-    // (*FCBB6MeV).texInit();
+    fluence_map_init_water(Beam);
+    (*FCBB6MeV).d_conv_kernel_init();
+    (*FCBB6MeV).texInit();
     Beam.convolve(FCBB6MeV);
 
     Beam.BEV_dose_forward(Phtm);

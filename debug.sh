@@ -48,3 +48,4 @@ cuda-gdb --args /data/qifan/projects_qlyu/EndtoEnd3/build/EndtoEnd3 \
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/optimize.cpp:301
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/module_test_BEV_dose_forward.cpp:291
 # tbreak /data/qifan/projects_qlyu/EndtoEnd3/optimize/module_test_PVCS_dose_backward.cpp:137
+# tbreak /data/qifan/projects_qlyu/EndtoEnd3/geometry/FCBB_PVCS_backward.cu:321

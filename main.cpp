@@ -16,6 +16,36 @@ int main(int argc, char** argv)
         cerr << "Argument initialization failure." << endl;
         exit;
     }
+    // deviceProperty();
+
+    // phantom initialization
+    phantom Phtm;
+    phantom_init_default(Phtm);
+    Phtm.to_device();
+    Phtm.textureInit();
+    // Phtm.textureDecon();
+
+    // beam initialization
+    vector<beam> beams;
+    beams_init(beams);
+
+    // kernel initialization
+    FCBBkernel* kernel = FCBB6MeV;
+    (*kernel).d_conv_kernel_init();
+    (*kernel).texInit();
+
+    optimize_stationary(beams, Phtm);
+}
+
+
+int main_module_test(int argc, char** argv)
+{
+    if (args_init(argc, argv))
+    {
+        cerr << "Argument initialization failure." << endl;
+        exit;
+    }
+    // deviceProperty();
 
     // the following code block is for testing
     // phantom initialization
@@ -29,7 +59,8 @@ int main(int argc, char** argv)
     (*kernel).d_conv_kernel_init();
     (*kernel).texInit();
 
-    test_modules(Phtm);
+    // test_modules(Phtm);
+    test_FCBB_water_phantom(Phtm);
 }
 
 
@@ -59,7 +90,7 @@ int main_round2_bcmk(int argc, char** argv)
     (*kernel).texInit();
 
     // testConvKernel(FCBB6MeV);
-    test_FCBB_water_phantom(Phtm);
+    // test_FCBB_water_phantom(Phtm);
     optimize_stationary(beams, Phtm);
     // optimize_stationary_graph(beams, Phtm);
     // test_dose_sum(beams, Phtm);
