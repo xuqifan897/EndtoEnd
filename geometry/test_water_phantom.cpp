@@ -8,8 +8,9 @@
 using namespace E2E;
 using namespace std;
 
-void fluence_map_init_water(beam& Beam)
+void fluence_map_init_water(beam& Beam, uint diam)
 {
+    // parameter diam specifies the diameter of the active fluence map
     Beam.fluence_map_dimension = array<int, 2>({FM_dimension, FM_dimension});
     Beam.convolved_fluence_map_dimension = array<int, 2>( \
         {FM_dimension + 2 * FM_convolution_radius, FM_dimension + 2 * FM_convolution_radius});
@@ -28,11 +29,12 @@ void fluence_map_init_water(beam& Beam)
 
     for (uint i=0; i<extended_size; i++)
         h_extended_fluence_map[i] = 0;
-    
-    for (uint i=2*FM_convolution_radius; i<FM_dimension+2*FM_convolution_radius; i++)
+
+    uint margin = (Beam.extended_fluence_map_dimension[0] - diam) / 2;
+    for (uint i=margin; i<margin + diam; i++)
     {
         uint I = i * Beam.extended_fluence_map_dimension[1];
-        for (uint j=2*FM_convolution_radius; j<FM_dimension+2*FM_convolution_radius; j++)
+        for (uint j=margin; j<margin + diam; j++)
         {
             uint idx = I + j;
             h_extended_fluence_map[idx] = 1;
@@ -67,7 +69,7 @@ void E2E::test_FCBB_water_phantom(phantom& Phtm)
     Beam.FCBBinit(Phtm);
 
     // convolved_fluence_map, extended_fluence_map initialization
-    fluence_map_init_water(Beam);
+    fluence_map_init_water(Beam, 128);
     (*FCBB6MeV).d_conv_kernel_init();
     (*FCBB6MeV).texInit();
     Beam.convolve(FCBB6MeV);
@@ -79,7 +81,8 @@ void E2E::test_FCBB_water_phantom(phantom& Phtm)
     float* h_FCBB_PVCS_dose = (float*)malloc(volume * sizeof(float));
     checkCudaErrors(cudaMemcpy(h_FCBB_PVCS_dose, Beam.d_FCBB_PVCS_dose, \
         volume*sizeof(float), cudaMemcpyDeviceToHost));
-    string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/water_out/waterDose.dat"};
+    // string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/water_out/waterDose.dat"};
+    string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/water_out/patientDose.dat"};
     ofstream outFile(outputPath);
     outFile.write((char*)h_FCBB_PVCS_dose, volume*sizeof(float));
     outFile.close();

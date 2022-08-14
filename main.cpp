@@ -9,7 +9,7 @@ using namespace E2E;
 using namespace std;
 
 
-int main(int argc, char** argv)
+int main_main(int argc, char** argv)
 {
     if (args_init(argc, argv))
     {
@@ -38,7 +38,8 @@ int main(int argc, char** argv)
 }
 
 
-int main_module_test(int argc, char** argv)
+// int main_module_test(int argc, char** argv)
+int main(int argc, char** argv)
 {
     if (args_init(argc, argv))
     {

@@ -92,8 +92,9 @@ d_BEVDoseForward(float zenith, float azimuth, float SAD, float pixel_size, \
         float HU = tex3D<float>(phantom_texture, PVCS_coords[2], PVCS_coords[1], PVCS_coords[0]);
         radiological_path += HU * radiological_path_step;
         float normalized_radiological_path = radiological_path / max_depth;
+        float scale1 = r0 * scale / SAD;
         float dose = tex1D<float>(depthDose_texture, normalized_radiological_path) * \
-            fluence / (scale * scale);
+            fluence / (scale1 * scale1);
 
         // // for debug purposes
         // uint debug_idx = (i * fluence_map_dimension + x_idx) * fluence_map_dimension + y_idx;

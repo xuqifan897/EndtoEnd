@@ -81,7 +81,8 @@ d_BEVDoseBackward(float zenith, float azimuth, float SAD, float pixel_size, \
         radiological_path += HU * radiological_path_step;
         float normalized_radiological_path = radiological_path / max_depth;
         float BEV_dose_grad = d_FCBB_BEV_dose_grad[i * FCBB_BEV_dose_grad_pitch + FCBB_BEV_dose_grad_offset];
-        fluence_grad += tex1D<float>(depthDoseTexture, normalized_radiological_path) / (scale * scale) * BEV_dose_grad;
+        float scale1 = r0 * scale / SAD;
+        fluence_grad += tex1D<float>(depthDoseTexture, normalized_radiological_path) / (scale1 * scale1) * BEV_dose_grad;
     }
     d_convolved_fluence_grad[FCBB_BEV_dose_grad_offset] = fluence_grad * \
         !(idx_x == fluence_map_dimension-1 || idx_y == fluence_map_dimension-1);
