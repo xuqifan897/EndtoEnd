@@ -1,6 +1,8 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 #include <array>
+#include <sstream>
+#include <iomanip>
 #include "args.h"
 #include "geom.h"
 #include "optim.h"
@@ -54,10 +56,10 @@ void E2E::test_FCBB_water_phantom(phantom& Phtm)
     // Phtm.to_device();
     // Phtm.textureInit();
 
-    // beam initialization
+    // // beam initialization
     beam Beam;
-    Beam.zenith = PI / 2;
-    Beam.azimuth = 0;
+    Beam.zenith = get_args<float>("zenith");
+    Beam.azimuth = get_args<float>("azimuth");
     Beam.SAD = get_args<float>("SAD") / 10;
     Beam.pixel_size = get_args<vector<float>>("fluence-map-pixel-size")[0] / 10;
     Beam.isocenter = Phtm.isocenter;
@@ -81,9 +83,14 @@ void E2E::test_FCBB_water_phantom(phantom& Phtm)
     float* h_FCBB_PVCS_dose = (float*)malloc(volume * sizeof(float));
     checkCudaErrors(cudaMemcpy(h_FCBB_PVCS_dose, Beam.d_FCBB_PVCS_dose, \
         volume*sizeof(float), cudaMemcpyDeviceToHost));
-    // string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/water_out/waterDose.dat"};
-    string outputPath{"/data/qifan/projects_qlyu/EndtoEnd3/data/water_out/patientDose.dat"};
+    
+    stringstream outputPath_ss;
+    outputPath_ss << get_args<string>("output-folder") << "/" << "waterDose_" << \
+        std::fixed << std::setprecision(2) << Beam.zenith << "_" << Beam.azimuth << ".dat";
+    string outputPath = outputPath_ss.str();
+
     ofstream outFile(outputPath);
     outFile.write((char*)h_FCBB_PVCS_dose, volume*sizeof(float));
     outFile.close();
+    free(h_FCBB_PVCS_dose);
 }

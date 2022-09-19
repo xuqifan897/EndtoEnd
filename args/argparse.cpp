@@ -32,6 +32,8 @@ int E2E::args_init(int argc, char** argv)
             ("PTV-target-path", po::value<string>(), "PTV target file path, refer to README for detail")
             ("OAR-weight-path", po::value<string>(), "OAR weight file path, refer to README for detail")
             ("OAR-target-path", po::value<string>(), "OAR target file path, refer to README for detail")
+            ("fluence-map-init", po::value<string>()->default_value(""), "The folder containing fluence map initializations. \
+                If not specified, the fluence map is initialized to all ones")
             ("beam-energy", po::value<float>()->default_value(6.), "the energy of the beam in MeV. At this point we only \
                 support monoenergetic beam. The beam energy should be chosen from 4, 6, 10, 15, 24")
             ("SAD", po::value<float>()->default_value(1000.), "Source-to-axis distance, in mm")
@@ -57,6 +59,8 @@ int E2E::args_init(int argc, char** argv)
             ("beam-angle-config-path", po::value<string>(), "The path to the beam angle configuration file")
             ("iterations", po::value<int>()->default_value(10000), "The number of iterations in the optimization")
             ("step-size", po::value<float>()->default_value(1e-4), "fluence map update step size (learning rate)")
+            ("zenith", po::value<float>()->default_value(PI/2), "The zenith angle of the beam, used for single beam dose calculation")
+            ("azimuth", po::value<float>()->default_value(0), "The azimuth angle of the beam, used for single beam dose calculation")
         ;
 
         E2E::args = new po::variables_map();

@@ -73,6 +73,7 @@ public:
     float* d_fluence_grad;
 
     beam();
+    ~beam();
     // convolve from d_extended_fluence_map to d_convolved_fluence_map
     void convolve(FCBBkernel* kernel, cudaStream_t stream=0);
 
@@ -102,6 +103,7 @@ public:
 
     void FCBBinit(phantom& Phtm);
     static void FCBBStaticInit(phantom& Phtm);
+    static void FCBBStaticDecon();
 
     void BEV_dose_forward(phantom& Phtm, FCBBkernel* FCBBkernel=FCBB6MeV, cudaStream_t stream=0);
     void PVCS_dose_forward(phantom& Phtm, cudaStream_t stream=0);

@@ -50,6 +50,35 @@ beam::beam()
     this->d_FCBB_BEV_dose_grad = nullptr;
 }
 
+beam::~beam()
+{
+    // free cpu pointers if it is not NULL
+    if (this->h_fluence_map != nullptr)
+        free(this->h_fluence_map);
+    
+
+    // free GPU pointers if it is not NULL
+    vector<float*> GPU_pointers{this->d_convolved_fluence_map, this->d_extended_fluence_map, \
+        this->d_convolved_fluence_map_grad, this->d_fluence_grad, this->d_FCBB_PVCS_dose, \
+        this->d_FCBB_BEV_dose_grad};
+    
+    for (uint i=0; i<GPU_pointers.size(); i++)
+    {
+        float* d_pointer = GPU_pointers[i];
+        if (d_pointer != nullptr)
+            checkCudaErrors(cudaFree(d_pointer));
+    }
+
+    // free cudaArray, surface, and texture
+    if (this->FCBB_BEV_dose_surface)
+        checkCudaErrors(cudaDestroySurfaceObject(this->FCBB_BEV_dose_surface));
+    if (this->FCBB_BEV_dose_texture)
+        checkCudaErrors(cudaDestroyTextureObject(this->FCBB_BEV_dose_texture));
+    if (this->FCBB_BEV_dose_array)
+        checkCudaErrors(cudaFreeArray(this->FCBB_BEV_dose_array));
+    cout << "beam freed!" << endl;
+}
+
 void E2E::beams_init(vector<beam>& beams)
 {
     float SAD = get_args<float>("SAD") / 10; // mm to cm

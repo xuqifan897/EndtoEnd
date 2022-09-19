@@ -47,6 +47,17 @@ void beam::FCBBStaticInit(phantom& Phtm)
         &_texRes, &_texDescr, NULL));
 }
 
+void beam::FCBBStaticDecon()
+{
+    if (beam::FCBB_PVCS_dose_grad_surface)
+        checkCudaErrors(cudaDestroySurfaceObject(beam::FCBB_PVCS_dose_grad_surface));
+    if (beam::FCBB_PVCS_dose_grad_texture)
+        checkCudaErrors(cudaDestroyTextureObject(beam::FCBB_PVCS_dose_grad_texture));
+    if (beam::FCBB_PVCS_dose_grad_array)
+        checkCudaErrors(cudaFreeArray(beam::FCBB_PVCS_dose_grad_array));
+    cout << "beam static deconstruction called." << endl;
+}
+
 extern "C" void
 PVCSDoseForward(float voxel_size, uint phantom_dim[3], uint phantom_pitch, \
     float phantom_iso[3], \

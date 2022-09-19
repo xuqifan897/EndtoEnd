@@ -19,9 +19,17 @@ add_subdirectory(optimize)
 
 FIND_PACKAGE(Boost 1.65 COMPONENTS program_options REQUIRED)
 
-add_executable(EndtoEnd3 main.cpp)
-target_link_libraries(EndtoEnd3 PRIVATE args geom optim ${Boost_LIBRARIES})
-target_include_directories(EndtoEnd3 PRIVATE ${Boost_INCLUDE_DIR})
+# add_executable(EndtoEnd3 main.cpp)
+# target_link_libraries(EndtoEnd3 PRIVATE args geom optim ${Boost_LIBRARIES})
+# target_include_directories(EndtoEnd3 PRIVATE ${Boost_INCLUDE_DIR})
+
+# add_executable(dosecalc dosecalc.cpp)
+# target_link_libraries(dosecalc PRIVATE args geom optim ${Boost_LIBRARIES})
+# target_include_directories(dosecalc PRIVATE ${Boost_INCLUDE_DIR})
+
+add_executable(dose_calculation dose_calculation.cpp)
+target_link_libraries(dose_calculation PRIVATE args geom optim ${Boost_LIBRARIES})
+target_include_directories(dose_calculation PRIVATE ${Boost_INCLUDE_DIR})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
