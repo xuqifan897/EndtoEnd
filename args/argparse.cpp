@@ -57,10 +57,13 @@ int E2E::args_init(int argc, char** argv)
             ("pencil-path", po::value<string>(), "The path to the pencil beam lateral kernel file")
             ("depthDose-path", po::value<string>(), "The path to the depth dose table file")
             ("beam-angle-config-path", po::value<string>(), "The path to the beam angle configuration file")
-            ("iterations", po::value<int>()->default_value(10000), "The number of iterations in the optimization")
-            ("step-size", po::value<float>()->default_value(1e-4), "fluence map update step size (learning rate)")
+            ("iterations", po::value<int>()->default_value(60), "The number of iterations in the one stage. Three stages in total, with step size scaling.")
+            ("step-size", po::value<float>()->default_value(5e-3), "fluence map update step size for the first stage.")
             ("zenith", po::value<float>()->default_value(PI/2), "The zenith angle of the beam, used for single beam dose calculation")
             ("azimuth", po::value<float>()->default_value(0), "The azimuth angle of the beam, used for single beam dose calculation")
+            ("ideal-dose", po::value<float>()->default_value(20.), "The expected PTV dose")
+            ("isocenter-dose", po::value<float>()->default_value(3.54), "Emperical value of the isocenter dose when the fluence map is \
+                set to 1. This value is used to initialize the fluence map if fluence-map-init is not initialized")
         ;
 
         E2E::args = new po::variables_map();

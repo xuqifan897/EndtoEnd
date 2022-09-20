@@ -13,21 +13,27 @@ def view_extended_fluence_map():
                                 'QX_beam_orientation/patient1_E2E_output/extended_fluence_map.dat'
     extended_fluence_map = np.fromfile(extended_fluence_map_path, dtype=np.float32)
     extended_fluence_map = np.reshape(extended_fluence_map, extended_fluence_map_dimension)
+    print(np.max(extended_fluence_map))
     plt.imshow(extended_fluence_map)
     plt.show()
 
 
 def view_dose_calculation():
-    dose_path = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E_output/dose006.dat'
+    dose_path = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E_output/dose001.dat'
     dose_shape = (200, 200, 200)
     dose = np.fromfile(dose_path, dtype=np.float32)
     dose = np.reshape(dose, dose_shape)
 
-    azimuth = -1.361356
+    azimuth = 0.9424787940998465
     center = np.array((103, 106))
-    output_slice = get_cross_section(dose, dose_shape, center, azimuth)
-    plt.imshow(output_slice)
-    plt.show()
+
+    isocenter_value = dose[103, 106, 81]
+    print('isocenter dose value {}'.format(isocenter_value))
+    print('maximum dose value {}'.format(np.max(dose)))
+
+    # output_slice = get_cross_section(dose, dose_shape, center, azimuth)
+    # plt.imshow(output_slice)
+    # plt.show()
 
 
 def get_cross_section(dose, shape, center, azimuth):
@@ -101,6 +107,59 @@ def get_cross_section(dose, shape, center, azimuth):
     return output_slice
 
 
+def view_slices():
+    input_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E'
+    output_folder = '/data/qifan/projects_qlyu/EndtoEnd3/data'
+    items = ['PTV_weight', 'PTV_target', 'OAR_weight', 'OAR_target']
+    shape = (200, 200, 197)
+
+    for item in items:
+        input_file = os.path.join(input_folder, item + '.dat')
+        input_array = np.fromfile(input_file, dtype=np.float32)
+        input_array = np.reshape(input_array, shape)
+
+        output_directory = os.path.join(output_folder, item)
+        if not os.path.isdir(output_directory):
+            os.mkdir(output_directory)
+
+        for i in range(shape[2]):
+            output_file = os.path.join(output_directory, '{:03d}.png'.format(i+1))
+            plt.imsave(output_file, input_array[:, :, i])
+        print('{} done!'.format(item))
+
+
+def view_Dose():
+    doseFile = '/home/qlyu/ShengNAS2/SharedProjectData/' \
+               'QX_beam_orientation/patient1_optimize_stationary/totalDose.dat'
+    outputFolder = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_stationaryDose'
+
+    shape = (200, 200, 200)
+    dose = np.fromfile(doseFile, dtype=np.float32)
+    dose = np.reshape(dose, shape)
+    if not os.path.isdir(outputFolder):
+        os.mkdir(outputFolder)
+
+    vmin = 0
+    vmax = np.max(dose)
+    print('vmax = {}'.format(vmax))
+
+    for i in range(shape[2]):
+        output_file = os.path.join(outputFolder, '{:03d}.png'.format(i+1))
+        plt.imsave(output_file, dose[:, :, i], vmin=vmin, vmax=vmax)
+
+
+def view_loss():
+    loss_file = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation' \
+                '/patient1_optimize_stationary/loss.dat'
+    loss = np.fromfile(loss_file, dtype=np.float32)
+    size = loss.size
+    plt.plot(np.arange(size) + 1, loss)
+    plt.show()
+
+
 if __name__ == '__main__':
     # view_extended_fluence_map()
-    view_dose_calculation()
+    # view_dose_calculation()
+    # view_slices()
+    # view_Dose()
+    view_loss()

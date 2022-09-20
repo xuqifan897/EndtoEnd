@@ -24,19 +24,19 @@ void beam::calc_FCBB_PVCS_dose_grad(phantom& Phtm, float** d_elementWiseLoss, \
     if (! Phtm.pitchPadding)
     {
         cout << "It is required that pitchPad() must be called" << endl;
-        exit;
+        exit(EXIT_FAILURE);
     }
 
     if (! FCBB_PVCS_dose_grad_init)
     {
         cout << "FCBBStaticInit static member function is not called!" << endl;
-        exit;
+        exit(EXIT_FAILURE);
     }
 
     if (*d_elementWiseLoss == nullptr)
     {
         cout << "d_elementWiseLoss has not been initialized" << endl;
-        exit;
+        exit(EXIT_FAILURE);
     }
     uint dimension[3]{Phtm.dimension[0], Phtm.dimension[1], Phtm.pitch};
     FCBBPVCSDoseGrad(FCBB_PVCS_dose_grad_surface, *d_elementWiseLoss, \
@@ -135,7 +135,7 @@ void beam::PVCS_dose_backward(phantom& Phtm, cudaStream_t stream)
     if (this->d_FCBB_BEV_dose_grad == nullptr)
     {
         cout << "d_FCBB_BEV_dose_grad is not initialized, beam::FCBBinit() not called" << endl;
-        exit;
+        exit(EXIT_FAILURE);
     }
     float phantom_iso[3]{this->isocenter[0], this->isocenter[1], this->isocenter[2]};
     PVCSDoseBackward_new(Phtm.voxelSize, phantom_iso, \
@@ -205,7 +205,7 @@ void E2E::test_FCBB_PVCS_backward(std::vector<beam>& beams, phantom& Phtm)
         if (! outFile.is_open())
         {
             cout << "Could not open this file: " << output_file << endl;
-            exit;
+            exit(EXIT_FAILURE);
         }
         outFile.write((char*)h_output, output_size*sizeof(float));
         outFile.close();
