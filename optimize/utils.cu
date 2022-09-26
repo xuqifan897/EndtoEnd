@@ -143,3 +143,64 @@ void fluenceMapUpdate(uint fluence_map_dimension, uint extended_fluence_map_dime
     d_fluenceMapUpdate<<<gridSize, blockSize, 0, stream>>>(fluence_map_dimension, extended_fluence_map_dimension, extended_fluence_map_offset, \
         idx, d_extended_fluence_map, d_fluence_map_grad, d_norm, step_size);
 }
+
+
+__global__ void
+d_smoothnessCalc(float* d_extended_fluence_map, float* d_element_wise_loss, float* d_fluence_grad, \
+    float eta, uint fluence_map_dimension, uint extended_fluence_map_dimension, uint prepend)
+{
+    uint idx_x = blockIdx.x * blockDim.x + threadIdx.x;
+    uint idx_y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx_x >= fluence_map_dimension || idx_y >= fluence_map_dimension)
+        return;
+    
+    uint extended_fluence_map_idx = (prepend + idx_x) * extended_fluence_map_dimension + prepend + idx_y;
+    uint extended_fluence_map_idx_right = extended_fluence_map_idx + 1;
+    uint extended_fluence_map_idx_down = extended_fluence_map_idx + extended_fluence_map_dimension;
+    uint fluence_map_idx = idx_x * fluence_map_dimension + idx_y;
+    
+    // calculate element_wise_loss
+    float ewl = 0;
+    if (idx_x < fluence_map_dimension - 1)
+        ewl += abs(d_extended_fluence_map[extended_fluence_map_idx] - d_extended_fluence_map[extended_fluence_map_idx_down]);
+    if (idx_y < fluence_map_dimension - 1)
+        ewl += abs(d_extended_fluence_map[extended_fluence_map_idx] - d_extended_fluence_map[extended_fluence_map_idx_right]);
+    d_element_wise_loss[fluence_map_idx] = eta * ewl;
+
+    // update fluence grad
+    float smoothness_grad = 0;
+    if (idx_x < fluence_map_dimension - 1)
+    {
+        bool flag = (d_extended_fluence_map[extended_fluence_map_idx] > d_extended_fluence_map[extended_fluence_map_idx_down]);
+        smoothness_grad += 1.0 * flag + (-1.0) * (! flag);
+    }
+    if (idx_x > 0)
+    {
+        bool flag = (d_extended_fluence_map[extended_fluence_map_idx] > d_extended_fluence_map[extended_fluence_map_idx - extended_fluence_map_dimension]);
+        smoothness_grad += 1.0 * flag + (-1.0) * (! flag);
+    }
+    if (idx_y < fluence_map_dimension - 1)
+    {
+        bool flag = (d_extended_fluence_map[extended_fluence_map_idx] > d_extended_fluence_map[extended_fluence_map_idx_right]);
+        smoothness_grad += 1.0 * flag + (-1.0) * (! flag);
+    }
+    if (idx_y > 0)
+    {
+        bool flag = (d_extended_fluence_map[extended_fluence_map_idx] > d_extended_fluence_map[extended_fluence_map_idx - 1]);
+        smoothness_grad += 1.0 * flag + (-1.0) * (! flag);
+    }
+
+    d_fluence_grad[fluence_map_idx] += eta * smoothness_grad;
+}
+
+
+/*  This function takes as inputs the extended fluence map, element-wise loss, d_fluence_grad, and eta
+*/
+extern "C"
+void smoothnessCalc(float* d_extended_fluence_map, float* d_element_wise_loss, float* d_fluence_grad, float eta, cudaStream_t stream)
+{
+    dim3 blockSize(16, 16);
+    dim3 gridSize((uint)ceil((float)FM_dimension / blockSize.x), (uint)ceil((float)FM_dimension / blockSize.y));
+    d_smoothnessCalc<<<gridSize, blockSize, 0, stream>>>(d_extended_fluence_map, d_element_wise_loss, d_fluence_grad, \
+        eta, FM_dimension, FM_dimension+4*FM_convolution_radius, 2*FM_convolution_radius);
+}

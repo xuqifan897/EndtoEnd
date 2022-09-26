@@ -129,31 +129,116 @@ def view_slices():
 
 
 def view_Dose():
-    doseFile = '/home/qlyu/ShengNAS2/SharedProjectData/' \
-               'QX_beam_orientation/patient1_optimize_stationary/totalDose.dat'
-    outputFolder = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_stationaryDose'
-
-    shape = (200, 200, 200)
-    dose = np.fromfile(doseFile, dtype=np.float32)
-    dose = np.reshape(dose, shape)
-    if not os.path.isdir(outputFolder):
-        os.mkdir(outputFolder)
-
-    vmin = 0
-    vmax = np.max(dose)
-    print('vmax = {}'.format(vmax))
-
-    for i in range(shape[2]):
-        output_file = os.path.join(outputFolder, '{:03d}.png'.format(i+1))
-        plt.imsave(output_file, dose[:, :, i], vmin=vmin, vmax=vmax)
+    source0 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary'
+    source1 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_0init'
+    source2 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_smoothness'
+    source3 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_smoothness_eta1e3'
+    dest0 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary'
+    dest1 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary_0init'
+    dest2 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary_smoothness'
+    dest3 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary_smoothness_eta1e3'
+    sources = [source0, source1, source2, source3]
+    dests = [dest0, dest1, dest2, dest3]
+    dose_shape = (200, 200, 200)
+    # for i in range(2):
+    for i in range(3, 4):
+        source = sources[i]
+        dest = dests[i]
+        if not os.path.isdir(dest):
+            os.mkdir(dest)
+        source_file = os.path.join(source, 'totalDose.dat')
+        dest_folder = os.path.join(dest, 'totalDose')
+        if not os.path.isdir(dest_folder):
+            os.mkdir(dest_folder)
+        dose = np.fromfile(source_file, dtype=np.float32)
+        dose = np.reshape(dose, dose_shape)
+        max_dose = np.max(dose)
+        for j in range(dose_shape[2]):
+            dest_file = os.path.join(dest_folder, '{:03d}.png'.format(j+1))
+            plt.imsave(dest_file, dose[:, :, j], vmin=0, vmax=max_dose)
+        print(i)
 
 
 def view_loss():
-    loss_file = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation' \
+    loss_file_0 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation' \
                 '/patient1_optimize_stationary/loss.dat'
-    loss = np.fromfile(loss_file, dtype=np.float32)
-    size = loss.size
-    plt.plot(np.arange(size) + 1, loss)
+    loss_file_1 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation' \
+                '/patient1_optimize_stationary_0init/loss.dat'
+    loss_file_2 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation' \
+                  '/patient1_optimize_stationary_smoothness/DoseLoss.dat'
+    loss0 = np.fromfile(loss_file_0, dtype=np.float32)
+    loss1 = np.fromfile(loss_file_1, dtype=np.float32)
+    loss2 = np.fromfile(loss_file_2, dtype=np.float32)
+    assert (len(loss0) == len(loss1))
+    concern_range = [40, 100]
+    x_axis = np.arange(concern_range[0], concern_range[1])+1
+    loss0_range = loss0[concern_range[0]: concern_range[1]]
+    loss1_range = loss1[concern_range[0]: concern_range[1]]
+    loss2_range = loss2[concern_range[0]: concern_range[1]]
+    plt.plot(x_axis, loss0_range)
+    plt.plot(x_axis, loss1_range)
+    plt.plot(x_axis, loss2_range)
+    plt.legend(['non-zero init', 'zero init', 'smoothness'])
+    # plt.legend(['non-zero init', 'smoothness'])
+    plt.show()
+
+    output_array = np.concatenate([np.expand_dims(loss1_range, axis=1),
+                                  np.expand_dims(loss2_range, axis=1)], axis=1)
+    print(output_array)
+
+
+def move_file():
+    folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_0init'
+    target = os.path.join(folder, 'fluence_maps')
+    num_beams = 20
+    for i in range(num_beams):
+        source_file = os.path.join(folder, 'fluence_maps{:03d}.dat'.format(i+1))
+        target_file = os.path.join(target, '{:03d}.dat'.format(i+1))
+        command = 'mv {} {}'.format(source_file, target_file)
+        os.system(command)
+
+
+def view_fluence_map():
+    source0 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary'
+    source1 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_0init'
+    source3 = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_smoothness_eta1e3'
+    dest0 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary'
+    dest1 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary_0init'
+    dest3 = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient1_optimize_stationary_smoothness_eta1e3'
+    sources = [source0, source1, source3]
+    dests = [dest0, dest1, dest3]
+    num_beams = 20
+    fluence_map_shape = (128, 128)
+    # for i in range(2):
+    for i in range(2, 3):
+        source = sources[i]
+        dest = dests[i]
+        if not os.path.isdir(dest):
+            os.mkdir(dest)
+        fluence_map_source = os.path.join(source, 'fluence_maps')
+        fluence_map_dest = os.path.join(dest, 'fluence_maps')
+        if not os.path.isdir(fluence_map_dest):
+            os.mkdir(fluence_map_dest)
+        for j in range(num_beams):
+            fms = os.path.join(fluence_map_source, '{:03d}.dat'.format(j+1))
+            fmp = os.path.join(fluence_map_dest, '{:03d}.png'.format(j+1))
+            fluence_map = np.fromfile(fms, dtype=np.float32)
+            fluence_map = np.reshape(fluence_map, fluence_map_shape)
+            plt.imsave(fmp, fluence_map)
+
+
+def view_water_dose():
+    waterDosePath = '/data/qifan/projects_qlyu/EndtoEnd3/data/water_out/waterDose_1.57_0.00.dat'
+    shape = (200, 200, 200)
+    waterDose = np.fromfile(waterDosePath, dtype=np.float32)
+    waterDose = np.reshape(waterDose, shape)
+
+    # central_slice = waterDose[:, :, 100]
+    # plt.imshow(central_slice)
+    # plt.show()
+
+    center_line = waterDose[:, 100, 100]
+    plt.plot(np.arange(shape[0]), center_line)
     plt.show()
 
 
@@ -162,4 +247,9 @@ if __name__ == '__main__':
     # view_dose_calculation()
     # view_slices()
     # view_Dose()
-    view_loss()
+    # view_loss()
+    # move_file()
+    view_fluence_map()
+    # view_loss()
+    # view_fluence_map()
+    # view_water_dose()

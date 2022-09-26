@@ -72,6 +72,8 @@ public:
     float* d_convolved_fluence_map_grad;
     float* d_fluence_grad;
 
+    float* d_element_wise_fluence_smoothness_loss;
+
     beam();
     ~beam();
     // convolve from d_extended_fluence_map to d_convolved_fluence_map
@@ -116,6 +118,7 @@ public:
     void PVCS_dose_backward(phantom& Phtm, cudaStream_t stream=0);
     void BEV_dose_backward(phantom& Phtm, FCBBkernel* kernel=FCBB6MeV, cudaStream_t stream=0);
     void fluence_map_update(uint idx, float* d_norm_final, float* d_squared_grad, float step_size, cudaStream_t stream=0);
+    void smoothness_calc(float eta, cudaStream_t stream=0);
 };
 
 void beams_init(std::vector<beam>& beams);

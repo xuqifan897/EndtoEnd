@@ -1,5 +1,7 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
+#include <chrono>
+#include <iomanip>
 #include "args.h"
 #include "geom.h"
 #include "optim.h"
@@ -364,4 +366,189 @@ void E2E::module_test_fluence_map_update(beam& Beam)
     free(h_extended_fluence_map_d);
     checkCudaErrors(cudaFree(d_squared_grad));
     checkCudaErrors(cudaFree(d_final_norm));
+}
+
+
+void E2E::module_test_smoothness_calc(beam& Beam, float eta)
+{
+    int extended_fluence_map_dimension = FM_dimension + 4 * FM_convolution_radius;
+    // initialization
+    float* h_extended_fluence_map = (float*)malloc(extended_fluence_map_dimension * \
+        extended_fluence_map_dimension * sizeof(float));
+    for (uint i=0; i<extended_fluence_map_dimension * extended_fluence_map_dimension; i++)
+        h_extended_fluence_map[i] = 0;
+    uint norm = 65535;
+    for (uint i=0; i<FM_dimension; i++)
+    {
+        uint extended_fluence_map_idx = (i + 2 * FM_convolution_radius) * \
+            extended_fluence_map_dimension + 2 * FM_convolution_radius;
+        for (uint j=0; j<FM_dimension; j++)
+            h_extended_fluence_map[extended_fluence_map_idx + j] = (float)(rand() % norm) / (norm - 1);
+    }
+    checkCudaErrors(cudaMemcpy(Beam.d_extended_fluence_map, h_extended_fluence_map, \
+        extended_fluence_map_dimension*extended_fluence_map_dimension*sizeof(float), cudaMemcpyHostToDevice));
+    
+    float* h_fluence_grad = (float*)malloc(FM_dimension*FM_dimension*sizeof(float));
+    for (uint i=0; i<FM_dimension*FM_dimension; i++)
+        h_fluence_grad[i] = 0;
+    checkCudaErrors(cudaMemcpy(Beam.d_fluence_grad, h_fluence_grad, \
+        FM_dimension*FM_dimension*sizeof(float), cudaMemcpyHostToDevice));
+
+    // device compute
+    Beam.smoothness_calc(eta);
+
+    // offload device result to host
+    float* h_element_wise_fluence_smoothness_loss_d = (float*)malloc(FM_dimension*FM_dimension*sizeof(float));
+    float* h_fluence_grad_d = (float*)malloc(FM_dimension * FM_dimension * sizeof(float));
+    checkCudaErrors(cudaMemcpy(h_element_wise_fluence_smoothness_loss_d, Beam.d_element_wise_fluence_smoothness_loss, \
+        FM_dimension*FM_dimension*sizeof(float), cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(h_fluence_grad_d, Beam.d_fluence_grad, \
+        FM_dimension*FM_dimension*sizeof(float), cudaMemcpyDeviceToHost));
+    
+
+    // host compute
+    float* h_element_wise_fluence_smoothness_loss = (float*)malloc(FM_dimension*FM_dimension*sizeof(float));
+    for (uint i=0; i<FM_dimension; i++)
+    {
+        uint extended_fluence_map_idx = (i + 2 * FM_convolution_radius) * extended_fluence_map_dimension + 2 * FM_convolution_radius;
+        uint fluence_map_idx = i * FM_dimension;
+        for (uint j=0; j<FM_dimension; j++)
+        {
+            float hewfsml = 0;
+            if (i < FM_dimension-1)
+                hewfsml += abs(h_extended_fluence_map[extended_fluence_map_idx + j] - \
+                    h_extended_fluence_map[extended_fluence_map_idx + extended_fluence_map_dimension + j]);
+            if (j < FM_dimension-1)
+                hewfsml += abs(h_extended_fluence_map[extended_fluence_map_idx + j] - \
+                    h_extended_fluence_map[extended_fluence_map_idx + j + 1]);
+            h_element_wise_fluence_smoothness_loss[fluence_map_idx + j] = eta * hewfsml;
+        }
+    }
+
+    for (uint i=0; i<FM_dimension; i++)
+    {
+        uint extended_fluence_map_idx = (i + 2 * FM_convolution_radius) * extended_fluence_map_dimension + 2 * FM_convolution_radius;
+        uint fluence_map_idx = i * FM_dimension;
+        for (uint j=0; j<FM_dimension; j++)
+        {
+            float hfg = 0;
+            if (i < FM_dimension-1)
+            {
+                bool flag = h_extended_fluence_map[extended_fluence_map_idx + j] > \
+                    h_extended_fluence_map[extended_fluence_map_idx + extended_fluence_map_dimension + j];
+                hfg += 1.0 * flag - 1.0 * (! flag);
+            }
+            if (i > 0)
+            {
+                bool flag = h_extended_fluence_map[extended_fluence_map_idx + j] > \
+                    h_extended_fluence_map[extended_fluence_map_idx + j - extended_fluence_map_dimension];
+                hfg += 1.0 * flag - 1.0 * (! flag);
+            }
+            if (j < FM_dimension-1)
+            {
+                bool flag = h_extended_fluence_map[extended_fluence_map_idx + j] > \
+                    h_extended_fluence_map[extended_fluence_map_idx + j + 1];
+                hfg += 1.0 * flag - 1.0 * (! flag);
+            }
+            if (j > 0)
+            {
+                bool flag = h_extended_fluence_map[extended_fluence_map_idx + j] > \
+                    h_extended_fluence_map[extended_fluence_map_idx + j - 1];
+                hfg += 1.0 * flag - 1.0 * (! flag);
+            }
+            h_fluence_grad[fluence_map_idx + j] += eta * hfg;
+        }
+    }
+
+    // compare
+    float base = 0;
+    float mse = 0;
+    // compare element-wise fluence smoothness loss
+    for (uint i=0; i<FM_dimension*FM_dimension; i++)
+    {
+        base += h_element_wise_fluence_smoothness_loss[i] * h_element_wise_fluence_smoothness_loss[i];
+        float diff = h_element_wise_fluence_smoothness_loss[i] - h_element_wise_fluence_smoothness_loss_d[i];
+        mse += diff * diff;
+    }
+    base /= (FM_dimension * FM_dimension);
+    mse /= (FM_dimension * FM_dimension);
+    cout << "For element-wise fluence smoothness loss, the mse is " << mse << ", while the base is " << base << endl;
+    // compare fluence grad
+    base = 0;
+    mse = 0;
+    for (uint i=0; i<FM_dimension*FM_dimension; i++)
+    {
+        base += h_fluence_grad[i] * h_fluence_grad[i];
+        float diff = h_fluence_grad[i] - h_fluence_grad_d[i];
+        mse += diff * diff;
+    }
+    base /= (FM_dimension * FM_dimension);
+    mse /= (FM_dimension * FM_dimension);
+    cout << "For element-wise fluence grad, the mse is " << mse << ", while the base is " << base << endl;
+
+    // clean up
+    free(h_extended_fluence_map);
+    free(h_fluence_grad);
+    free(h_element_wise_fluence_smoothness_loss_d);
+    free(h_fluence_grad_d);
+    free(h_element_wise_fluence_smoothness_loss);
+}
+
+
+void E2E::module_test_small_reduction()
+{
+    uint num_points = 10086;
+    float* h_source = (float*)malloc(num_points*sizeof(float));
+    float* d_source = nullptr;
+    checkCudaErrors(cudaMalloc((void**)(&d_source), num_points*sizeof(float)));
+
+    // initialize
+    int norm = 65535;
+    for (uint i=0; i<num_points; i++)
+        h_source[i] = (float)(rand() % norm) / (norm - 1);
+    checkCudaErrors(cudaMemcpy(d_source, h_source, num_points*sizeof(float), cudaMemcpyHostToDevice));
+
+    // device compute
+    float* device_result;
+    int device_result_size = 5;
+    int device_result_idx = 3;
+    checkCudaErrors(cudaMalloc((void**)(&device_result), device_result_size*sizeof(float)));
+    
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    reduction_small(d_source, num_points, device_result, device_result_idx);
+    cudaEventRecord(stop);
+    float d_milliseconds;
+    cudaEventElapsedTime(&d_milliseconds, start, stop);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
+    float* h_result_d = (float*)malloc(device_result_size*sizeof(float));
+    checkCudaErrors(cudaMemcpy(h_result_d, device_result, device_result_size*sizeof(float), cudaMemcpyDeviceToHost));
+
+    // host compute
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+    double host_result = 0.;
+    auto h_start = high_resolution_clock::now();
+    for (uint i=0; i<num_points; i++)
+        host_result += h_source[i];
+    auto h_stop = high_resolution_clock::now();
+    duration<double, std::milli> ms_double = h_stop - h_start;
+    
+    // logout
+    cout << "host result: " << host_result << ", execution time: " << setprecision(6) << \
+        scientific << ms_double.count() << endl;
+    cout << "device result: " << h_result_d[device_result_idx] << ", execution time: " << setprecision(6) << \
+        scientific << d_milliseconds << endl;;
+
+    // cleanup
+    free(h_result_d);
+    checkCudaErrors(cudaFree(device_result));
+    checkCudaErrors(cudaFree(d_source));
+    free(h_source);
 }

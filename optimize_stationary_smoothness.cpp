@@ -6,6 +6,7 @@
 #include <helper_cuda.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+
 #include "args.h"
 #include "geom.h"
 #include "optim.h"
@@ -13,6 +14,167 @@
 using namespace E2E;
 using namespace std;
 namespace fs = boost::filesystem;
+
+void beam_init(beam* Beam, string& fluence_maps_folder, array<float, 2>& beamAngle, uint beam_idx, phantom& Phtm)
+{
+    // basic parameter initialization
+    (*Beam).zenith = beamAngle[0];
+    (*Beam).azimuth = beamAngle[1];
+    (*Beam).SAD = get_args<float>("SAD") / 10; // convert mm to cm
+    (*Beam).pixel_size = get_args<vector<float>>("fluence-map-pixel-size")[0] / 10;
+
+    vector<int> fluence_map_dimension = get_args<vector<int>>("fluence-map-dimension");
+    if (fluence_map_dimension[0]!=E2E::FM_dimension || fluence_map_dimension[1]!=E2E::FM_dimension)
+    {
+        cout << "Sorry, we only support fluence map \
+            dimension of " << E2E::FM_dimension << " at this time" << endl;
+        exit;
+    }
+    (*Beam).fluence_map_dimension = array<int, 2>({fluence_map_dimension[0], fluence_map_dimension[1]});
+
+    vector<int> fluence_map_convolution_radius = \
+        get_args<vector<int>>("fluence-map-convolution-radius");
+    if (fluence_map_convolution_radius[0]!=E2E::FM_convolution_radius || \
+        fluence_map_convolution_radius[1]!=E2E::FM_convolution_radius)
+    {
+        cout << "Sorry, we only support fluence map \
+            convolution radius of " << E2E::FM_convolution_radius << " at this time" << endl;
+        exit;
+    }
+
+    (*Beam).convolved_fluence_map_dimension = array<int, 2>({ \
+        FM_dimension + 2 * FM_convolution_radius, FM_dimension + 2 * FM_convolution_radius});
+    (*Beam).extended_fluence_map_dimension = array<int, 2>({ \
+        FM_dimension + 4 * FM_convolution_radius, FM_dimension + 4 * FM_convolution_radius});
+    
+    vector<float> isocenter = get_args<vector<float>>("phantom-isocenter");
+    (*Beam).isocenter = array<float, 3>({isocenter[0]/10, isocenter[1]/10, isocenter[2]/10});
+
+    // log beam parameters
+    if (beam_idx == 0)
+    {
+        cout << "Below are the parameters of the first beam:" << endl;
+        cout << "zenith: " << (*Beam).zenith << " rad" << endl;
+        cout << "azimuth: " << (*Beam).azimuth << " rad" << endl;
+        cout << "SAD: " << (*Beam).SAD << " cm" << endl;
+        cout << "pixel size: " << (*Beam).pixel_size << " cm" << endl;
+        cout << "fluence map dimension: (" << (*Beam).fluence_map_dimension[0] << \
+            ", " << (*Beam).fluence_map_dimension[1] << ")" << endl;
+        cout << "convolved fluence map dimension: (" << (*Beam).convolved_fluence_map_dimension[0] << \
+            ", " << (*Beam).convolved_fluence_map_dimension[1] << ")" << endl;
+        cout << "extended fluence map dimension: (" << (*Beam).extended_fluence_map_dimension[0] << \
+            ", " << (*Beam).extended_fluence_map_dimension[1] << ")" << endl;
+        cout << "isocenter: (" << (*Beam).isocenter[0] << ", " << (*Beam).isocenter[1] << ", " << \
+            (*Beam).isocenter[2] << ")" << endl;
+        cout << "sampling range: (" << (*Beam).sampling_range[0] << ", " \
+            << (*Beam).sampling_range[1] << ") cm" << endl;
+        cout << "number of sampling points: " << (*Beam).sampling_points << endl;
+        cout << "\n" << endl;
+    }
+    
+    auto& convolved_fluence_map_dimension = (*Beam).convolved_fluence_map_dimension;
+    auto& extended_fluence_map_dimension = (*Beam).extended_fluence_map_dimension;
+    checkCudaErrors(cudaMalloc((void**)(&((*Beam).d_convolved_fluence_map)), \
+        convolved_fluence_map_dimension[0]*convolved_fluence_map_dimension[1]*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)(&((*Beam).d_extended_fluence_map)), \
+        extended_fluence_map_dimension[0]*extended_fluence_map_dimension[1]*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)(&((*Beam).d_convolved_fluence_map_grad)), \
+        convolved_fluence_map_dimension[0]*convolved_fluence_map_dimension[1]*sizeof(float)));
+    checkCudaErrors(cudaMalloc((void**)(&((*Beam).d_fluence_grad)), \
+        fluence_map_dimension[0]*fluence_map_dimension[1]*sizeof(float)));
+    
+    checkCudaErrors(cudaMalloc((void**)(&((*Beam).d_element_wise_fluence_smoothness_loss)), \
+        fluence_map_dimension[0]*fluence_map_dimension[1]*sizeof(float)));
+
+    // fluence map initialization
+    uint num_elements = (*Beam).extended_fluence_map_dimension[0] * \
+            (*Beam).extended_fluence_map_dimension[1];
+    float* h_extended_fluence_map = (float*)malloc(num_elements * sizeof(float));
+    // nullize all
+    for (uint i=0; i<num_elements; i++)
+        h_extended_fluence_map[i] = 0;
+    if (fluence_maps_folder == string(""))
+    {
+        for (uint i=2*FM_convolution_radius; i<FM_dimension+2*FM_convolution_radius; i++)
+        {
+            uint IDX = i * (*Beam).extended_fluence_map_dimension[1];
+            for (uint j=2*FM_convolution_radius; j<FM_dimension+2*FM_convolution_radius; j++)
+                h_extended_fluence_map[IDX+j] = 1.;
+        }
+    }
+    else
+    {
+        // string fluence_map_path = fluence_maps_folder + string("/") + format()
+        stringstream fluence_map_path_ss;
+        fluence_map_path_ss << fluence_maps_folder << "/" << setfill('0') << setw(3) << beam_idx+1 << ".dat";
+        string fluence_map_path = fluence_map_path_ss.str();
+        cout << "initialize the fluence map from path: " << fluence_map_path << endl;
+        ifstream inFile(fluence_map_path);
+        if (! inFile.is_open())
+        {
+            cout << "Could not open the fluence map file: " << fluence_map_path << endl;
+            exit;
+        }
+        float* h_fluence_map = (float*)malloc(fluence_map_dimension[0] \
+            * fluence_map_dimension[1] * sizeof(float));
+        inFile.read((char*)h_fluence_map, fluence_map_dimension[0]*fluence_map_dimension[1]*sizeof(float));
+        inFile.close();
+
+        // write h_fluence_map to h_extended_fluence_map
+        for (uint i=0; i<FM_dimension; i++)
+        {
+            uint fluence_map_IDX = i * FM_dimension;
+            uint extended_fluence_map_IDX = (i + 2 * FM_convolution_radius) * \
+                ((*Beam).extended_fluence_map_dimension[1]) + 2 * FM_convolution_radius;
+            for (uint j=0; j<FM_dimension; j++)
+                h_extended_fluence_map[extended_fluence_map_IDX + j] = h_fluence_map[fluence_map_IDX + j];
+        }
+        free(h_fluence_map);
+    }
+    checkCudaErrors(cudaMemcpy((*Beam).d_extended_fluence_map, h_extended_fluence_map, \
+        num_elements*sizeof(float), cudaMemcpyHostToDevice));
+    
+    // // take a look
+    // string extended_fluence_map_out_file = get_args<string>("output-folder") + "/" + "extended_fluence_map.dat";
+    // ofstream outFile(extended_fluence_map_out_file);
+    // if (! outFile.is_open())
+    //     cout << "Could not open this file: " << extended_fluence_map_out_file << endl;
+    // outFile.write((char*)h_extended_fluence_map, num_elements*sizeof(float));
+    // outFile.close();
+
+    free(h_extended_fluence_map);
+    (*Beam).FCBBinit(Phtm);
+}
+
+
+int main_for_debug(int argc, char** argv)
+{
+    // // This is a test function, for fluence map smoothness and its grad
+    // if (args_init(argc, argv))
+    // {
+    //     cerr << "Argument initialization failure." << endl;
+    //     exit;
+    // }
+
+    // // phantom initialization
+    // cout << "\n\n\nPhantom initialization" << endl;
+    // phantom Phtm;
+    // phantom_init_default(Phtm);
+    // Phtm.to_device();
+    // Phtm.textureInit();
+    
+    // // beam initialization
+    // beam Beam;
+    // string fluence_maps_folder = get_args<string>("fluence-map-init");
+    // array<float, 2> beamAngle({2.617995, 0.9424788});
+    // beam_init(&Beam, fluence_maps_folder, beamAngle, 0, Phtm);
+
+    // float eta = 0.1;
+    // module_test_smoothness_calc(Beam, eta);
+    
+    module_test_small_reduction();
+}
+
 
 void phantom_log(phantom& Phtm)
 {
@@ -24,6 +186,7 @@ void phantom_log(phantom& Phtm)
     cout << "The padding is to make the last dimension divisible by module " << \
         Phtm.pitch_module << ", for more efficient memory access." << endl;
     cout << "All outputs are in the new shape." << endl;
+    cout << "isocenter: (" << Phtm.isocenter[0] << ", " << Phtm.isocenter[1] << ", " << Phtm.isocenter[2] << ")" << endl;
 }
 
 
@@ -217,36 +380,26 @@ void beams_init_optimize_stationary(vector<beam>& beams, phantom& Phtm)
             convolved_fluence_map_dimension[0]*convolved_fluence_map_dimension[1]*sizeof(float)));
         checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_fluence_grad)), \
             fluence_map_dimension[0]*fluence_map_dimension[1]*sizeof(float)));
+        checkCudaErrors(cudaMalloc((void**)(&(new_beam.d_element_wise_fluence_smoothness_loss)), \
+            fluence_map_dimension[0]*fluence_map_dimension[1]*sizeof(float)));
         
-        // extended fluence map optimization
+        // extended fluence map initialization
         extended_fluence_map_initialization(&h_extended_fluence_map, fluence_maps_folder, i, fluence_map_init_value);
         checkCudaErrors(cudaMemcpy(new_beam.d_extended_fluence_map, h_extended_fluence_map, \
             extended_fluence_map_size*sizeof(float), cudaMemcpyHostToDevice));
         
         new_beam.FCBBinit(Phtm);
-
-        // // have a look
-        // string fluence_map_output_path("/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E_output/extended_fluence_map.dat");
-        // ofstream outFile(fluence_map_output_path);
-        // if (! outFile.is_open())
-        // {
-        //     cout << "Could not open output path: " << fluence_map_output_path << endl;
-        //     exit(EXIT_FAILURE);
-        // }
-        // outFile.write((char*)h_extended_fluence_map, extended_fluence_map_size * sizeof(float));
-        // outFile.close();
-        // exit(EXIT_FAILURE);
-
         cout << "\n" << endl;
     }
     free(h_extended_fluence_map);
 }
 
 
-void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_loss)
+void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_loss, float** h_smoothness_loss)
 {
     int iterations = get_args<int>("iterations");
     float step_size = get_args<float>("step-size");
+    float eta = get_args<float>("eta");
 
     // initialization of necessary cuda arrays
     uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
@@ -256,9 +409,12 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaMalloc((void**)(&d_element_wise_loss), phantom_size*sizeof(float)));
     
     float* d_out0 = nullptr; // intermediate result for reduction
-    float* loss = nullptr; // the final loss array
+    float* loss = nullptr; // the final phantom dose loss array
     checkCudaErrors(cudaMalloc((void**)&d_out0, REDUCTION_BLOCK_SIZE*sizeof(float)));
     checkCudaErrors(cudaMalloc((void**)&loss, iterations*sizeof(float)));
+
+    float* smoothness_loss = nullptr;
+    checkCudaErrors(cudaMalloc((void**)(&smoothness_loss), iterations*beams.size()*sizeof(float)));
 
     // for fluence map update
     float** d_squared_grad = (float**)malloc(beams.size() * sizeof(float*));
@@ -283,9 +439,11 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaMemcpy(d_sources, h_sources, beams.size()*sizeof(float*), \
         cudaMemcpyHostToDevice));
 
-    // h_loss initialization
+    // h_loss and h_smoothness_loss initialization
     if (*h_loss == nullptr)
-    *h_loss = (float*)malloc(iterations*sizeof(float));
+        *h_loss = (float*)malloc(iterations*sizeof(float));
+    if (*h_smoothness_loss == nullptr)
+        *h_smoothness_loss = (float*)malloc(iterations*beams.size()*sizeof(float));
 
     // cuda event for time measurement
     cudaEvent_t start, stop;
@@ -313,6 +471,13 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
             beams[i].PVCS_dose_backward(Phtm);
             beams[i].BEV_dose_backward(Phtm, FCBB6MeV);
             beams[i].convolveT(FCBB6MeV);
+
+            // smoothness update
+            beams[i].smoothness_calc(eta);
+            uint loss_idx = iter * beams.size() + i;
+            reduction_small(beams[i].d_element_wise_fluence_smoothness_loss, \
+                FM_dimension*FM_dimension, smoothness_loss, loss_idx);
+
             beams[i].fluence_map_update(i, d_norm_final, d_squared_grad[i], step_size);
         }
         cudaEventRecord(stop);
@@ -321,8 +486,17 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, start, stop);
         checkCudaErrors(cudaMemcpy(*h_loss, loss, iterations*sizeof(float), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(*h_smoothness_loss, smoothness_loss, \
+            iterations*beams.size()*sizeof(float), cudaMemcpyDeviceToHost));
+        float total_smoothness_loss = 0;
+        for (int i=0; i<beams.size(); i++)
+        {
+            int idx = iter * beams.size() + i;
+            total_smoothness_loss += (*h_smoothness_loss)[idx];
+        }
         cout << "Iteration: " << iter + 1 << ", step size: " << step_size << \
-            ", execution time: " << milliseconds << " ms, loss: " << (*h_loss)[iter] << endl;
+            ", execution time: " << milliseconds << " ms, dose loss: " << (*h_loss)[iter] << \
+            ", smoothness loss: " << total_smoothness_loss << endl;
     }
 
     // clean up
@@ -332,6 +506,7 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaFree(d_element_wise_loss));
     checkCudaErrors(cudaFree(d_out0));
     checkCudaErrors(cudaFree(loss));
+    checkCudaErrors(cudaFree(smoothness_loss));
     for (int i=0; i<beams.size(); i++)
         checkCudaErrors(cudaFree(d_squared_grad[i]));
     free(d_squared_grad);
@@ -355,7 +530,7 @@ void extended_to_fluence(float* h_fluence_map, float* h_extended_fluence_map)
 }
 
 
-void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_loss)
+void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_loss, float* h_smoothness_loss)
 {
     string output_folder = get_args<string>("output-folder");
     fs::path output_folder_fs(output_folder);
@@ -427,16 +602,27 @@ void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_lo
     cout << "Total dose written to " << outputPath << endl;
 
     // output loss function
-    string lossOutputPath = output_folder + "/loss.dat";
+    string lossOutputPath = output_folder + "/DoseLoss.dat";
     outFile.open(lossOutputPath);
     if (! outFile.is_open())
     {
-        cout << "Could not open loss output file: " << lossOutputPath << endl;
+        cout << "Could not open dose loss output file: " << lossOutputPath << endl;
         exit(EXIT_FAILURE);
     }
     outFile.write((char*)h_loss, get_args<int>("iterations")*sizeof(float));
     outFile.close();
-    cout << "Loss written to " << lossOutputPath << endl;
+    cout << "Dose loss written to " << lossOutputPath << endl;
+
+    lossOutputPath = output_folder + "/SmoothnessLoss.dat";
+    outFile.open(lossOutputPath);
+    if (! outFile.is_open())
+    {
+        cout << "Could not open smoothness loss output file: " << lossOutputPath << endl;
+        exit(EXIT_FAILURE);
+    }
+    outFile.write((char*)h_smoothness_loss, get_args<int>("iterations")*beams.size()*sizeof(float));
+    outFile.close();
+    cout << "Smoothness loss written to " << lossOutputPath << endl;
 
     // clean up
     free(h_fluence_map);
@@ -450,8 +636,8 @@ void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_lo
 
 int main(int argc, char** argv)
 {
-    // This function optimizes fluence map alone, without optimizing beam angles.
-    // Fluence map smoothness term is not included.
+    // This functino optimizes fluence map alone, without optimizing beam angles.
+    // Fluence map smoothness term is included
     if (args_init(argc, argv))
     {
         cerr << "Argument initialization failure." << endl;
@@ -472,18 +658,20 @@ int main(int argc, char** argv)
     (*kernel).d_conv_kernel_init();
     (*kernel).texInit();
     kernel_log(kernel);
-    
+
     // beam initialization
     vector<beam> beams;
     beams_init_optimize_stationary(beams, Phtm);
 
     // begin optimize
-    float* h_loss=nullptr;  // it will be initialized inside optimize function
-    optimize(beams, Phtm, kernel, &h_loss);
+    float* h_loss = nullptr; // Dose losses, which will be allocated inside optimize function
+    float* h_smoothness_loss = nullptr; // Fluence map smoothness loss, which will be allocated inside the optimize function
+    optimize(beams, Phtm, kernel, &h_loss, &h_smoothness_loss);
 
     // log out
-    log_out(beams, Phtm, kernel, h_loss);
+    log_out(beams, Phtm, kernel, h_loss, h_smoothness_loss);
 
     // clean up
     free(h_loss);
+    free(h_smoothness_loss);
 }

@@ -35,6 +35,9 @@ add_executable(optimize_stationary optimize_stationary.cpp)
 target_link_libraries(optimize_stationary PRIVATE args geom optim ${Boost_LIBRARIES})
 target_include_directories(dose_calculation PRIVATE ${Boost_INCLUDE_DIR})
 
+add_executable(optimize_stationary_smoothness optimize_stationary_smoothness.cpp)
+target_link_libraries(optimize_stationary_smoothness PRIVATE args geom optim ${Boost_LIBRARIES})
+target_include_directories(optimize_stationary_smoothness PRIVATE ${Boost_INCLUDE_DIR})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

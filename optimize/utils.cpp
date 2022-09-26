@@ -40,6 +40,15 @@ void E2E::reduction(float* d_source, uint size, float* d_out0, \
 }
 
 
+void E2E::reduction_small(float* d_source, uint size, float* loss, \
+    uint idx, cudaStream_t stream)
+{
+    dim3 blockSize(REDUCTION_BLOCK_SIZE);
+    dim3 gridSize(1);
+    Reduction(gridSize, blockSize, loss, d_source, size, idx, stream);
+}
+
+
 void E2E::test_dose_sum(std::vector<beam>& beams, phantom& Phtm)
 {
     if (beams.size() != 5)
@@ -243,4 +252,13 @@ void E2E::test_fluence_map_update(vector<beam>& beams)
     outFile.open(output_file);
     outFile.write((char*)h_extended_fluence_map, extended_fluence_map_size*sizeof(float));
     outFile.close();
+}
+
+extern "C"
+void smoothnessCalc(float* d_extended_fluence_map, float* d_element_wise_loss, float* d_fluence_grad, float eta, cudaStream_t stream);
+
+void beam::smoothness_calc(float eta, cudaStream_t stream)
+{
+    smoothnessCalc(this->d_extended_fluence_map, this->d_element_wise_fluence_smoothness_loss, \
+        this->d_fluence_grad, eta, stream);
 }

@@ -29,6 +29,8 @@ beam::beam()
     this->d_convolved_fluence_map_grad = nullptr;
     this->d_fluence_grad = nullptr;
 
+    this->d_element_wise_fluence_smoothness_loss = nullptr;
+
     this->pitch_module = E2E::pitch_module;
     vector<int> dimension_ = get_args<vector<int>>("phantom-dimension");
     this->dimension = array<int, 3>({dimension_[0], dimension_[1], dimension_[2]});
@@ -59,8 +61,8 @@ beam::~beam()
 
     // free GPU pointers if it is not NULL
     vector<float*> GPU_pointers{this->d_convolved_fluence_map, this->d_extended_fluence_map, \
-        this->d_convolved_fluence_map_grad, this->d_fluence_grad, this->d_FCBB_PVCS_dose, \
-        this->d_FCBB_BEV_dose_grad};
+        this->d_convolved_fluence_map_grad, this->d_fluence_grad, this->d_element_wise_fluence_smoothness_loss, \
+        this->d_FCBB_PVCS_dose, this->d_FCBB_BEV_dose_grad};
     
     for (uint i=0; i<GPU_pointers.size(); i++)
     {

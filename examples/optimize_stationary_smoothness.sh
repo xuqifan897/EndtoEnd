@@ -3,7 +3,7 @@
 export CUDA_VISIBLE_DEVICES=3
 
 # cuda-gdb --args ./build/dose_calculation \
-./build/optimize_stationary \
+./build/optimize_stationary_smoothness \
     --phantom-dimension 200 200 197 \
     --voxel-size 2. \
     --phantom-isocenter 205.95534 211.23352 162.16011 \
@@ -20,7 +20,7 @@ export CUDA_VISIBLE_DEVICES=3
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 640 \
     --fluence-map-pixel-size 0.7815 0.7815 \
-    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_0init \
+    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_200iters \
     --spectrum-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/Spectrum.csv \
     --ATheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperATheta.csv \
     --atheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerATheta.csv \
@@ -28,7 +28,8 @@ export CUDA_VISIBLE_DEVICES=3
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
-    --iterations 100 \
+    --iterations 200 \
     --step-size 5e-3 \
-    --ideal-dose 0.0
+    --ideal-dose 0.0 \
+    --eta 1e3
     # --fluence-map-init /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E/fluence_maps \
