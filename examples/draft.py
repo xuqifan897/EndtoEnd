@@ -242,6 +242,32 @@ def view_water_dose():
     plt.show()
 
 
+def plot_range(Range, Data):
+    Data_ = Data[Range[0]: Range[1]]
+    plt.plot(np.arange(Range[0], Range[1])+1, Data_)
+
+
+def view_loss_smoothness():
+    folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_200iters'
+    DoseLossPath = os.path.join(folder, 'DoseLoss.dat')
+    SmoothnessLossPath = os.path.join(folder, 'SmoothnessLoss.dat')
+    iterations = 200
+    num_beams = 20
+
+    DoseLoss = np.fromfile(DoseLossPath, dtype=np.float32)
+    _SmoothnessLoss = np.fromfile(SmoothnessLossPath, dtype=np.float32)
+    SmoothnessLoss = np.zeros(iterations, dtype=np.float32)
+    for i in range(iterations):
+        for j in range(num_beams):
+            SmoothnessLoss[i] += _SmoothnessLoss[i*num_beams+j]
+
+    Range = [50, 200]
+    plot_range(Range, DoseLoss)
+    plot_range(Range, SmoothnessLoss)
+    plt.legend(['dose loss', 'smoothness loss'])
+    plt.show()
+
+
 if __name__ == '__main__':
     # view_extended_fluence_map()
     # view_dose_calculation()
@@ -249,7 +275,8 @@ if __name__ == '__main__':
     # view_Dose()
     # view_loss()
     # move_file()
-    view_fluence_map()
+    # view_fluence_map()
     # view_loss()
     # view_fluence_map()
     # view_water_dose()
+    view_loss_smoothness()
