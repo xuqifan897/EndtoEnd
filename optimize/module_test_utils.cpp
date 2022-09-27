@@ -552,3 +552,27 @@ void E2E::module_test_small_reduction()
     checkCudaErrors(cudaFree(d_source));
     free(h_source);
 }
+
+
+void E2E::module_test_find_minimum_index()
+{
+    int range = 10086;
+    int norm = 65535;
+    float* pointer = (float*)malloc(range*sizeof(float));
+    // initialize pointer
+    for (int i=0; i<range; i++)
+        pointer[i] = (float)(rand() % norm) / (norm - 1);
+    
+    int minimum_index = find_minimum_index(pointer, range);
+
+    // verify
+    float minimum_value = pointer[minimum_index];
+    bool flag = true;
+    for (int i=0; i<range; i++)
+        flag = flag && (minimum_value <= pointer[i]);
+    if (flag)
+        cout << "function find_minimum_index succeed!" << endl;
+    else
+        cout << "problematic!" << endl;
+    return;
+}

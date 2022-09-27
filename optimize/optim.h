@@ -20,6 +20,7 @@ namespace E2E
     void test_element_wise_square();
     void test_modules(phantom& Phtm);
     void fluence_map_init(std::vector<beam>& beams, phantom& Phtm);
+    int find_minimum_index(float* pointer, int range);
 
     // the following functions are for computation verification
     void test_modules_beam_init(beam& Beam, phantom& Phtm);
@@ -41,6 +42,7 @@ namespace E2E
     void module_test_fluence_map_update(beam& Beam);
     void module_test_smoothness_calc(beam& Beam, float eta);
     void module_test_small_reduction();
+    void module_test_find_minimum_index();
 }
 
 #endif

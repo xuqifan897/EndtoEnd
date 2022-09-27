@@ -262,3 +262,15 @@ void beam::smoothness_calc(float eta, cudaStream_t stream)
     smoothnessCalc(this->d_extended_fluence_map, this->d_element_wise_fluence_smoothness_loss, \
         this->d_fluence_grad, eta, stream);
 }
+
+
+int E2E::find_minimum_index(float* pointer, int range)
+{
+    int answer = 0;
+    for (int i=1; i<range; i++)
+    {
+        if (pointer[i] < pointer[answer])
+            answer = i;
+    }
+    return answer;
+}

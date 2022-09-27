@@ -247,25 +247,57 @@ def plot_range(Range, Data):
     plt.plot(np.arange(Range[0], Range[1])+1, Data_)
 
 
-def view_loss_smoothness():
-    folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_200iters'
-    DoseLossPath = os.path.join(folder, 'DoseLoss.dat')
-    SmoothnessLossPath = os.path.join(folder, 'SmoothnessLoss.dat')
-    iterations = 200
-    num_beams = 20
+def compare_stationary_dynamic():
+    global_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    stationary_folder = 'patient1_optimize_stationary_200iters'
+    dynamic_folder = 'patient1_optimize_dynamic'
+    stationary_folder = os.path.join(global_folder, stationary_folder)
+    dynamic_folder = os.path.join(global_folder, dynamic_folder)
 
-    DoseLoss = np.fromfile(DoseLossPath, dtype=np.float32)
-    _SmoothnessLoss = np.fromfile(SmoothnessLossPath, dtype=np.float32)
-    SmoothnessLoss = np.zeros(iterations, dtype=np.float32)
-    for i in range(iterations):
-        for j in range(num_beams):
-            SmoothnessLoss[i] += _SmoothnessLoss[i*num_beams+j]
+    _DoseLoss = 'DoseLoss.dat'
+    _SmoothnessLoss = 'SmoothnessLoss.dat'
+
+    stationaryDoseLossFile = os.path.join(stationary_folder, _DoseLoss)
+    stationarySmoothnessLossFile = os.path.join(stationary_folder, _SmoothnessLoss)
+    dynamicDoseLossFile = os.path.join(dynamic_folder, _DoseLoss)
+    dynamicSmoothnessLossFile = os.path.join(dynamic_folder, _SmoothnessLoss)
+
+    stationaryDoseLoss = np.fromfile(stationaryDoseLossFile, dtype=np.float32)
+    stationarySmoothnessLoss = np.fromfile(stationarySmoothnessLossFile, dtype=np.float32)
+    dynamicDoseLoss = np.fromfile(dynamicDoseLossFile, dtype=np.float32)
+    dynamicSmoothnessLoss = np.fromfile(dynamicSmoothnessLossFile, dtype=np.float32)
 
     Range = [50, 200]
-    plot_range(Range, DoseLoss)
-    plot_range(Range, SmoothnessLoss)
-    plt.legend(['dose loss', 'smoothness loss'])
+    plot_range(Range, stationaryDoseLoss)
+    plot_range(Range, dynamicDoseLoss)
+    plt.legend(['stationaryDoseLoss', 'dynamicDoseLoss'])
     plt.show()
+
+
+def angle_comparison():
+    angle_org_file = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E/beam_angles_E2E.txt'
+    zenith_file = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_dynamic/zenith.dat'
+    azimuth_file = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_dynamic/azimuth.dat'
+
+    with open(angle_org_file, 'r') as f:
+        lines = f.readlines()
+    zenith_org = np.zeros((len(lines), 1), dtype=np.float32)
+    azimuth_org = np.zeros((len(lines), 1), dtype=np.float32)
+    for i, line in enumerate(lines):
+        line = line.split(',')
+        zenith_org[i, 0] = float(line[0])
+        azimuth_org[i, 0] = float(line[1])
+    angles_org = np.concatenate((zenith_org, azimuth_org), axis=1)
+
+    iterations = 200
+    num_beams = 20
+    _zenith = np.fromfile(zenith_file, dtype=np.float32)
+    _azimuth = np.fromfile(azimuth_file, dtype=np.float32)
+    print(len(_zenith), len(_azimuth))
+    # angles_new = np.zeros((num_beams, 2), dtype=np.float32)
+    # angles_new[:, 0] = _zenith[(iterations-1)*num_beams: iterations*num_beams]
+    # angles_new[:, 1] = _azimuth[(iterations-1)*num_beams: iterations*num_beams]
+    # print(angles_new)
 
 
 if __name__ == '__main__':
@@ -279,4 +311,5 @@ if __name__ == '__main__':
     # view_loss()
     # view_fluence_map()
     # view_water_dose()
-    view_loss_smoothness()
+    # compare_stationary_dynamic()
+    angle_comparison()
