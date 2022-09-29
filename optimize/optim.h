@@ -21,6 +21,7 @@ namespace E2E
     void test_modules(phantom& Phtm);
     void fluence_map_init(std::vector<beam>& beams, phantom& Phtm);
     int find_minimum_index(float* pointer, int range);
+    float random01();
 
     // the following functions are for computation verification
     void test_modules_beam_init(beam& Beam, phantom& Phtm);

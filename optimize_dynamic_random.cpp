@@ -175,6 +175,10 @@ int main_for_debug(int argc, char** argv)
     // module_test_smoothness_calc(Beam, eta);
     
     // module_test_find_minimum_index();
+
+    // test random01()
+    for (int i=0; i<100; i++)
+        cout << random01() << endl;
 }
 
 
@@ -290,7 +294,7 @@ void extended_fluence_map_initialization(float** extended_fluence_map, string& f
 }
 
 
-void beams_init_optimize_stationary(vector<beam>& beams, phantom& Phtm)
+void beams_init_optimize_dynamic(vector<beam>& beams, phantom& Phtm)
 {
     // static initialization
     beam::FCBBStaticInit(Phtm);
@@ -413,7 +417,7 @@ void angular_perturbation_subroutine(vector<beam>& beams, phantom& Phtm, float* 
 
 
 void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_loss, float** h_smoothness_loss, \
-    float** h_perturbation_loss, float** h_zenith, float** h_azimuth)
+    float** h_perturbation_loss, float** h_zenith, float** h_azimuth, int** h_angle_indices)
 {
     int iterations = get_args<int>("iterations");
     float step_size = get_args<float>("step-size");
@@ -460,9 +464,6 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaMalloc((void***)&d_sources, beams.size()*sizeof(float*)));
     checkCudaErrors(cudaMemcpy(d_sources, h_sources, beams.size()*sizeof(float*), \
         cudaMemcpyHostToDevice));
-    
-    // for angle perturbation output
-    int* minimum_indices = (int*)malloc(beams.size()*sizeof(int));
 
     // h_loss, h_smoothness_loss and h_perturbation loss initialization
     if (*h_loss == nullptr)
@@ -472,16 +473,18 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     if (*h_perturbation_loss == nullptr)
         *h_perturbation_loss = (float*)malloc(iterations*beams.size()*NUM_PERTURBATIONS*sizeof(float));
     if (*h_zenith == nullptr)
-        *h_zenith = (float*)malloc(iterations*beams.size()*sizeof(float));
+        *h_zenith = (float*)malloc(iterations*beams.size()*NUM_PERTURBATIONS*sizeof(float));
     if (*h_azimuth == nullptr)
-        *h_azimuth = (float*)malloc(iterations*beams.size()*sizeof(float));
+        *h_azimuth = (float*)malloc(iterations*beams.size()*NUM_PERTURBATIONS*sizeof(float));
+    if (*h_angle_indices == nullptr)
+        *h_angle_indices = (int*)malloc(iterations*beams.size()*sizeof(int));
     
     // cuda event for time measurement
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     
-    for (int iter = 0; iter<iterations; iter++)
+    for (int iter=0; iter<iterations; iter++)
     {
         // forward pass: calculate each beam's dose
         cudaEventRecord(start);
@@ -515,53 +518,87 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
         // angular perturbation
         for (int i=0; i<beams.size(); i++)
         {
-            // the zeroth trial, without changing beam angles
+            float zenith_org = beams[i].zenith;
+            float azimuth_org = beams[i].azimuth;
+            int beam_idx = iter * beams.size() + i;
+
+            // the zeroth trail, add a noise to original angles
+            beams[i].zenith = zenith_org + (random01() - 0.5) * step_size_angular;
+            beams[i].azimuth = azimuth_org + (random01() - 0.5) * step_size_angular;
+            (*h_zenith)[beam_idx * NUM_PERTURBATIONS] = beams[i].zenith;
+            (*h_azimuth)[beam_idx * NUM_PERTURBATIONS] = beams[i].azimuth;
             angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
                 perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 0, kernel);
-            // the first trail, increate zenith angle by step_size_angular
-            beams[i].zenith += step_size_angular;
+            
+            // the first trial, increment zenith angle, and add noise to both angles
+            beams[i].zenith = zenith_org + (random01() + 0.5) * step_size_angular;
+            beams[i].azimuth = azimuth_org + (random01() - 0.5) * step_size_angular;
+            (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 1] = beams[i].zenith;
+            (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 1] = beams[i].azimuth;
             angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
                 perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 1, kernel);
-            // the second trail, decrease zenith angle by step_size_angular
-            beams[i].zenith -= 2 * step_size_angular;
+            
+            // the second trail, decrement zenith angle, and add noise to both angles
+            beams[i].zenith = zenith_org + (random01() - 1.5) * step_size_angular;
+            beams[i].azimuth = azimuth_org + (random01() - 0.5) * step_size_angular;
+            (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 2] = beams[i].zenith;
+            (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 2] = beams[i].azimuth;
             angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
                 perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 2, kernel);
-            // the third trail, increase azimuth angle by step_size_angular
-            beams[i].zenith += step_size_angular;
-            beams[i].azimuth += step_size_angular;
+            
+            // the third trail, increment azimuth, and add noise to both angles
+            beams[i].zenith = zenith_org + (random01() - 0.5) * step_size_angular;
+            beams[i].azimuth = azimuth_org + (random01() + 0.5) * step_size_angular;
+            (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 3] = beams[i].zenith;
+            (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 3] = beams[i].azimuth;
             angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
                 perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 3, kernel);
-            // the last trail, decrease azimuth angle by step_size_angular
-            beams[i].azimuth -= 2 * step_size_angular;
+            
+            // in the fourth trail, decrement azimuth, and add noise to both angles
+            beams[i].zenith = zenith_org + (random01() - 0.5) * step_size_angular;
+            beams[i].azimuth = azimuth_org + (random01() - 1.5) * step_size_angular;
+            (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 4] = beams[i].zenith;
+            (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 4] = beams[i].azimuth;
             angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
                 perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 4, kernel);
-            beams[i].azimuth += step_size_angular;
 
             // compare and select
-            int beam_idx = iter * beams.size() + i;
             float* h_perturbation_loss_pointer = (*h_perturbation_loss) + beam_idx * NUM_PERTURBATIONS;
             checkCudaErrors(cudaMemcpy(h_perturbation_loss_pointer, perturbation_loss, NUM_PERTURBATIONS*sizeof(float), cudaMemcpyDeviceToHost));
             int optimal_index = find_minimum_index(h_perturbation_loss_pointer, NUM_PERTURBATIONS);
+            (*h_angle_indices)[beam_idx] = optimal_index;
             if (optimal_index == 0)
-                {}
+            {
+                beams[i].zenith = (*h_zenith)[beam_idx * NUM_PERTURBATIONS];
+                beams[i].azimuth = (*h_azimuth)[beam_idx * NUM_PERTURBATIONS];
+            }
             else if (optimal_index == 1)
-                {beams[i].zenith += step_size_angular;}
+            {
+                beams[i].zenith = (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 1];
+                beams[i].azimuth = (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 1];
+            }
             else if (optimal_index == 2)
-                {beams[i].zenith -= step_size_angular;}
+            {
+                beams[i].zenith = (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 2];
+                beams[i].azimuth = (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 2];
+            }
             else if (optimal_index == 3)
-                {beams[i].azimuth += step_size_angular;}
+            {
+                beams[i].zenith = (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 3];
+                beams[i].azimuth = (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 3];
+            }
             else if (optimal_index == 4)
-                {beams[i].azimuth -= step_size_angular;}
+            {
+                beams[i].zenith = (*h_zenith)[beam_idx * NUM_PERTURBATIONS + 4];
+                beams[i].azimuth = (*h_azimuth)[beam_idx * NUM_PERTURBATIONS + 4];
+            }
             else
             {
-                cout << "function find_minimum_index error!" << endl;
+                cout << "optimal_index value illegal" << endl;
                 exit(EXIT_FAILURE);
             }
-            (*h_zenith)[beam_idx] = beams[i].zenith;
-            (*h_azimuth)[beam_idx] = beams[i].azimuth;
-            minimum_indices[i] = optimal_index;
-            
-            // update d_FCBB_PVCS_total_dose
+
+            // update d_FCBB_PVCS_dose
             beams[i].BEV_dose_forward(Phtm, kernel);
             beams[i].PVCS_dose_forward(Phtm);
         }
@@ -584,7 +621,7 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
             ", execution time: " << milliseconds << " ms, dose loss: " << (*h_loss)[iter] << \
             ", smoothness loss: " << total_smoothness_loss << ", minimum indices: (";
         for (int i=0; i<beams.size(); i++)
-            cout << minimum_indices[i];
+            cout << (*h_angle_indices)[iter * beams.size() + i];
         cout << ")" << endl;
     }
 
@@ -603,7 +640,6 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaFree(d_norm_final));
     checkCudaErrors(cudaFree(d_sources));
     free(h_sources);
-    free(minimum_indices);
 }
 
 
@@ -622,7 +658,7 @@ void extended_to_fluence(float* h_fluence_map, float* h_extended_fluence_map)
 
 
 void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_loss, float* h_smoothness_loss, \
-    float* h_perturbation_loss, float* h_zenith, float* h_azimuth)
+    float* h_perturbation_loss, float* h_zenith, float* h_azimuth, int* h_angle_indices)
 {
     string output_folder = get_args<string>("output-folder");
     fs::path output_folder_fs(output_folder);
@@ -733,17 +769,27 @@ void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_lo
         cout << "Could not open zenith output file: " << lossOutputPath << endl;
         exit(EXIT_FAILURE);
     }
-    outFile.write((char*)h_zenith, get_args<int>("iterations")*beams.size()*sizeof(float));
+    outFile.write((char*)h_zenith, get_args<int>("iterations")*beams.size()*NUM_PERTURBATIONS*sizeof(float));
     outFile.close();
 
     lossOutputPath = output_folder + "/azimuth.dat";
     outFile.open(lossOutputPath);
     if (! outFile.is_open())
     {
-        cout << "Could not popen azimuth output file: " << lossOutputPath << endl;
+        cout << "Could not open azimuth output file: " << lossOutputPath << endl;
         exit(EXIT_FAILURE);
     }
-    outFile.write((char*)h_azimuth, get_args<int>("iterations")*beams.size()*sizeof(float));
+    outFile.write((char*)h_azimuth, get_args<int>("iterations")*beams.size()*NUM_PERTURBATIONS*sizeof(float));
+    outFile.close();
+
+    lossOutputPath = output_folder + "/angleIndices.dat";
+    outFile.open(lossOutputPath);
+    if (! outFile.is_open())
+    {
+        cout << "Could not open angle indices output file: " << lossOutputPath << endl;
+        exit(EXIT_FAILURE);
+    }
+    outFile.write((char*)h_angle_indices, get_args<int>("iterations")*beams.size()*sizeof(int));
     outFile.close();
 
     // clean up
@@ -783,18 +829,21 @@ int main(int argc, char** argv)
 
     // beam initialization
     vector<beam> beams;
-    beams_init_optimize_stationary(beams, Phtm);
+    beams_init_optimize_dynamic(beams, Phtm);
 
     // begin optimize
-    float* h_loss = nullptr; // Dose losses, which will be allocated inside optimize function
-    float* h_smoothness_loss = nullptr; // Fluence map smoothness loss, which will be allocated inside the optimize function
-    float* h_perturbation_loss = nullptr;
-    float* h_zenith = nullptr;
-    float* h_azimuth = nullptr;
-    optimize(beams, Phtm, kernel, &h_loss, &h_smoothness_loss, &h_perturbation_loss, &h_zenith, &h_azimuth);
+    float* h_loss = nullptr; // Dose losses, size: iterations
+    float* h_smoothness_loss = nullptr; // Smoothness losses, size: iterations * beams.size()
+    float* h_perturbation_loss = nullptr; // Perturbation loss, size: iterations * beams.size() * NUM_PERTURBATIONS
+    float* h_zenith = nullptr; // Zenith angle, size: iterations * beams.size() * NUM_PERTURBATIONS
+    float* h_azimuth = nullptr;  // Azimuth angle, size: iterations * beams.size() * NUM_PERTURBATIONS
+    int* h_angle_indices = nullptr; // Indices of chosen angles, size: iterations * beams.size()
+    optimize(beams, Phtm, kernel, &h_loss, &h_smoothness_loss, &h_perturbation_loss, \
+        &h_zenith, &h_azimuth, &h_angle_indices);
 
     // log out
-    log_out(beams, Phtm, kernel, h_loss, h_smoothness_loss, h_perturbation_loss, h_zenith, h_azimuth);
+    log_out(beams, Phtm, kernel, h_loss, h_smoothness_loss, h_perturbation_loss, \
+        h_zenith, h_azimuth, h_angle_indices);
 
     // clean up
     free(h_loss);
@@ -802,4 +851,5 @@ int main(int argc, char** argv)
     free(h_perturbation_loss);
     free(h_zenith);
     free(h_azimuth);
+    free(h_angle_indices);
 }

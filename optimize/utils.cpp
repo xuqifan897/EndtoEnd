@@ -274,3 +274,10 @@ int E2E::find_minimum_index(float* pointer, int range)
     }
     return answer;
 }
+
+
+float E2E::random01()
+{
+    int norm = 65535;
+    return (float)(rand() % norm) / (norm - 1);
+}

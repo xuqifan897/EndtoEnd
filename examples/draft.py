@@ -272,6 +272,32 @@ def compare_stationary_dynamic():
     plot_range(Range, dynamicDoseLoss)
     plt.legend(['stationaryDoseLoss', 'dynamicDoseLoss'])
     plt.show()
+    print('great!')
+
+
+def calc_relative_angle(angles_org, angles_new):
+    """This function calculates the angle difference between the original angle and new angle"""
+    assert angles_org.shape == angles_new.shape, "the number of angles are different"
+    num_angles = angles_org.shape[0]
+    zenith_org = angles_org[:, 0]
+    azimuth_org = angles_org[:, 1]
+    vector_org = np.zeros((num_angles, 3), dtype=np.float32)
+    vector_org[:, 0] = np.sin(zenith_org) * np.cos(azimuth_org)
+    vector_org[:, 1] = np.sin(zenith_org) * np.sin(azimuth_org)
+    vector_org[:, 2] = np.cos(zenith_org)
+
+    zenith_new = angles_new[:, 0]
+    azimuth_new = angles_new[:, 1]
+    vector_new = np.zeros((num_angles, 3), dtype=np.float32)
+    vector_new[:, 0] = np.sin(zenith_new) * np.cos(azimuth_new)
+    vector_new[:, 1] = np.sin(zenith_new) * np.sin(azimuth_new)
+    vector_new[:, 2] = np.cos(zenith_new)
+
+    inner_product = vector_org * vector_new
+    inner_product = np.sum(inner_product, axis=1)
+    angles = np.arccos(inner_product)
+    print(inner_product)
+    return angles
 
 
 def angle_comparison():
@@ -293,11 +319,99 @@ def angle_comparison():
     num_beams = 20
     _zenith = np.fromfile(zenith_file, dtype=np.float32)
     _azimuth = np.fromfile(azimuth_file, dtype=np.float32)
-    print(len(_zenith), len(_azimuth))
-    # angles_new = np.zeros((num_beams, 2), dtype=np.float32)
-    # angles_new[:, 0] = _zenith[(iterations-1)*num_beams: iterations*num_beams]
-    # angles_new[:, 1] = _azimuth[(iterations-1)*num_beams: iterations*num_beams]
-    # print(angles_new)
+    angles_new = np.zeros((num_beams, 2), dtype=np.float32)
+    angles_new[:, 0] = _zenith[(iterations-1)*num_beams: iterations*num_beams]
+    angles_new[:, 1] = _azimuth[(iterations-1)*num_beams: iterations*num_beams]
+
+    angles = calc_relative_angle(angles_org, angles_new)
+    print(angles)
+
+
+def view_dynamic_random():
+    global_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_dynamic_random'
+    azimuth_path = os.path.join(global_folder, 'azimuth.dat')
+    zenith_path = os.path.join(global_folder, 'zenith.dat')
+    angleIndices_path = os.path.join(global_folder, 'angleIndices.dat')
+
+    iterations = 200
+    num_beams = 20
+    num_perturbations = 5
+    azimuth = np.fromfile(azimuth_path, dtype=np.float32)
+    zenith = np.fromfile(zenith_path, dtype=np.float32)
+    angleIndices = np.fromfile(angleIndices_path, dtype=np.int32)
+    assert azimuth.size == iterations * num_beams * num_perturbations
+    assert zenith.size == iterations * num_beams * num_perturbations
+    assert angleIndices.size == iterations * num_beams
+
+    shape = [iterations * num_beams, num_perturbations]
+    zenith = np.reshape(zenith, shape)
+    azimuth = np.reshape(azimuth, shape)
+    zenith_selected = zenith[np.arange(iterations * num_beams), angleIndices]
+    azimuth_selected = azimuth[np.arange(iterations * num_beams), angleIndices]
+    zenith_selected = np.reshape(zenith_selected, (iterations, num_beams))
+    azimuth_selected = np.reshape(azimuth_selected, (iterations, num_beams))
+
+    for i in range(num_beams):
+        plt.plot(np.arange(iterations), zenith_selected[:, i])
+    legend = [str(i) for i in range(num_beams)]
+    plt.legend(legend)
+    plt.title('zenith v.s. iteration')
+    plt.show()
+
+    for i in range(num_beams):
+        plt.plot(np.arange(iterations), azimuth_selected[:, i])
+    plt.legend(legend)
+    plt.title('azimuth v.s. iteration')
+    plt.show()
+
+    for i in range(num_beams):
+        plt.plot(zenith_selected[:, i], azimuth_selected[:, i])
+    plt.legend(legend)
+    plt.title('azimuth v.s. zenith')
+    plt.show()
+
+
+def compare_dynamic_random():
+    dynamic_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_dynamic'
+    random_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_dynamic_random'
+    iterations = 200
+    num_beams = 20
+    num_perturbations = 5
+
+    dynamic_zenith_path = os.path.join(dynamic_folder, 'zenith.dat')
+    dynamic_azimuth_path = os.path.join(dynamic_folder, 'azimuth.dat')
+    dynamic_zenith = np.fromfile(dynamic_zenith_path, dtype=np.float32)
+    dynamic_azimuth = np.fromfile(dynamic_azimuth_path, dtype=np.float32)
+    dynamic_zenith = np.reshape(dynamic_zenith, (iterations, num_beams))
+    dynamic_azimuth = np.reshape(dynamic_azimuth, (iterations, num_beams))
+
+    random_zenith_path = os.path.join(random_folder, 'zenith.dat')
+    random_azimuth_path = os.path.join(random_folder, 'azimuth.dat')
+    random_angleIndices_path = os.path.join(random_folder, 'angleIndices.dat')
+    random_zenith = np.fromfile(random_zenith_path, dtype=np.float32)
+    random_azimuth = np.fromfile(random_azimuth_path, dtype=np.float32)
+    random_angleIndices = np.fromfile(random_angleIndices_path, dtype=np.int32)
+    shape0 = (iterations * num_beams, num_perturbations)
+    random_zenith = np.reshape(random_zenith, shape0)
+    random_azimuth = np.reshape(random_azimuth, shape0)
+    random_zenith_selected = random_zenith[np.arange(shape0[0]), random_angleIndices]
+    random_azimuth_selected = random_azimuth[np.arange(shape0[0]), random_angleIndices]
+    shape1 = (iterations, num_beams)
+    random_zenith_selected = np.reshape(random_zenith_selected, shape1)
+    random_azimuth_selected = np.reshape(random_azimuth_selected, shape1)
+
+    # compare
+    for i in range(num_beams):
+        plt.plot(dynamic_zenith[:, i], dynamic_azimuth[:, i])
+    plt.legend([str(i) for i in range(num_beams)])
+    plt.title('dynamic')
+    plt.show()
+
+    for i in range(num_beams):
+        plt.plot(random_zenith_selected[:, i], random_azimuth_selected[:, i])
+    plt.legend([str(i) for i in range(num_beams)])
+    plt.title('random')
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -312,4 +426,6 @@ if __name__ == '__main__':
     # view_fluence_map()
     # view_water_dose()
     # compare_stationary_dynamic()
-    angle_comparison()
+    # angle_comparison()
+    # view_dynamic_random()
+    compare_dynamic_random()

@@ -290,7 +290,7 @@ void extended_fluence_map_initialization(float** extended_fluence_map, string& f
 }
 
 
-void beams_init_optimize_stationary(vector<beam>& beams, phantom& Phtm)
+void beams_init_optimize_dynamic(vector<beam>& beams, phantom& Phtm)
 {
     // static initialization
     beam::FCBBStaticInit(Phtm);
@@ -783,7 +783,7 @@ int main(int argc, char** argv)
 
     // beam initialization
     vector<beam> beams;
-    beams_init_optimize_stationary(beams, Phtm);
+    beams_init_optimize_dynamic(beams, Phtm);
 
     // begin optimize
     float* h_loss = nullptr; // Dose losses, which will be allocated inside optimize function
