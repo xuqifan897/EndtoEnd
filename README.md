@@ -19,6 +19,42 @@ Continuous optimization of photon dose radiotherapy
 
   Fluence map convolution addresses the dose spread caused by secondary particles. BEV dose calculation calculates the dose in BEV view, and PVCS dose calculation transforms the dose in BEV to PVCS. All the three steps are linear operations, which makes gradient computation feasible.
 
-## This project is still going on and continuously updated.
+## Quick start
+From here, we assume the project folder is at root. To configure and compile the code, run
+```
+user@host:~$ bash configure.sh
+user@host:~$ bash build.sh
+```
+This produces five executables in ./build directory:
+* `dose_calculation`: to calculate the dose of each input beams. An example execution script is given in `./examples/dose_calculation.sh`. Before running it, the user needs to change the argument list accordingly. Then run
+
+        user@host:~$ bash ./examples/dose_calculation.sh
+  To get the instruction of the parameter specification, run
+
+        user@host:~$ ./build/dose_calculation --help
+
+  This works for other executables as well, just replace the executable name.
+
+* `optimize_stationary`: to optimize the fluence map, without changing the beam angles. The loss function only involves the dose consistency, without considering smoothness. To run,
+
+        user@host:~$ bash ./examples/optimize_stationary.sh
+
+* `optimize_stationary_smoothness`: to optimize the fluence map, without changing the beam angles. The loss function is a combination of dose consistency and fluence map smoothness. To run,
+
+        user@host:~$ bash ./examples/optimize_stationary_smoothness.sh
+* `optimize_dynamic`: to collectively optimize fluence map and beam angles. To run,
+
+        user@host:~$ bash ./examples/optmize_dynamic.sh
+* `optimize_dynamic_random.sh`: to collectively optimize fluence map and beam angles, while integrating some randomness to prevent from being trapped in local minimum (which proved to faile). To run,
+
+        user@host:~$ bash ./examples/optimize_dynamic_random.sh
+
+## Arguments explaination
+Here we address the details of some arguments.
+* `phantom-path`: it is a path to a phantom, which is stored in binary format. To visualize the phantom, the user can use numpy to load it and reshape it into the desired dimension.
+
+        import numpy as np
+        phantom = np.fromfile(${phantom-path}, dtype=np.float32)
+        phantom = np.reshape(phantom, )
 
 [FCBB_link]: https://pubmed.ncbi.nlm.nih.gov/21081826/

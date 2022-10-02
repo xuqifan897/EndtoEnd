@@ -15,8 +15,6 @@ using namespace E2E;
 using namespace std;
 namespace fs = boost::filesystem;
 
-#define NUM_PERTURBATIONS 5
-
 void beam_init(beam* Beam, string& fluence_maps_folder, array<float, 2>& beamAngle, uint beam_idx, phantom& Phtm)
 {
     // basic parameter initialization
@@ -174,7 +172,7 @@ int main_for_debug(int argc, char** argv)
     // float eta = 0.1;
     // module_test_smoothness_calc(Beam, eta);
     
-    // module_test_find_minimum_index();
+    module_test_small_reduction();
 }
 
 
@@ -290,7 +288,7 @@ void extended_fluence_map_initialization(float** extended_fluence_map, string& f
 }
 
 
-void beams_init_optimize_dynamic(vector<beam>& beams, phantom& Phtm)
+void beams_init_optimize_stationary(vector<beam>& beams, phantom& Phtm)
 {
     // static initialization
     beam::FCBBStaticInit(Phtm);
@@ -397,28 +395,11 @@ void beams_init_optimize_dynamic(vector<beam>& beams, phantom& Phtm)
 }
 
 
-void angular_perturbation_subroutine(vector<beam>& beams, phantom& Phtm, float* PVCS_total_dose, float* perturbation_loss, \
-    float* d_out0, float* d_element_wise_loss, float** d_sources, int beam_idx, int angle_idx, FCBBkernel* kernel)
-{
-    beam& this_beam = beams[beam_idx];
-    this_beam.BEV_dose_forward(Phtm, kernel);
-    this_beam.PVCS_dose_forward(Phtm);
-
-    dose_sum(beams, Phtm, &PVCS_total_dose, d_sources);
-    beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_element_wise_loss, PVCS_total_dose);
-
-    uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
-    reduction(d_element_wise_loss, phantom_size, d_out0, perturbation_loss, angle_idx);
-}
-
-
-void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_loss, float** h_smoothness_loss, \
-    float** h_perturbation_loss, float** h_zenith, float** h_azimuth)
+void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_loss, float** h_smoothness_loss)
 {
     int iterations = get_args<int>("iterations");
     float step_size = get_args<float>("step-size");
     float eta = get_args<float>("eta");
-    float step_size_angular = get_args<float>("step-size-angular");
 
     // initialization of necessary cuda arrays
     uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
@@ -434,9 +415,6 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
 
     float* smoothness_loss = nullptr;
     checkCudaErrors(cudaMalloc((void**)(&smoothness_loss), iterations*beams.size()*sizeof(float)));
-
-    float* perturbation_loss = nullptr;
-    checkCudaErrors(cudaMalloc((void**)(&perturbation_loss), NUM_PERTURBATIONS * sizeof(float)));
 
     // for fluence map update
     float** d_squared_grad = (float**)malloc(beams.size() * sizeof(float*));
@@ -460,22 +438,13 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaMalloc((void***)&d_sources, beams.size()*sizeof(float*)));
     checkCudaErrors(cudaMemcpy(d_sources, h_sources, beams.size()*sizeof(float*), \
         cudaMemcpyHostToDevice));
-    
-    // for angle perturbation output
-    int* minimum_indices = (int*)malloc(beams.size()*sizeof(int));
 
-    // h_loss, h_smoothness_loss and h_perturbation loss initialization
+    // h_loss and h_smoothness_loss initialization
     if (*h_loss == nullptr)
         *h_loss = (float*)malloc(iterations*sizeof(float));
     if (*h_smoothness_loss == nullptr)
         *h_smoothness_loss = (float*)malloc(iterations*beams.size()*sizeof(float));
-    if (*h_perturbation_loss == nullptr)
-        *h_perturbation_loss = (float*)malloc(iterations*beams.size()*NUM_PERTURBATIONS*sizeof(float));
-    if (*h_zenith == nullptr)
-        *h_zenith = (float*)malloc(iterations*beams.size()*sizeof(float));
-    if (*h_azimuth == nullptr)
-        *h_azimuth = (float*)malloc(iterations*beams.size()*sizeof(float));
-    
+
     // cuda event for time measurement
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -488,7 +457,7 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
         for (int i=0; i<beams.size(); i++)
         {
             beams[i].convolve(kernel);
-            beams[i].BEV_dose_forward(Phtm, kernel);
+            beams[i].BEV_dose_forward(Phtm, FCBB6MeV);
             beams[i].PVCS_dose_forward(Phtm);
         }
 
@@ -500,8 +469,8 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
         for (int i=0; i<beams.size(); i++)
         {
             beams[i].PVCS_dose_backward(Phtm);
-            beams[i].BEV_dose_backward(Phtm, kernel);
-            beams[i].convolveT(kernel);
+            beams[i].BEV_dose_backward(Phtm, FCBB6MeV);
+            beams[i].convolveT(FCBB6MeV);
 
             // smoothness update
             beams[i].smoothness_calc(eta);
@@ -511,61 +480,6 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
 
             beams[i].fluence_map_update(i, d_norm_final, d_squared_grad[i], step_size);
         }
-
-        // angular perturbation
-        for (int i=0; i<beams.size(); i++)
-        {
-            // the zeroth trial, without changing beam angles
-            angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
-                perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 0, kernel);
-            // the first trail, increate zenith angle by step_size_angular
-            beams[i].zenith += step_size_angular;
-            angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
-                perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 1, kernel);
-            // the second trail, decrease zenith angle by step_size_angular
-            beams[i].zenith -= 2 * step_size_angular;
-            angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
-                perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 2, kernel);
-            // the third trail, increase azimuth angle by step_size_angular
-            beams[i].zenith += step_size_angular;
-            beams[i].azimuth += step_size_angular;
-            angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
-                perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 3, kernel);
-            // the last trail, decrease azimuth angle by step_size_angular
-            beams[i].azimuth -= 2 * step_size_angular;
-            angular_perturbation_subroutine(beams, Phtm, d_PVCS_total_dose, \
-                perturbation_loss, d_out0, d_element_wise_loss, d_sources, i, 4, kernel);
-            beams[i].azimuth += step_size_angular;
-
-            // compare and select
-            int beam_idx = iter * beams.size() + i;
-            float* h_perturbation_loss_pointer = (*h_perturbation_loss) + beam_idx * NUM_PERTURBATIONS;
-            checkCudaErrors(cudaMemcpy(h_perturbation_loss_pointer, perturbation_loss, NUM_PERTURBATIONS*sizeof(float), cudaMemcpyDeviceToHost));
-            int optimal_index = find_minimum_index(h_perturbation_loss_pointer, NUM_PERTURBATIONS);
-            if (optimal_index == 0)
-                {}
-            else if (optimal_index == 1)
-                {beams[i].zenith += step_size_angular;}
-            else if (optimal_index == 2)
-                {beams[i].zenith -= step_size_angular;}
-            else if (optimal_index == 3)
-                {beams[i].azimuth += step_size_angular;}
-            else if (optimal_index == 4)
-                {beams[i].azimuth -= step_size_angular;}
-            else
-            {
-                cout << "function find_minimum_index error!" << endl;
-                exit(EXIT_FAILURE);
-            }
-            (*h_zenith)[beam_idx] = beams[i].zenith;
-            (*h_azimuth)[beam_idx] = beams[i].azimuth;
-            minimum_indices[i] = optimal_index;
-            
-            // update d_FCBB_PVCS_total_dose
-            beams[i].BEV_dose_forward(Phtm, kernel);
-            beams[i].PVCS_dose_forward(Phtm);
-        }
-
         cudaEventRecord(stop);
         // log
         cudaEventSynchronize(stop);
@@ -582,10 +496,7 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
         }
         cout << "Iteration: " << iter + 1 << ", step size: " << step_size << \
             ", execution time: " << milliseconds << " ms, dose loss: " << (*h_loss)[iter] << \
-            ", smoothness loss: " << total_smoothness_loss << ", minimum indices: (";
-        for (int i=0; i<beams.size(); i++)
-            cout << minimum_indices[i];
-        cout << ")" << endl;
+            ", smoothness loss: " << total_smoothness_loss << endl;
     }
 
     // clean up
@@ -596,14 +507,12 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     checkCudaErrors(cudaFree(d_out0));
     checkCudaErrors(cudaFree(loss));
     checkCudaErrors(cudaFree(smoothness_loss));
-    checkCudaErrors(cudaFree(perturbation_loss));
     for (int i=0; i<beams.size(); i++)
         checkCudaErrors(cudaFree(d_squared_grad[i]));
     free(d_squared_grad);
     checkCudaErrors(cudaFree(d_norm_final));
     checkCudaErrors(cudaFree(d_sources));
     free(h_sources);
-    free(minimum_indices);
 }
 
 
@@ -621,8 +530,7 @@ void extended_to_fluence(float* h_fluence_map, float* h_extended_fluence_map)
 }
 
 
-void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_loss, float* h_smoothness_loss, \
-    float* h_perturbation_loss, float* h_zenith, float* h_azimuth)
+void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_loss, float* h_smoothness_loss)
 {
     string output_folder = get_args<string>("output-folder");
     fs::path output_folder_fs(output_folder);
@@ -716,36 +624,6 @@ void log_out(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float* h_lo
     outFile.close();
     cout << "Smoothness loss written to " << lossOutputPath << endl;
 
-    lossOutputPath = output_folder + "/PerturbationLoss.dat";
-    outFile.open(lossOutputPath);
-    if (! outFile.is_open())
-    {
-        cout << "Could not open perturbation loss output file: " << lossOutputPath << endl;
-        exit(EXIT_FAILURE);
-    }
-    outFile.write((char*)h_perturbation_loss, get_args<int>("iterations")*beams.size()*NUM_PERTURBATIONS*sizeof(float));
-    outFile.close();
-
-    lossOutputPath = output_folder + "/zenith.dat";
-    outFile.open(lossOutputPath);
-    if (! outFile.is_open())
-    {
-        cout << "Could not open zenith output file: " << lossOutputPath << endl;
-        exit(EXIT_FAILURE);
-    }
-    outFile.write((char*)h_zenith, get_args<int>("iterations")*beams.size()*sizeof(float));
-    outFile.close();
-
-    lossOutputPath = output_folder + "/azimuth.dat";
-    outFile.open(lossOutputPath);
-    if (! outFile.is_open())
-    {
-        cout << "Could not popen azimuth output file: " << lossOutputPath << endl;
-        exit(EXIT_FAILURE);
-    }
-    outFile.write((char*)h_azimuth, get_args<int>("iterations")*beams.size()*sizeof(float));
-    outFile.close();
-
     // clean up
     free(h_fluence_map);
     free(h_extended_fluence_map);
@@ -763,7 +641,7 @@ int main(int argc, char** argv)
     if (args_init(argc, argv))
     {
         cerr << "Argument initialization failure." << endl;
-        exit(EXIT_FAILURE);
+        exit;
     }
 
     // phantom initialization
@@ -783,23 +661,17 @@ int main(int argc, char** argv)
 
     // beam initialization
     vector<beam> beams;
-    beams_init_optimize_dynamic(beams, Phtm);
+    beams_init_optimize_stationary(beams, Phtm);
 
     // begin optimize
     float* h_loss = nullptr; // Dose losses, which will be allocated inside optimize function
     float* h_smoothness_loss = nullptr; // Fluence map smoothness loss, which will be allocated inside the optimize function
-    float* h_perturbation_loss = nullptr;
-    float* h_zenith = nullptr;
-    float* h_azimuth = nullptr;
-    optimize(beams, Phtm, kernel, &h_loss, &h_smoothness_loss, &h_perturbation_loss, &h_zenith, &h_azimuth);
+    optimize(beams, Phtm, kernel, &h_loss, &h_smoothness_loss);
 
     // log out
-    log_out(beams, Phtm, kernel, h_loss, h_smoothness_loss, h_perturbation_loss, h_zenith, h_azimuth);
+    log_out(beams, Phtm, kernel, h_loss, h_smoothness_loss);
 
     // clean up
     free(h_loss);
     free(h_smoothness_loss);
-    free(h_perturbation_loss);
-    free(h_zenith);
-    free(h_azimuth);
 }

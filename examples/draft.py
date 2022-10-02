@@ -414,6 +414,118 @@ def compare_dynamic_random():
     plt.show()
 
 
+def generate_uniform_beam_list():
+    content = ''
+    num_beams = 20
+    azimuth_step_size = 2 * np.pi / num_beams
+    for i in range(num_beams):
+        content = content + '{},{}\n'.format(np.pi/2, azimuth_step_size * i - np.pi)
+    dest_file = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E/beam_angles_uniform.txt'
+    with open(dest_file, 'w') as f:
+        f.writelines(content)
+
+
+def loss_curve_group_meeting():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    group1 = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')  # stationary optimization, smoothness term
+    group2 = os.path.join(parent_folder, 'patient1_optimize_dynamic')  # initialize fluence map with 0
+    group3 = os.path.join(parent_folder, 'patient1_optimize_dynamic_random')
+    group4 = os.path.join(parent_folder, 'patient1_optimize_dynamic_uniform')
+    group_polish = os.path.join(parent_folder, 'patient1_optimize_dynamic_polish')  # initialize with the fluence map of group 1
+
+    groups = [group1, group2, group3, group4]
+    iterations = 200
+    for i, group in enumerate(groups):
+        DoseLoss_path = os.path.join(group, 'DoseLoss.dat')
+        DoseLoss = np.fromfile(DoseLoss_path, dtype=np.float32)
+        assert DoseLoss.size == iterations
+        plot_range([50, 200], DoseLoss)
+    legend = ['group{}'.format(i+1) for i in range(len(groups))]
+    plt.legend(legend)
+    plt.title('loss function')
+    plt.xlabel('iterations')
+    plt.ylabel('dose loss (a.u.)')
+    plt.savefig('/data/qifan/projects_qlyu/EndtoEnd3/data/images/lossComp.png')
+
+
+def trajectory_group_meeting():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    group1 = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')  # stationary optimization, smoothness term
+    group2 = os.path.join(parent_folder, 'patient1_optimize_dynamic')  # initialize fluence map with 0
+    group3 = os.path.join(parent_folder, 'patient1_optimize_dynamic_random')
+    group4 = os.path.join(parent_folder, 'patient1_optimize_dynamic_uniform')
+
+    iterations = 200
+    num_beams = 20
+    num_perturbations = 5
+
+    # for group2
+    group2_zenith_path = os.path.join(group2, 'zenith.dat')
+    group2_azimuth_path = os.path.join(group2, 'azimuth.dat')
+    group2_zenith = np.fromfile(group2_zenith_path, dtype=np.float32)
+    group2_azimuth = np.fromfile(group2_azimuth_path, dtype=np.float32)
+    group2_zenith = np.reshape(group2_zenith, (iterations, num_beams))
+    group2_azimuth = np.reshape(group2_azimuth, (iterations, num_beams))
+    for i in range(num_beams):
+        plt.plot(group2_zenith[:, i], group2_azimuth[:, i])
+    legend = ['beam{}'.format(i+1) for i in range(num_beams)]
+    plt.legend(legend)
+    plt.xlabel('zenith')
+    plt.ylabel('azimuth')
+    plt.title('group2')
+    # plt.show()
+    plt.savefig('/data/qifan/projects_qlyu/EndtoEnd3/data/images/group2_trajectory.png')
+    plt.clf()
+
+    # for i in range(num_beams):
+    #     plt.plot(np.arange(iterations), group2_zenith[:, i])
+    # plt.legend(legend)
+    # plt.xlabel('iterations')
+    # plt.ylabel('zenith (rad)')
+    # plt.savefig()
+
+    group3_zenith_path = os.path.join(group3, 'zenith.dat')
+    group3_azimuth_path = os.path.join(group3, 'azimuth.dat')
+    group3_angleIndices_path = os.path.join(group3, 'angleIndices.dat')
+    group3_zenith = np.fromfile(group3_zenith_path, dtype=np.float32)
+    group3_azimuth = np.fromfile(group3_azimuth_path, dtype=np.float32)
+    group3_angleIndices = np.fromfile(group3_angleIndices_path, dtype=np.int32)
+    shape1 = (iterations * num_beams, num_perturbations)
+    group3_zenith = np.reshape(group3_zenith, shape1)
+    group3_azimuth = np.reshape(group3_azimuth, shape1)
+    group3_zenith_selected = group3_zenith[np.arange(shape1[0]), group3_angleIndices]
+    group3_azimuth_selected = group3_azimuth[np.arange(shape1[0]), group3_angleIndices]
+    shape2 = (iterations, num_beams)
+    group3_zenith_selected = np.reshape(group3_zenith_selected, shape2)
+    group3_azimuth_selected = np.reshape(group3_azimuth_selected, shape2)
+    for i in range(num_beams):
+        plt.plot(group3_zenith_selected[:, i], group3_azimuth_selected[:, i])
+    plt.legend(legend)
+    plt.xlabel('zenith')
+    plt.ylabel('azimuth')
+    plt.title('group3')
+    # plt.show()
+    plt.savefig('/data/qifan/projects_qlyu/EndtoEnd3/data/images/group3_trajectory.png')
+    plt.clf()
+
+    group4_zenith_path = os.path.join(group4, 'zenith.dat')
+    group4_azimuth_path = os.path.join(group4, 'azimuth.dat')
+    group4_zenith = np.fromfile(group4_zenith_path, dtype=np.float32)
+    group4_azimuth = np.fromfile(group4_azimuth_path, dtype=np.float32)
+    group4_zenith = np.reshape(group4_zenith, (iterations, num_beams))
+    group4_azimuth = np.reshape(group4_azimuth, (iterations, num_beams))
+    for i in range(num_beams):
+        plt.plot(group4_zenith[:, i], group4_azimuth[:, i])
+    legend = ['beam{}'.format(i + 1) for i in range(num_beams)]
+    plt.legend(legend)
+    plt.xlabel('zenith')
+    plt.ylabel('azimuth')
+    plt.title('group4')
+    # plt.show()
+    plt.savefig('/data/qifan/projects_qlyu/EndtoEnd3/data/images/group4_trajectory.png')
+    plt.clf()
+
+
 if __name__ == '__main__':
     # view_extended_fluence_map()
     # view_dose_calculation()
@@ -428,4 +540,7 @@ if __name__ == '__main__':
     # compare_stationary_dynamic()
     # angle_comparison()
     # view_dynamic_random()
-    compare_dynamic_random()
+    # compare_dynamic_random()
+    # generate_uniform_beam_list()
+    # loss_curve_group_meeting()
+    trajectory_group_meeting()
