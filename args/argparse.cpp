@@ -66,7 +66,7 @@ int E2E::args_init(int argc, char** argv)
                 set to 1. This value is used to initialize the fluence map if fluence-map-init is not initialized")
             ("eta", po::value<float>()->default_value(1e3), "eta, the weight for fluence map smoothness.")
             ("step-size-angular", po::value<float>()->default_value(0.03), "Step size for zenith and azimuth angle updates")
-            ("temperature", po::value<float>()->default_value(1e5), "temperature for simulated annealing")
+            ("temperature", po::value<float>()->default_value(1e7), "temperature for simulated annealing")
         ;
 
         E2E::args = new po::variables_map();
