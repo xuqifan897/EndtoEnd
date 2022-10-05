@@ -66,7 +66,11 @@ int E2E::args_init(int argc, char** argv)
                 set to 1. This value is used to initialize the fluence map if fluence-map-init is not initialized")
             ("eta", po::value<float>()->default_value(1e3), "eta, the weight for fluence map smoothness.")
             ("step-size-angular", po::value<float>()->default_value(0.03), "Step size for zenith and azimuth angle updates")
-            ("temperature", po::value<float>()->default_value(1e7), "temperature for simulated annealing")
+            ("step-size-angular-max", po::value<float>()->default_value(0.6), "maximum step size for zenith and azimuth angle updates, which is linearly ramped down")
+            ("step-size-angular-min", po::value<float>()->default_value(0.06), "minimum step size for zenith and azimuth angle updates, which is linearly ramped down")
+            ("temperature", po::value<float>()->default_value(1e5), "temperature for simulated annealing")
+            ("temperature-max", po::value<float>()->default_value(4e5), "maximum temperature for simulated annealing. The actual temperature is linearly ramped down")
+            ("temperature-min", po::value<float>()->default_value(1e5), "minimum temperature for simulated annealing. The actual temperature is linearly ramped down")
         ;
 
         E2E::args = new po::variables_map();

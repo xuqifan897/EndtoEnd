@@ -20,7 +20,7 @@ export CUDA_VISIBLE_DEVICES=3
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 640 \
     --fluence-map-pixel-size 0.7815 0.7815 \
-    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_200iters \
+    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_optimize_stationary_1000iters \
     --spectrum-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/Spectrum.csv \
     --ATheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperATheta.csv \
     --atheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerATheta.csv \
@@ -28,7 +28,7 @@ export CUDA_VISIBLE_DEVICES=3
     --btheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerBTheta.csv \
     --pencil-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/FCBBkernel.csv \
     --depthDose-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/depthDose.csv \
-    --iterations 200 \
+    --iterations 1000 \
     --step-size 5e-3 \
     --ideal-dose 0.0 \
     --eta 1e3

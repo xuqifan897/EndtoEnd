@@ -403,9 +403,12 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
 {
     int iterations = get_args<int>("iterations");
     float step_size = get_args<float>("step-size");
-    float step_size_angular = get_args<float>("step-size-angular");
+    float step_size_angular_max = get_args<float>("step-size-angular-max");
+    float step_size_angular_min = get_args<float>("step-size-angular-min");
     float eta = get_args<float>("eta");
-    float temperature = get_args<float>("temperature");
+    float temperature_set = get_args<float>("temperature");
+    float temperature_max = get_args<float>("temperature-max");
+    float temperature_min = get_args<float>("temperature-min");
 
     // initialization of necessary cuda arrays
     uint phantom_size = Phtm.dimension[0] * Phtm.dimension[1] * Phtm.pitch;
@@ -501,7 +504,24 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
         }
 
         // annealing perturbation
-        float current_temperature = temperature / log10(iter + 2); // for computation stability
+        // float current_temperature = temperature_max * (float)(iterations - iter) / iterations + \
+        //     temperature_min * (float)iter / iterations;
+        float current_temperature;
+        if (iter == 0)
+            current_temperature = temperature_set;
+        else
+        {
+            // update current_temperature with the average absolute energy difference of the previous iteration
+            float* h_perturbation_energy_pointer = (*h_perturbation_energy) + (iter - 1) * beams.size() * NUM_PERTURBATIONS;
+            current_temperature = 0.;
+            for (int j=0; j<beams.size(); j++)
+                current_temperature += abs(h_perturbation_energy_pointer[j*NUM_PERTURBATIONS] - \
+                    h_perturbation_energy_pointer[j*NUM_PERTURBATIONS+1]);
+            current_temperature /= beams.size();
+            current_temperature *= log(2);
+        }
+        float step_size_angular = step_size_angular_max * (float)(iterations - iter) / iterations + \
+            step_size_angular_min * (float)iter / iterations;
         for (int i=0; i<beams.size(); i++)
         {
             // compute the current energy
@@ -812,7 +832,7 @@ int main(int argc, char** argv)
     free(h_perturbation_energy);
     free(h_zenith);
     free(h_azimuth);
-    free (h_probability);
+    free(h_probability);
     free(h_taken);
 }
 
@@ -820,12 +840,12 @@ int main(int argc, char** argv)
 int main_arithmetic_test(int argc, char** argv)
 {
     // for arithmetic operation test
-    vector<float> input_log{1e8, (float)exp(2), 5, 8};
+    vector<float> input_log{1e8, (float)exp(2), 5, 8, 2.718281};
     vector<float> output_log(input_log.size(), 0.);
     for (int i=0; i<input_log.size(); i++)
     {
         float number = input_log[i];
-        output_log[i] = log10(number);
+        output_log[i] = log(number);
     }
     cout << "log result:" << endl;
     for (int i=0; i<input_log.size(); i++)
@@ -838,4 +858,12 @@ int main_arithmetic_test(int argc, char** argv)
     cout << "exp result:" << endl;
     for (int i=0; i<input_exp.size(); i++)
         cout << "(" << input_exp[i] << ", " << output_exp[i] << ")" << endl;
+
+    vector<float> input_abs{-1.2, 2.2, 3.5, -4.8, -6.4};
+    vector<float> output_abs(input_abs.size(), 0);
+    for (int i=0; i<input_abs.size(); i++)
+        output_abs[i] = abs(input_abs[i]);
+    cout << "abs result:" << endl;
+    for (int i=0; i < input_abs.size(); i++)
+        cout << "(" << input_abs[i] << ", " << output_abs[i] << ")" << endl;
 }

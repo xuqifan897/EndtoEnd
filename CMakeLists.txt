@@ -51,6 +51,10 @@ add_executable(optimize_annealing optimize_annealing.cpp)
 target_link_libraries(optimize_annealing PRIVATE args geom optim ${Boost_LIBRARIES})
 target_include_directories(optimize_annealing PRIVATE ${Boost_INCLUDE_DIR})
 
+add_executable(optimize_annealing_schedule optimize_annealing_schedule.cpp)
+target_link_libraries(optimize_annealing_schedule PRIVATE args geom optim ${Boost_LIBRARIES})
+target_include_directories(optimize_annealing_schedule PRIVATE ${Boost_INCLUDE_DIR})
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)

@@ -242,9 +242,12 @@ def view_water_dose():
     plt.show()
 
 
-def plot_range(Range, Data):
+def plot_range(Range, Data, linestyle=None):
     Data_ = Data[Range[0]: Range[1]]
-    plt.plot(np.arange(Range[0], Range[1])+1, Data_)
+    if linestyle is None:
+        plt.plot(np.arange(Range[0], Range[1])+1, Data_)
+    else:
+        plt.plot(np.arange(Range[0], Range[1])+1, Data_, linestyle)
 
 
 def compare_stationary_dynamic():
@@ -555,21 +558,55 @@ def BOO_annealing_compare():
     BOO_folder = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')
     annealing_folder = os.path.join(parent_folder, 'patient1_optimize_annealing_T1e4_iter200')
 
+    image_output_directory = '/data/qifan/projects_qlyu/EndtoEnd3/data/images'
+
     iterations = 200
     num_beams = 20
     num_perturbations = 2
     BOO_loss_file = os.path.join(BOO_folder, 'DoseLoss.dat')
     annealing_loss_file = os.path.join(annealing_folder, 'DoseLoss.dat')
+    BOO_smoothness_loss_file = os.path.join(BOO_folder, 'SmoothnessLoss.dat')
+    annealing_smoothness_loss_file = os.path.join(annealing_folder, 'SmoothnessLoss.dat')
     BOO_loss = np.fromfile(BOO_loss_file, dtype=np.float32)
     annealing_loss = np.fromfile(annealing_loss_file, dtype=np.float32)
+    BOO_smoothness_loss = np.fromfile(BOO_smoothness_loss_file, dtype=np.float32)
+    annealing_smoothness_loss = np.fromfile(annealing_smoothness_loss_file, dtype=np.float32)
+    shape_smoothness = (iterations, num_beams)
+    BOO_smoothness_loss = np.reshape(BOO_smoothness_loss, shape_smoothness)
+    annealing_smoothness_loss = np.reshape(annealing_smoothness_loss, shape_smoothness)
+    BOO_smoothness_loss = np.sum(BOO_smoothness_loss, axis=1)
+    annealing_smoothness_loss = np.sum(annealing_smoothness_loss, axis=1)
     Range = [50, 200]
-    plot_range(Range, BOO_loss)
-    plot_range(Range, annealing_loss)
-    plt.legend(['BOO', 'annealing'])
-    plt.show()
-    print('the final loss of BOO algorithm is {}, while that of the '
+    plot_range(Range, BOO_loss, 'b-')
+    plot_range(Range, BOO_smoothness_loss, 'b--')
+    plot_range(Range, annealing_loss, 'r-')
+    plot_range(Range, annealing_smoothness_loss, 'r--')
+    plt.legend(['BOO dose loss', 'BOO smoothness loss', 'annealing dose loss', 'annealing smoothness loss'])
+    plt.xlabel('iterations')
+    plt.ylabel('loss (a.u.)')
+    plt.title('loss comparison')
+    # plt.show()
+    plt.savefig(os.path.join(image_output_directory, 'annealing_loss_comp.png'))
+    plt.clf()
+
+    BOO_total_loss = BOO_loss + BOO_smoothness_loss
+    annealing_total_loss = annealing_loss + annealing_smoothness_loss
+    plot_range(Range, BOO_total_loss)
+    plot_range(Range, annealing_total_loss)
+    plt.xlabel('iterations')
+    plt.ylabel('loss (a.u.)')
+    plt.title('total loss comparison')
+    plt.legend(['BOO total loss', 'annealing total loss'])
+    # plt.show()
+    plt.savefig(os.path.join(image_output_directory, 'annealing_total_loss_comp.png'))
+    plt.clf()
+    print('the dose loss of BOO algorithm is {}, while that of the '
           'annealing algorithm is {}, the difference is {}'.format(
         BOO_loss[-1], annealing_loss[-1], BOO_loss[-1] - annealing_loss[-1]))
+    print('the total loss of BOO algorithm is {}, while that of the '
+          'annealing algorithm is {}, the difference is {}'.format(
+        BOO_total_loss[-1], annealing_total_loss[-1], BOO_total_loss[-1] - annealing_total_loss[-1]))
+    # exit()
 
     # show beam angle trajectory
     annealing_zenith_file = os.path.join(annealing_folder, 'zenith.dat')
@@ -591,7 +628,12 @@ def BOO_annealing_compare():
         plt.plot(annealing_zenith[:, i], annealing_azimuth[:, i])
     legend = ['beam{}'.format(i+1) for i in range(num_beams)]
     plt.legend(legend)
-    plt.show()
+    plt.xlabel('zenith (rad)')
+    plt.ylabel('azimuth (rad)')
+    plt.title('azimuth v.s. zenith')
+    # plt.show()
+    plt.savefig(os.path.join(image_output_directory, 'annealing_azimuth_zenith_plot.png'))
+    plt.clf()
 
     # show angle difference
     for i in range(num_beams):
@@ -600,7 +642,9 @@ def BOO_annealing_compare():
     plt.xlabel('iterations')
     plt.ylabel('zenith (rad)')
     plt.title('zenith angle v.s. iterations')
-    plt.show()
+    # plt.show()
+    plt.savefig(os.path.join(image_output_directory, 'annealing_zenith_iteration_plot.png'))
+    plt.clf()
 
     for i in range(num_beams):
         plt.plot(np.arange(iterations), annealing_azimuth[:, i])
@@ -608,13 +652,16 @@ def BOO_annealing_compare():
     plt.xlabel('iterations')
     plt.ylabel('azimuth (rad)')
     plt.title('azimuth angle v.s. iterations')
-    plt.show()
+    # plt.show()
+    plt.savefig(os.path.join(image_output_directory, 'annealing_azimuth_iteration_plot.png'))
+    plt.clf()
 
 
 def view_annealing_uniform():
     parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
     BOO_folder = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')
-    annealing_uniform_folder = os.path.join(parent_folder, 'patient1_optimize_annealing_uniform')
+    # annealing_uniform_folder = os.path.join(parent_folder, 'patient1_optimize_annealing_uniform')
+    annealing_uniform_folder = os.path.join(parent_folder, 'patient1_optimize_annealing_linear')
     dynamic_uniform_folder = os.path.join(parent_folder, 'patient1_optimize_dynamic_uniform')
 
     iterations = 200
@@ -680,6 +727,81 @@ def view_annealing_uniform():
     plt.show()
 
 
+def view_annealing_scheduling():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    stationary_folder = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')
+    linear_folder = os.path.join(parent_folder, 'patient1_optimize_annealing_linear')
+
+    iterations = 200
+    num_beams = 20
+    num_perturbations = 2
+    stationaryDoseLossFile = os.path.join(stationary_folder, 'DoseLoss.dat')
+    stationarySmoothnessFile = os.path.join(stationary_folder, 'SmoothnessLoss.dat')
+    linearDoseLossFile = os.path.join(linear_folder, 'DoseLoss.dat')
+    linearSmoothnessFile = os.path.join(linear_folder, 'SmoothnessLoss.dat')
+
+    stationaryDoseLoss = np.fromfile(stationaryDoseLossFile, dtype=np.float32)
+    stationarySmoothness = np.fromfile(stationarySmoothnessFile, dtype=np.float32)
+    linearDoseLoss = np.fromfile(linearDoseLossFile, dtype=np.float32)
+    linearSmoothness = np.fromfile(linearSmoothnessFile, dtype=np.float32)
+
+    stationarySmoothness = np.reshape(stationarySmoothness, (iterations,num_beams))
+    linearSmoothness = np.reshape(linearSmoothness, (iterations, num_beams))
+    stationarySmoothness = np.sum(stationarySmoothness, axis=1)
+    linearSmoothness = np.sum(linearSmoothness, axis=1)
+
+    Range = [50, 200]
+    plot_range(Range, stationaryDoseLoss)
+    plot_range(Range, linearDoseLoss)
+    plt.legend(['BOO', 'annealing'])
+    plt.show()
+
+    annealing_zenith = os.path.join(linear_folder, 'zenith.dat')
+    annealing_azimuth = os.path.join(linear_folder, 'azimuth.dat')
+    annealing_taken = os.path.join(linear_folder, 'taken.dat')
+    annealing_zenith = np.fromfile(annealing_zenith, dtype=np.float32)
+    annealing_azimuth = np.fromfile(annealing_azimuth, dtype=np.float32)
+    annealing_taken = np.fromfile(annealing_taken, dtype=bool)
+    annealing_taken = np.int32(annealing_taken)
+    shape0 = (iterations * num_beams, num_perturbations)
+    annealing_zenith = np.reshape(annealing_zenith, shape0)
+    annealing_azimuth = np.reshape(annealing_azimuth, shape0)
+    annealing_zenith = annealing_zenith[np.arange(shape0[0]), annealing_taken]
+    annealing_azimuth = annealing_azimuth[np.arange(shape0[0]), annealing_taken]
+    shape1 = (iterations, num_beams)
+    annealing_zenith = np.reshape(annealing_zenith, shape1)
+    annealing_azimuth = np.reshape(annealing_azimuth, shape1)
+
+    for i in range(num_beams):
+        plt.plot(annealing_zenith[:, i], annealing_azimuth[:, i])
+    legend = ['beam{}'.format(i+1) for i in range(num_beams)]
+    plt.legend(legend)
+    plt.xlabel('zenith')
+    plt.ylabel('azimuth')
+    plt.title('azimuth v.s. zenith')
+    plt.xlim([0, np.pi])
+    plt.ylim([-np.pi, np.pi])
+    plt.show()
+
+    for i in range(num_beams):
+        plt.plot(np.arange(iterations), annealing_zenith[:, i])
+    plt.legend(legend)
+    plt.xlabel('iterations')
+    plt.ylabel('zenith')
+    plt.title('zenith v.s. iterations')
+    plt.ylim([0, np.pi])
+    plt.show()
+
+    for i in range(num_beams):
+        plt.plot(np.arange(iterations), annealing_azimuth[:, i])
+    plt.legend(legend)
+    plt.xlabel('iterations')
+    plt.ylabel('azimuth')
+    plt.title('azimuth v.s. iterations')
+    plt.ylim([-np.pi, np.pi])
+    plt.show()
+
+
 if __name__ == '__main__':
     # view_extended_fluence_map()
     # view_dose_calculation()
@@ -700,4 +822,5 @@ if __name__ == '__main__':
     # trajectory_group_meeting()
     # view_annealing()
     # BOO_annealing_compare()
-    view_annealing_uniform()
+    # view_annealing_uniform()
+    view_annealing_scheduling()
