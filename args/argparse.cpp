@@ -71,6 +71,7 @@ int E2E::args_init(int argc, char** argv)
             ("temperature", po::value<float>()->default_value(1e5), "temperature for simulated annealing")
             ("temperature-max", po::value<float>()->default_value(4e5), "maximum temperature for simulated annealing. The actual temperature is linearly ramped down")
             ("temperature-min", po::value<float>()->default_value(1e5), "minimum temperature for simulated annealing. The actual temperature is linearly ramped down")
+            ("random-seed", po::value<uint>()->default_value(10086), "random number seed for annealing initialization")
         ;
 
         E2E::args = new po::variables_map();

@@ -802,6 +802,311 @@ def view_annealing_scheduling():
     plt.show()
 
 
+def compare_stationary_annealing_1000iters():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    stationary_folder = os.path.join(parent_folder, 'patient1_optimize_stationary_1000iters')
+    annealing_folder = os.path.join(parent_folder, 'patient1_optimize_annealing_1000iters')
+    dest_folder = '/data/qifan/projects_qlyu/EndtoEnd3/data/images'
+
+    iterations = 1000
+    num_beams = 20
+    num_perturbations = 2
+    stationaryDoseLossPath = os.path.join(stationary_folder, 'DoseLoss.dat')
+    annealingDoseLossPath = os.path.join(annealing_folder, 'DoseLoss.dat')
+    stationaryDoseLoss = np.fromfile(stationaryDoseLossPath, dtype=np.float32)
+    annealingDoseLoss = np.fromfile(annealingDoseLossPath, dtype=np.float32)
+    Range = [500, 1000]
+    plot_range(Range, stationaryDoseLoss)
+    plot_range(Range, annealingDoseLoss)
+    plt.legend(['stationary', 'annealing'])
+    plt.xlabel('iterations')
+    plt.ylabel('loss (a.u.)')
+    plt.title('dose loss comparison')
+    # plt.show()
+    plt.savefig(os.path.join(dest_folder, 'annealing_1000iters.png'))
+    plt.clf()
+
+    # extract annealing angle
+    annealing_zenith = os.path.join(annealing_folder, 'zenith.dat')
+    annealing_azimuth = os.path.join(annealing_folder, 'azimuth.dat')
+    annealing_taken = os.path.join(annealing_folder, 'taken.dat')
+    annealing_zenith = np.fromfile(annealing_zenith, dtype=np.float32)
+    annealing_azimuth = np.fromfile(annealing_azimuth, dtype=np.float32)
+    annealing_taken = np.fromfile(annealing_taken, dtype=bool)
+    annealing_taken = np.int32(annealing_taken)
+    shape0 = (iterations * num_beams, num_perturbations)
+    annealing_zenith = np.reshape(annealing_zenith, shape0)
+    annealing_azimuth = np.reshape(annealing_azimuth, shape0)
+    annealing_zenith = annealing_zenith[np.arange(shape0[0]), annealing_taken]
+    annealing_azimuth = annealing_azimuth[np.arange(shape0[0]), annealing_taken]
+    shape1 = (iterations, num_beams)
+    annealing_zenith = np.reshape(annealing_zenith, shape1)
+    annealing_azimuth = np.reshape(annealing_azimuth, shape1)
+
+    Range = [800, 1000]
+    annealing_zenith_ = annealing_zenith[Range[0]:Range[1], :]
+    annealing_azimuth_ = annealing_azimuth[Range[0]:Range[1], :]
+    for i in range(num_beams):
+        plt.plot(annealing_zenith_[:, i], annealing_azimuth_[:, i])
+    legend = ['beam{}'.format(i+1) for i in range(num_beams)]
+    plt.legend(legend)
+    plt.xlabel('zenith')
+    plt.ylabel('azimuth')
+    plt.title('azimuth v.s. zenith')
+    plt.xlim([0, np.pi])
+    plt.ylim([-np.pi, np.pi])
+    plt.show()
+
+    # zenith_last = annealing_zenith[-1, :]
+    # azimuth_last = annealing_azimuth[-1, :]
+    # assert zenith_last.size == num_beams and azimuth_last.size == num_beams
+    # content = ''
+    # for i in range(num_beams):
+    #     content = content + '{},{}\n'.format(zenith_last[i], azimuth_last[i])
+    # print(content)
+    # output_path = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E/beam_angles_annealing.txt'
+    # with open(output_path, 'w') as f:
+    #     f.writelines(content)
+
+
+def compare_stationary_vs_annealing_init():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    stationary_folder = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')
+    annealing_folder = os.path.join(parent_folder, 'patient1_annealing_init')
+    dest_folder = '/data/qifan/projects_qlyu/EndtoEnd3/data/images'
+
+    iterations = 200
+    num_beams = 20
+    num_perturbations = 2
+    stationary_loss_file = os.path.join(stationary_folder, 'DoseLoss.dat')
+    annealing_loss_file = os.path.join(annealing_folder, 'DoseLoss.dat')
+    stationary_loss = np.fromfile(stationary_loss_file, dtype=np.float32)
+    annealing_loss = np.fromfile(annealing_loss_file, dtype=np.float32)
+
+    Range = [50, 200]
+    plot_range(Range, stationary_loss)
+    plot_range(Range, annealing_loss)
+    plt.legend(['init with BOO', 'init with annealing'])
+    plt.xlabel('iterations')
+    plt.ylabel('loss (a.u.)')
+    plt.title('Dose loss comparison')
+    # plt.show()
+    plt.savefig(os.path.join(dest_folder, 'annealing_init_dose_loss.png'))
+    plt.clf()
+
+    stationarySmoothnessFile = os.path.join(stationary_folder, 'SmoothnessLoss.dat')
+    annealingSmoothnessFile = os.path.join(annealing_folder, 'SmoothnessLoss.dat')
+    stationarySmoothness = np.fromfile(stationarySmoothnessFile, dtype=np.float32)
+    annealingSmoothness = np.fromfile(annealingSmoothnessFile, dtype=np.float32)
+    stationarySmoothness = np.reshape(stationarySmoothness, (iterations, num_beams))
+    annealingSmoothness = np.reshape(annealingSmoothness, (iterations, num_beams))
+    stationarySmoothness = np.sum(stationarySmoothness, axis=1)
+    annealingSmoothness = np.sum(annealingSmoothness, axis=1)
+    plot_range(Range, stationarySmoothness)
+    plot_range(Range, annealingSmoothness)
+    plt.legend(['init with BOO', 'init with annealing'])
+    plt.xlabel('iterations')
+    plt.ylabel('loss (a.u.)')
+    plt.title('Smoothness loss comparison')
+    # plt.show()
+    plt.savefig(os.path.join(dest_folder, 'annealing_init_smoothnesss_loss.png'))
+    plt.clf()
+
+    stationaryTotalDose = stationary_loss + stationarySmoothness
+    annealingTotalDose = annealing_loss + annealingSmoothness
+    plot_range(Range, stationaryTotalDose)
+    plot_range(Range, annealingTotalDose)
+    plt.legend(['init with BOO', 'init with annealing'])
+    plt.xlabel('iterations')
+    plt.ylabel('loss (a.u.)')
+    plt.title('Total loss comparison')
+    # plt.show()
+    plt.savefig(os.path.join(dest_folder, 'annealing_init_total_loss.png'))
+    plt.clf()
+
+
+def view_patientn_dose():
+    patient_input_path = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient6_E2E'
+    patient_output_path = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient6_BOO_init'
+    shape_org = (260, 260, 128)
+    shape_pitch = (260, 260, 128)
+
+    PTV_weight_path = os.path.join(patient_input_path, 'PTV_weight.dat')
+    totalDose_path = os.path.join(patient_output_path, 'totalDose.dat')
+    PTV_weight = np.fromfile(PTV_weight_path, dtype=np.float32)
+    totalDose = np.fromfile(totalDose_path, dtype=np.float32)
+    PTV_weight = np.reshape(PTV_weight, shape_org)
+    totalDose = np.reshape(totalDose, shape_pitch)
+
+    patient6PTVtarget = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient6PTV'
+    patient6Dosetarget = '/data/qifan/projects_qlyu/EndtoEnd3/data/patient6Dose'
+    if not os.path.isdir(patient6PTVtarget):
+        os.mkdir(patient6PTVtarget)
+    if not os.path.isdir(patient6Dosetarget):
+        os.mkdir(patient6Dosetarget)
+
+    # write PTV mask
+    for i in range(shape_org[2]):
+        plt.imsave(os.path.join(patient6PTVtarget, '{}.png'.format(i+1)), PTV_weight[:, :, i])
+    maxDose = np.max(totalDose)
+    for i in range(shape_org[2]):
+        plt.imsave(os.path.join(patient6Dosetarget, '{}.png'.format(i+1)), totalDose[:, :, i], vmin=0, vmax=maxDose)
+
+
+def view_constrain_optimization():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    target_folder = '/data/qifan/projects_qlyu/EndtoEnd3/data/annealing_compare'
+    if not os.path.isdir(target_folder):
+        os.mkdir(target_folder)
+    num_patients = 6
+    num_beams = 20
+    num_perturbations = 2
+    iterations_annealing = 1000
+    iterations_BOO = 200
+    ylims = [(1.69e7, 2.31e7), (6.79e6, 7.51e6), (1.86e6, 2.00e6), (1.34e6, 1.442e6), (3.46e6, 3.79e6), (4.95e5, 5.5e5)]
+    for i in range(num_patients):
+        annealing_constrain_folder = os.path.join(parent_folder, 'patient{}_annealing_correct'.format(i+1))
+        BOO_folder = os.path.join(parent_folder, 'patient{}_BOO_correct'.format(i+1))
+        # if i == 0:
+        #     BOO_folder = os.path.join(parent_folder, 'patient1_optimize_stationary_200iters')
+        assert os.path.isdir(annealing_constrain_folder) and os.path.isdir(BOO_folder)
+
+        BOO_loss_file = os.path.join(BOO_folder, 'DoseLoss.dat')
+        annealing_loss_file = os.path.join(annealing_constrain_folder, 'DoseLoss.dat')
+        BOO_loss = np.fromfile(BOO_loss_file, dtype=np.float32)
+        annealing_loss = np.fromfile(annealing_loss_file, dtype=np.float32)
+
+        Range = [50, 200]
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax2 = ax1.twiny()
+
+        x = np.arange(Range[0], Range[1])
+        ax1.plot(x, BOO_loss[Range[0]: Range[1]])
+        ax1.plot(x, annealing_loss[850: 1000])
+        ax1.set_xlabel('iterations BOO')
+        ax1.set_ylabel('dose loss (a.u.)')
+
+        new_ticks_location = np.arange(0.0, 1, 0.2)
+        def tick_function(x):
+            return x * 150 + 850
+        ax2.set_xlabel('iterations annealing')
+        ax2.set_xticks(ax1.get_xticks())
+        ax2.set_xbound(ax1.get_xbound())
+        ax2.set_xticklabels([int(x + 800) for x in ax1.get_xticks()])
+        ax1.legend(['BOO', 'annealing'])
+        plt.title('patient{}'.format(i+1))
+        # plt.show()
+        plt.savefig(os.path.join(target_folder, 'patient{}_QX.png'.format(i+1)))
+        plt.clf()
+
+
+def extract_constrain_angles():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    num_patients = 6
+    num_beams = 20
+    num_perturbations = 2
+    iterations = 1000
+
+    for i in range(num_patients):
+        annealing_constrain_folder = os.path.join(parent_folder, 'patient{}_annealing_correct'.format(i+1))
+        E2E_folder = os.path.join(parent_folder, 'patient{}_E2E'.format(i+1))
+
+        zenith_file = os.path.join(annealing_constrain_folder, 'zenith.dat')
+        azimuth_file = os.path.join(annealing_constrain_folder, 'azimuth.dat')
+        taken_file = os.path.join(annealing_constrain_folder, 'taken.dat')
+        zenith = np.fromfile(zenith_file, dtype=np.float32)
+        azimuth = np.fromfile(azimuth_file, dtype=np.float32)
+        taken = np.fromfile(taken_file, dtype=bool)
+        shape0 = (iterations * num_beams, num_perturbations)
+        zenith = np.reshape(zenith, shape0)
+        azimuth = np.reshape(azimuth, shape0)
+        taken = np.int32(taken)
+        zenith = zenith[np.arange(shape0[0]), taken]
+        azimuth = azimuth[np.arange(shape0[0]), taken]
+        shape1 = (iterations, num_beams)
+        zenith = np.reshape(zenith, shape1)
+        azimuth = np.reshape(azimuth, shape1)
+        zenith_last = zenith[-1, :]
+        azimuth_last = azimuth[-1, :]
+        # print('patient{}\nzenith: {}\nazimuth: {}\n'.format(i+1, zenith_last, azimuth_last))
+
+        output_file = os.path.join(E2E_folder, 'beam_angles_annealing_correct.txt')
+        content = ''
+        for i in range(num_beams):
+            content = content + '{},{}\n'.format(zenith_last[i], azimuth_last[i])
+        with open(output_file, 'w') as f:
+            f.writelines(content)
+
+
+def compare_BOO_annealing_init():
+    global_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    num_patients = 6
+    iterations = 200
+    num_beams = 20
+
+    for i in range(num_patients):
+        BOO_init_folder = os.path.join(global_folder, 'patient{}_BOO_init'.format(i+1))
+        if i == 0:
+            BOO_init_folder = os.path.join(global_folder, 'patient1_optimize_stationary_200iters')
+        annealing_init_folder = os.path.join(global_folder, 'patient{}_annealing_constrain_init'.format(i+1))
+        BOO_Dose_loss_file = os.path.join(BOO_init_folder, 'DoseLoss.dat')
+        annealing_Dose_loss_file = os.path.join(annealing_init_folder, 'DoseLoss.dat')
+        BOO_smoothness_loss_file = os.path.join(BOO_init_folder, 'SmoothnessLoss.dat')
+        annealing_smoothness_loss_file = os.path.join(annealing_init_folder, 'SmoothnessLoss.dat')
+
+        BOO_Dose_loss = np.fromfile(BOO_Dose_loss_file, dtype=np.float32)
+        annealing_Dose_loss = np.fromfile(annealing_Dose_loss_file, dtype=np.float32)
+        BOO_smoothness_loss = np.fromfile(BOO_smoothness_loss_file, dtype=np.float32)
+        annealing_smoothness_loss = np.fromfile(annealing_smoothness_loss_file, dtype=np.float32)
+
+        shape1 = (iterations, num_beams)
+        BOO_smoothness_loss = np.reshape(BOO_smoothness_loss, shape1)
+        annealing_smoothness_loss = np.reshape(annealing_smoothness_loss, shape1)
+        BOO_smoothness_loss = np.sum(BOO_smoothness_loss, axis=1)
+        annealing_smoothness_loss = np.sum(annealing_smoothness_loss, axis=1)
+
+        Range = [50, 200]
+        plot_range(Range, BOO_Dose_loss)
+        plot_range(Range, annealing_Dose_loss)
+        plt.legend(['BOO init', 'annealing init'])
+        plt.xlabel('iterations')
+        plt.ylabel('dose loss (a.u.)')
+        plt.title('dose loss for patient {}'.format(i+1))
+        plt.show()
+
+
+def verify_OAR_weight_correct():
+    parent_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation'
+    dest_folder = '/data/qifan/projects_qlyu/EndtoEnd3/data'
+    num_patients = 6
+    for i in range(num_patients):
+        patient_E2E = os.path.join(parent_folder, 'patient{}_E2E'.format(i+1))
+        OAR_weight_old_file = os.path.join(patient_E2E, 'OAR_weight.dat')
+        OAR_weight_correct_file = os.path.join(patient_E2E, 'OAR_weight_correct.dat')
+        shape_file = os.path.join(patient_E2E, 'shape.txt')
+        OAR_weight_old = np.fromfile(OAR_weight_old_file, dtype=np.float32)
+        OAR_weight_correct = np.fromfile(OAR_weight_correct_file, dtype=np.float32)
+        with open(shape_file, 'r') as f:
+            line = f.readline()
+        shape = line.split(' ')
+        shape = [int(a) for a in shape]
+        OAR_weight_old = np.reshape(OAR_weight_old, shape)
+        OAR_weight_correct = np.reshape(OAR_weight_correct, shape)
+
+        OAR_old_folder = os.path.join(dest_folder, 'patient{}_OAR_old'.format(i+1))
+        OAR_correct_folder = os.path.join(dest_folder, 'patient{}_OAR_correct'.format(i+1))
+        if not os.path.isdir(OAR_old_folder):
+            os.mkdir(OAR_old_folder)
+        if not os.path.isdir(OAR_correct_folder):
+            os.mkdir(OAR_correct_folder)
+        for j in range(shape[2]):
+            plt.imsave(os.path.join(OAR_old_folder, '{:03d}.png'.format(j+1)), OAR_weight_old[:, :, j])
+        for j in range(shape[2]):
+            plt.imsave(os.path.join(OAR_correct_folder, '{:03d}.png'.format(j+1)), OAR_weight_correct[:, :, j])
+        print('patient {}'.format(i+1))
+
+
 if __name__ == '__main__':
     # view_extended_fluence_map()
     # view_dose_calculation()
@@ -823,4 +1128,11 @@ if __name__ == '__main__':
     # view_annealing()
     # BOO_annealing_compare()
     # view_annealing_uniform()
-    view_annealing_scheduling()
+    # view_annealing_scheduling()
+    # compare_stationary_annealing_1000iters()
+    # compare_stationary_vs_annealing_init()
+    # view_patientn_dose()
+    view_constrain_optimization()
+    # extract_constrain_angles()
+    # compare_BOO_annealing_init()
+    # verify_OAR_weight_correct()
