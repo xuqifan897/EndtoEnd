@@ -65,7 +65,7 @@ export CUDA_VISIBLE_DEVICES=2\n\
 
 
 def autorun_annealing_constrain_init():
-    template = 'export CUDA_VISIBLE_DEVICES=2\n\
+    template = 'export CUDA_VISIBLE_DEVICES=3\n\
 ./build/optimize_stationary_smoothness \\\n\
     --phantom-dimension D1 D2 D3 \\\n\
     --voxel-size 2. \\\n\
@@ -75,7 +75,7 @@ def autorun_annealing_constrain_init():
     --PTV-target-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/PTV_target.dat \\\n\
     --OAR-weight-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/OAR_weight.dat \\\n\
     --OAR-target-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/OAR_target.dat \\\n\
-    --beam-angle-config-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/beam_angles_annealing_constrain.txt \\\n\
+    --beam-angle-config-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/beam_angles_annealing_correct_additional.txt \\\n\
     --beam-energy 6. \\\n\
     --SAD 1000. \\\n\
     --fluence-map-dimension 128 128 \\\n\
@@ -83,7 +83,7 @@ def autorun_annealing_constrain_init():
     --fluence-map-sampling-range 680 1320 \\\n\
     --fluence-map-sampling-points 640 \\\n\
     --fluence-map-pixel-size 0.7815 0.7815 \\\n\
-    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_annealing_constrain_init \\\n\
+    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_annealing_correct_additional_init \\\n\
     --spectrum-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/Spectrum.csv \\\n\
     --ATheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperATheta.csv \\\n\
     --atheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerATheta.csv \\\n\
@@ -96,7 +96,7 @@ def autorun_annealing_constrain_init():
     --ideal-dose 0.0 \\\n\
     --eta 1e3'
 
-    for i in range(1, 7):
+    for i in range(1, 2):
         input_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient{}_E2E'.format(i)
         input_shape_file = os.path.join(input_folder, 'shape.txt')
         input_iso_file = os.path.join(input_folder, 'isocenter.txt')
@@ -123,5 +123,5 @@ def autorun_annealing_constrain_init():
 
 if __name__ == '__main__':
     # autorun_annealing()
-    # autorun_annealing_constrain_init()
-    autorun_annealing()
+    autorun_annealing_constrain_init()
+    # autorun_annealing()

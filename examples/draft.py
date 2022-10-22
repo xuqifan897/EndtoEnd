@@ -996,9 +996,9 @@ def view_constrain_optimization():
         ax2.set_xticklabels([int(x + 800) for x in ax1.get_xticks()])
         ax1.legend(['BOO', 'annealing'])
         plt.title('patient{}'.format(i+1))
-        # plt.show()
-        plt.savefig(os.path.join(target_folder, 'patient{}_QX.png'.format(i+1)))
-        plt.clf()
+        plt.show()
+        # plt.savefig(os.path.join(target_folder, 'patient{}_QX.png'.format(i+1)))
+        # plt.clf()
 
 
 def extract_constrain_angles():
@@ -1107,6 +1107,76 @@ def verify_OAR_weight_correct():
         print('patient {}'.format(i+1))
 
 
+def patient1_additional_experiment():
+    patient1_annealing_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient11_annealing_correct'
+    patient1_BOO_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_BOO_correct'
+
+    iterations_annealing = 1000
+    iterations_BOO = 200
+    num_beams = 20
+    num_perturbations = 2
+    doseloss_annealing_file = os.path.join(patient1_annealing_folder, 'DoseLoss.dat')
+    doseloss_BOO_file = os.path.join(patient1_BOO_folder, 'DoseLoss.dat')
+    doseloss_annealing = np.fromfile(doseloss_annealing_file, dtype=np.float32)
+    doseloss_BOO = np.fromfile(doseloss_BOO_file, dtype=np.float32)
+
+    Range_annealing = [850, 1000]
+    Range_BOO = [50, 200]
+    plt.plot(np.arange(Range_BOO[0], Range_BOO[1]), doseloss_BOO[Range_BOO[0]: Range_BOO[1]])
+    plt.plot(np.arange(Range_BOO[0], Range_BOO[1]), doseloss_annealing[Range_annealing[0]: Range_annealing[1]])
+    plt.legend(['BOO', 'annealing'])
+    plt.xlabel('iterations')
+    plt.ylabel('dose loss (a.u.)')
+    plt.show()
+
+    # extract beam angles
+    target_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E'
+    target_file = os.path.join(target_folder, 'beam_angles_annealing_correct_additional.txt')
+    zenith_path = os.path.join(patient1_annealing_folder, 'zenith.dat')
+    azimuth_path = os.path.join(patient1_annealing_folder, 'azimuth.dat')
+    taken_path = os.path.join(patient1_annealing_folder, 'taken.dat')
+
+    zenith = np.fromfile(zenith_path, dtype=np.float32)
+    azimuth = np.fromfile(azimuth_path, dtype=np.float32)
+    taken = np.fromfile(taken_path, dtype=bool)
+    taken = np.int32(taken)
+    shape0 = (iterations_annealing * num_beams, num_perturbations)
+    zenith = np.reshape(zenith, shape0)
+    azimuth = np.reshape(azimuth, shape0)
+    zenith = zenith[np.arange(shape0[0]), taken]
+    azimuth = azimuth[np.arange(shape0[0]), taken]
+    shape1 = (iterations_annealing, num_beams)
+    zenith = np.reshape(zenith, shape1)
+    azimuth = np.reshape(azimuth, shape1)
+    zenith = zenith[-1, :]
+    azimuth = azimuth[-1, :]
+
+    content = ''
+    for i in range(num_beams):
+        content = content + '{},{}\n'.format(zenith[i], azimuth[i])
+    # print(content)
+    with open(target_file, 'w') as f:
+        f.writelines(content)
+
+
+def patient1_additional_compare():
+    patient1_BOO_correct = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_BOO_correct'
+    patient1_annealing_correct = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_annealing_correct_additional_init'
+    iterations = 200
+    BOO_dose_loss_file = os.path.join(patient1_BOO_correct, 'DoseLoss.dat')
+    annealing_dose_loss_file = os.path.join(patient1_annealing_correct, 'DoseLoss.dat')
+    BOO_dose_loss = np.fromfile(BOO_dose_loss_file, dtype=np.float32)
+    annealing_dose_loss = np.fromfile(annealing_dose_loss_file, dtype=np.float32)
+    Range = [50, 200]
+
+    plt.plot(np.arange(Range[0], Range[1]), BOO_dose_loss[Range[0]: Range[1]])
+    plt.plot(np.arange(Range[0], Range[1]), annealing_dose_loss[Range[0]: Range[1]])
+    plt.legend(['BOO', 'annealing'])
+    plt.xlabel('iterations')
+    plt.ylabel('dose loss (a.u.)')
+    plt.show()
+
+
 if __name__ == '__main__':
     # view_extended_fluence_map()
     # view_dose_calculation()
@@ -1136,3 +1206,5 @@ if __name__ == '__main__':
     # extract_constrain_angles()
     # compare_BOO_annealing_init()
     # verify_OAR_weight_correct()
+    # patient1_additional_experiment()
+    # patient1_additional_compare()

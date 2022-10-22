@@ -235,6 +235,29 @@ def convert_zenith_azimuth_to_VarianIEC():
             f.writelines(content)
 
 
+def convert_zenith_azimuth_to_VarianIEC_additional():
+    patient_folder = '/home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_E2E'
+    angle_file = os.path.join(patient_folder, 'beam_angles_annealing_correct_additional.txt')
+    num_beams = 20
+    with open(angle_file, 'r') as f:
+        lines = f.readlines()
+    assert(len(lines) == num_beams)
+    zenith_azimuth = np.zeros((num_beams, 2), dtype=np.float32)
+    for i in range(num_beams):
+        line = lines[i]
+        line = line.split(',')
+        zenith_azimuth[i, 0] = float(line[0])
+        zenith_azimuth[i, 1] = float(line[1])
+    vector = zenith_azimuth_to_vector(zenith_azimuth)
+    gantry, couch = vector_to_VarianIEC(vector)
+    content = 'gantryVarianIEC,couchVarianIEC\n'
+    for i in range(num_beams):
+        content = content + '{},{}\n'.format(gantry[i], couch[i])
+    output_file = os.path.join(patient_folder, 'beam_annealing_correct_additional_varianIEC.csv')
+    with open(output_file, 'w') as f:
+        f.writelines(content)
+
+
 def zenith_azimuth_to_vector(zenith_azimuth):
     zenith = zenith_azimuth[:, 0]
     azimuth = zenith_azimuth[:, 1]
@@ -273,4 +296,5 @@ if __name__ == '__main__':
     # main__()
     # main()
     # read_annealing_angles()
-    convert_zenith_azimuth_to_VarianIEC()
+    # convert_zenith_azimuth_to_VarianIEC()
+    convert_zenith_azimuth_to_VarianIEC_additional()

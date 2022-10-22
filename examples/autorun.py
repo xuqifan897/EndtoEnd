@@ -75,7 +75,7 @@ def autorun_annealing_constrain_init():
     --PTV-target-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/PTV_target.dat \\\n\
     --OAR-weight-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/OAR_weight.dat \\\n\
     --OAR-target-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/OAR_target.dat \\\n\
-    --beam-angle-config-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/beam_angles_annealing_constrain.txt \\\n\
+    --beam-angle-config-path /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_E2E/beam_angles_annealing_correct.txt \\\n\
     --beam-energy 6. \\\n\
     --SAD 1000. \\\n\
     --fluence-map-dimension 128 128 \\\n\
@@ -83,7 +83,7 @@ def autorun_annealing_constrain_init():
     --fluence-map-sampling-range 680 1320 \\\n\
     --fluence-map-sampling-points 640 \\\n\
     --fluence-map-pixel-size 0.7815 0.7815 \\\n\
-    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_annealing_constrain_init \\\n\
+    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient4_annealing_correct_init \\\n\
     --spectrum-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/Spectrum.csv \\\n\
     --ATheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperATheta.csv \\\n\
     --atheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerATheta.csv \\\n\
@@ -123,5 +123,5 @@ def autorun_annealing_constrain_init():
 
 if __name__ == '__main__':
     # autorun_annealing()
-    # autorun_annealing_constrain_init()
-    autorun_BOO_init()
+    autorun_annealing_constrain_init()
+    # autorun_BOO_init()
