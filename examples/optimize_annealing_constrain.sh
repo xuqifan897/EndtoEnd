@@ -20,7 +20,7 @@ export CUDA_VISIBLE_DEVICES=2
     --fluence-map-sampling-range 680 1320 \
     --fluence-map-sampling-points 640 \
     --fluence-map-pixel-size 0.7815 0.7815 \
-    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient11_annealing_correct \
+    --output-folder /home/qlyu/ShengNAS2/SharedProjectData/QX_beam_orientation/patient1_annealing_code_correct \
     --spectrum-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/Spectrum.csv \
     --ATheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/upperATheta.csv \
     --atheta-path /data/qifan/projects_qlyu/EndtoEnd3/kernels/lowerATheta.csv \

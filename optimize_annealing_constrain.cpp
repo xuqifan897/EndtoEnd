@@ -472,18 +472,20 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
+
+    // initial dose calculation
+    for (int i=0; i<beams.size(); i++)
+    {
+        beams[i].convolve(kernel);
+        beams[i].BEV_dose_forward(Phtm, kernel);
+        beams[i].PVCS_dose_forward(Phtm);
+    }
     
     for (int iter=0; iter<iterations; iter++)
     {
-        // forward pass: calculate each beam's dose
+        // an initial forward pass is needed. However, the dose is up-to-date at this point.
         cudaEventRecord(start);
-        for (int i=0; i<beams.size(); i++)
-        {
-            beams[i].convolve(kernel);
-            beams[i].BEV_dose_forward(Phtm, kernel);
-            beams[i].PVCS_dose_forward(Phtm);
-        }
-
+        // calculate loss and grad
         dose_sum(beams, Phtm, &d_PVCS_total_dose, d_sources);
         beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_element_wise_loss, d_PVCS_total_dose);
         reduction(d_element_wise_loss, phantom_size, d_out0, loss, iter);
@@ -501,7 +503,11 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
             reduction_small(beams[i].d_element_wise_fluence_smoothness_loss, \
                 FM_dimension*FM_dimension, smoothness_loss, loss_idx);
 
+            // fluence map and dose update
             beams[i].fluence_map_update(i, d_norm_final, d_squared_grad[i], step_size);
+            beams[i].convolve(kernel);
+            beams[i].BEV_dose_forward(Phtm, kernel);
+            beams[i].PVCS_dose_forward(Phtm);
         }
 
         // annealing perturbation
@@ -528,8 +534,6 @@ void optimize(vector<beam>& beams, phantom& Phtm, FCBBkernel* kernel, float** h_
             // compute the current energy
             (*h_zenith)[(iter * beams.size() + i) * NUM_PERTURBATIONS] = beams[i].zenith;
             (*h_azimuth)[(iter * beams.size() + i) * NUM_PERTURBATIONS] = beams[i].azimuth;
-            beams[i].BEV_dose_forward(Phtm, kernel);
-            beams[i].PVCS_dose_forward(Phtm);
             dose_sum(beams, Phtm, &d_PVCS_total_dose, d_sources);
             beam::calc_FCBB_PVCS_dose_grad(Phtm, &d_element_wise_loss, d_PVCS_total_dose);
             reduction(d_element_wise_loss, phantom_size, d_out0, perturbation_loss, 0);
