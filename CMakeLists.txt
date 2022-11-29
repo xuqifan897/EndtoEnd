@@ -59,6 +59,10 @@ add_executable(optimize_annealing_constrain optimize_annealing_constrain.cpp)
 target_link_libraries(optimize_annealing_constrain PRIVATE args geom optim ${Boost_LIBRARIES})
 target_include_directories(optimize_annealing_constrain PRIVATE ${Boost_INCLUDE_DIR})
 
+add_executable(benchmarking benchmarking.cpp)
+target_link_libraries(benchmarking PRIVATE args geom optim ${Boost_LIBRARIES})
+target_include_directories(benchmarking PRIVATE ${Boost_INCLUDE_DIR})
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
