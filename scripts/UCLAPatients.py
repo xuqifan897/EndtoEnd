@@ -1,6 +1,10 @@
 import os
 import glob
+import numpy as np
+import matplotlib.pyplot as plt
 import pydicom
+import cv2
+from rt_utils import RTStructBuilder
 
 # this script runs on shenggpu4. Here we specify the path to the data
 globalFolder = '/data/datasets/UCLAPatients'
@@ -199,7 +203,209 @@ def wash(dicomData):
             dicomData.file_meta.SourceApplicationEntityTitle = ''
 
 
+def visualizeMR():
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    if not os.path.isdir(visFolder):
+        os.mkdir(visFolder)
+
+    num_patients = 7
+    roof = 255
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousDataPath, patientName)
+        MRFolder = os.path.join(patFolder, 'MRdose', 'MR')
+        files = dicomSort(MRFolder, 'MR')
+        
+        visPatFolder = os.path.join(visFolder, patientName)
+        visMRFolder = os.path.join(visPatFolder, 'MR')
+        if not os.path.isdir(visMRFolder):
+            os.makedirs(visMRFolder)
+        
+        for j, file in enumerate(files):
+            oldFile = os.path.join(MRFolder, file)
+            newFile = os.path.join(visMRFolder, '{:03d}.png'.format(j+1))
+            dicomData = pydicom.dcmread(oldFile)
+            pixel_array = dicomData.pixel_array
+            roof = np.max(pixel_array)
+            pixel_array = np.uint8(pixel_array / roof * 255)
+            plt.imsave(newFile, pixel_array, cmap='gray')
+        print(patientName)
+
+
+def dicomSort(folder, modality):
+    files = os.listdir(folder)
+    result = []
+    for file in files:
+        file_ = os.path.join(folder, file)
+        dicomData = pydicom.dcmread(file_)
+        assert dicomData.Modality == modality
+        result.append((file, int(dicomData.InstanceNumber)))
+    result.sort(key = lambda x: x[1])
+    result = [a[0] for a in result]
+    
+    return result
+
+
+def visualizeRTPLAN():
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    num_patients = 7
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+        file = os.path.join(MRdoseFolder, 'RTPLAN.dcm')
+        RTplan = pydicom.dcmread(file)
+        print('number of beams: {}'.format(len(RTplan.BeamSequence)))
+
+
+def visualizeRTdose():
+    """
+    This function visualizes RT dose.
+    The data matrix of RT dose is of the shape (slice, hight, width),
+    the slice dimension is reversed from InstanceNumber
+    """
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    num_patients = 7
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+        RTdosefile = os.path.join(MRdoseFolder, 'RTdose.dcm')
+        dose = pydicom.dcmread(RTdosefile).pixel_array
+        roof = np.max(dose)
+
+        visPatFolder = os.path.join(visFolder, patientName)
+        visDoseFolder = os.path.join(visPatFolder, 'dose')
+        if not os.path.isdir(visDoseFolder):
+            os.mkdir(visDoseFolder)
+        
+        for i in range(dose.shape[0]):
+            outputFile = os.path.join(visDoseFolder, '{:03d}.png'.format(i+1))
+            plt.imsave(outputFile, dose[dose.shape[0]-1-i, :, :], vmax=roof)
+        print(patientName)
+
+
+def visualizeRTstruct():
+    """
+    This function visualizes the RT structures of different patients,
+    each patient has three files that are of RTSTRUCT modality, they
+    are: RTst0.dcm, RTst1.dcm, and SEG.dcm
+
+    Result:
+    we could not open SEG.dcm using RTStructBuilder package
+    RTst0 and RTst1 are the same (at least visually the same)
+    the shape of RTSTRUCT mask is (hight, width, slice)
+    the slice dimension is reversed from InstanceNumber
+    """
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    num_patients = 7
+    scale = 255
+    RTfiles = ['RTst0.dcm', 'RTst1.dcm']
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+        MRFolder = os.path.join(MRdoseFolder, 'MR')
+        for file in RTfiles:
+            fullFile = os.path.join(MRdoseFolder, file)
+            rtstruct = RTStructBuilder.create_from(
+                dicom_series_path=MRFolder, rt_struct_path=fullFile)
+            ROInames = rtstruct.get_roi_names()
+            print('{} {}\n{}\n\n'.format(patientName, file, ROInames))
+            masks = {}
+            for name in ROInames:
+                try:
+                    masks[name] = rtstruct.get_roi_mask_by_name(name)
+                except:
+                    print('fail to extract the mask for {}'.format(name))
+            
+            # create folder
+            visRTstructFolder = os.path.join(visFolder, patientName, file.split('.')[0])
+            if not os.path.isdir(visRTstructFolder):
+                os.makedirs(visRTstructFolder)
+            
+            # draw contours
+            MRfiles = dicomSort(MRFolder, 'MR')
+            for j, file in enumerate(MRfiles):
+                MRfile = os.path.join(MRFolder, file)
+                result = draw_mask(MRfile, masks, len(MRfiles) - 1 - j)
+                outputPath = os.path.join(visRTstructFolder, '{:03d}.png'.format(j+1))
+                cv2.imwrite(outputPath, result)
+                print('{} {} {}'.format(patientName, file, j+1))
+
+
+def draw_mask(MRfile, masks, frameID):
+    pixel_array = pydicom.dcmread(MRfile).pixel_array
+    pixel_array = gray2rgb(pixel_array)
+    for name, mask in masks.items():
+        maskFrame = mask[:, :, frameID]
+        maskFrame = np.uint8(255 * maskFrame)
+        contours, hierarchy = cv2.findContours(maskFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        pixel_array = cv2.drawContours(pixel_array, contours, -1, (0, 255, 0), 1)
+    # cv2.imshow('MR contour', pixel_array)
+    # cv2.waitKey()
+    return pixel_array
+
+
+
+def gray2rgb(input):
+    scale = 255
+    roof = np.max(input)
+    input = np.uint8(input / roof * scale)
+    input = np.expand_dims(input, axis=2)
+    input = np.repeat(input, 3, axis=2)
+    return input
+
+
+def test_cv2_drawContour():
+    imagePath = '/data/datasets/UCLAPatients/visualize/patient1/MR/041.png'
+    image = cv2.imread(imagePath)
+    imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 128, 128, 128)
+    contours, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    canvas = np.zeros_like(image)
+    result = cv2.drawContours(canvas, contours, -1, (0, 255, 0), 3)
+    cv2.imshow('result', result)
+    cv2.waitKey(0)
+
+
+def visualizeDVH():
+    """
+    This function creates the DVH histograms, and write them to files
+    """
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    num_patients = 7
+
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+        doseFile = os.path.join(MRdoseFolder, 'RTdose.dcm')
+        dose = pydicom.dcmread(doseFile).pixel_array
+        dose = np.flip(dose, axis=0)  # flip to normal geometry
+
+        RTSTRUCTFile = os.path.join(MRdoseFolder, 'RTst0.dcm')
+        MRFolder = os.path.join(MRdoseFolder, 'MR')
+        rtstruct = RTStructBuilder.create_from(MRFolder, RTSTRUCTFile)
+        ROInames = rtstruct.get_roi_names()
+        masks = {}
+        for name in ROInames:
+            try:
+                masks[name] = rtstruct.get_roi_mask_by_name(name)
+            except:
+                print('fail to extract the mask for {}'.format(name))
+        # flip the masks
+        for name, mask in masks.items():
+            masks[name] = np.transpose(np.flip(mask, axis=2), (2, 0, 1))
+        # after this, both dose and RTstruct mask are in shape (slice, height, width)
+
 
 if __name__ == '__main__':
     # examineMR()
-    anonymizeMR()
+    # anonymizeMR()
+    # visualizeMR()
+    # visualizeRTPLAN()
+    # visualizeRTdose()
+    visualizeRTstruct()
+    # test_cv2_drawContour()
