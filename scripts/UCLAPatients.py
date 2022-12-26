@@ -8,7 +8,11 @@ from rt_utils import RTStructBuilder
 
 # this script runs on shenggpu4. Here we specify the path to the data
 globalFolder = '/data/datasets/UCLAPatients'
-patients = ['0530793', '0678774', '0999272', '0999272', '0999272', '0999272', '0999272']
+patients = ['0530793', '0678774', '0999272', '2415674', '4135918', '5758498', '6865205']
+# patients = ['0530793', '0678774', '2415674', '4135918', '5758498', '6865205']
+num_patients = 7
+colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 
+    'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
 
 def examineMR():
     """
@@ -209,7 +213,7 @@ def visualizeMR():
     if not os.path.isdir(visFolder):
         os.mkdir(visFolder)
 
-    num_patients = 7
+    
     roof = 255
     for i in range(num_patients):
         patientName = 'patient{}'.format(i+1)
@@ -249,7 +253,7 @@ def dicomSort(folder, modality):
 
 def visualizeRTPLAN():
     anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
-    num_patients = 7
+    
     for i in range(num_patients):
         patientName = 'patient{}'.format(i+1)
         MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
@@ -266,7 +270,7 @@ def visualizeRTdose():
     """
     anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
     visFolder = os.path.join(globalFolder, 'visualize')
-    num_patients = 7
+    
     for i in range(num_patients):
         patientName = 'patient{}'.format(i+1)
         MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
@@ -299,7 +303,7 @@ def visualizeRTstruct():
     """
     anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
     visFolder = os.path.join(globalFolder, 'visualize')
-    num_patients = 7
+    
     scale = 255
     RTfiles = ['RTst0.dcm', 'RTst1.dcm']
     for i in range(num_patients):
@@ -376,19 +380,26 @@ def visualizeDVH():
     """
     anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
     visFolder = os.path.join(globalFolder, 'visualize')
-    num_patients = 7
+    DVHFolder = os.path.join(visFolder, 'DVH')
+    if not os.path.isdir(DVHFolder):
+        os.mkdir(DVHFolder)
+    
 
     for i in range(num_patients):
         patientName = 'patient{}'.format(i+1)
         MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
         doseFile = os.path.join(MRdoseFolder, 'RTdose.dcm')
         dose = pydicom.dcmread(doseFile).pixel_array
-        dose = np.flip(dose, axis=0)  # flip to normal geometry
+
+        # flip to normal geometry, shape: (slice, height, width)
+        dose = np.flip(dose, axis=0)
 
         RTSTRUCTFile = os.path.join(MRdoseFolder, 'RTst0.dcm')
         MRFolder = os.path.join(MRdoseFolder, 'MR')
         rtstruct = RTStructBuilder.create_from(MRFolder, RTSTRUCTFile)
-        ROInames = rtstruct.get_roi_names()
+        ROInames_unfiltered = rtstruct.get_roi_names()
+        PTVuncropped = [a for a in ROInames_unfiltered if 'PTV' in a and 'uncrop' in a]
+        ROInames = PTVuncropped + [a for a in ROInames_unfiltered if a[:2] == 'O_']
         masks = {}
         for name in ROInames:
             try:
@@ -400,6 +411,179 @@ def visualizeDVH():
             masks[name] = np.transpose(np.flip(mask, axis=2), (2, 0, 1))
         # after this, both dose and RTstruct mask are in shape (slice, height, width)
 
+        # start to draw DVH
+        count = 0
+        for name, mask in masks.items():
+            maskedDose = dose[mask]
+            maskedDose = np.sort(maskedDose)
+            size = maskedDose.size
+            xAxis = np.zeros(size+1, dtype=maskedDose.dtype)
+            xAxis[1:] = maskedDose
+            yAxis = np.zeros(size+1, dtype=np.float32)
+            yAxis[0] = 1
+            yAxis[1:] = 1 - np.arange(size) / size
+            plt.plot(xAxis, yAxis)
+            count += 1
+        plt.legend(masks.keys())
+        plt.xlabel('dose (a.u.)')
+        plt.ylabel('relative volume')
+        plt.title(patientName)
+        fileName = os.path.join(DVHFolder, patientName + '.png')
+        plt.savefig(fileName)
+        plt.clf()
+        # plt.show()
+        # break
+
+
+def printAnatomy():
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    numPatients = 7
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+        MRFolder = os.path.join(MRdoseFolder, 'MR')
+        RTSTRUCTFile = os.path.join(MRdoseFolder, 'RTst0.dcm')
+        rtstruct = RTStructBuilder.create_from(MRFolder, RTSTRUCTFile)
+        ROINames = rtstruct.get_roi_names()
+        print(patientName)
+        print(ROINames, '\n\n')
+
+
+def DVHdraft():
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    
+    # for i in range(num_patients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+    #     doseFile = os.path.join(MRdoseFolder, 'RTdose.dcm')
+    #     dose = pydicom.dcmread(doseFile).pixel_array
+    #     dose = np.reshape(dose, -1)
+    #     dose = np.sort(dose)
+    #     size = dose.size
+    #     yAxis = 1 - np.arange(size) / size
+    #     plt.plot(dose, yAxis)
+    #     plt.show()
+    #     # print(dose[-100:])
+    #     break
+
+    # # generate mask images
+    # for i in range(num_patients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+
+    #     RTSTRUCTFile = os.path.join(MRdoseFolder, 'RTst0.dcm')
+    #     MRFolder = os.path.join(MRdoseFolder, 'MR')
+    #     rtstruct = RTStructBuilder.create_from(MRFolder, RTSTRUCTFile)
+    #     RprintAnatomy   try:
+    #             masks[name] = rtstruct.get_roi_mask_by_name(name)
+    #         except:
+    #             print('fail to extract the mask for {}'.format(name))
+        
+    #     # if 'N_AIR' in masks:
+    #     #     print('number of N_AIR voxels in {}: {}'.format(patientName, np.sum(masks['N_AIR'])))
+        
+    #     visRTFolder = os.path.join(visFolder, patientName, 'anatomy')
+    #     for key, mask in masks.items():
+    #         keyFolder = os.path.join(visRTFolder, key)
+    #         if not os.path.isdir(keyFolder):
+    #             os.makedirs(keyFolder)
+            
+    #         mask = np.uint8(255 * mask)
+    #         # mask shape: (height, width, slice), slice is reversed
+    #         nslices = mask.shape[2]
+    #         for j in range(nslices):
+    #             slice = mask[:, :, nslices - 1 - j]
+    #             fileName = os.path.join(keyFolder, '{:03d}.png'.format(j+1))
+    #             plt.imsave(fileName, slice)
+    #         print('{} {}'.format(patientName, key))
+
+    # show DVH at PTV uncropped
+    target = 'PTV uncropped'
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+
+        RTSTRUCTFile = os.path.join(MRdoseFolder, 'RTst0.dcm')
+        MRFolder = os.path.join(MRdoseFolder, 'MR')
+        rtstruct = RTStructBuilder.create_from(MRFolder, RTSTRUCTFile)
+        ROInames = rtstruct.get_roi_names()
+        # print('PTV uncropped in {}: {}'.format(patientName, target in ROInames))
+        assert target in ROInames
+
+        doseFile = os.path.join(MRdoseFolder, 'RTdose.dcm')
+        dose = pydicom.dcmread(doseFile).pixel_array
+        dose = np.flip(dose, axis=0)
+
+        targetMask = rtstruct.get_roi_mask_by_name(target)
+        targetMask = np.transpose(np.flip(targetMask, axis=2), (2, 0, 1))
+
+        targetDose = dose[targetMask]
+        targetDose = np.sort(targetDose)
+        size = targetDose.size
+        xAxis = np.zeros(size+1, dtype=targetDose.dtype)
+        xAxis[1:] = targetDose
+        yAxis = np.zeros(size+1, dtype=np.float32)
+        yAxis[0] = 1
+        yAxis[1:] = 1.0 - np.arange(size) / size
+
+        plt.plot(xAxis, yAxis)
+        plt.show()
+        break
+
+
+def visRawMR():
+    """
+    It seems that the MR images for patient 2 and patient 3 are the same.
+    Here we examine it in the raw data
+
+    the results show that, though the filenames of the dicom files of 
+    patient 2 and patient 3 are different, they are the same
+    """
+    rawDataPath = os.path.join(globalFolder, 'rawData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    idxs = [1, 2]
+    scale = 255
+    for idx in idxs:
+        patientID = patients[idx]
+        rawMRFolder = os.path.join(rawDataPath, patientID, '*MRdose', '*MR*')
+        rawMRFolder = folderEvaluate(rawMRFolder)
+        files = dicomSort(rawMRFolder, 'MR')
+
+        patientName = 'patient{}'.format(idx + 1)
+        imageFolder = os.path.join(visFolder, patientName, 'rawMR')
+        if not os.path.isdir(imageFolder):
+            os.mkdir(imageFolder)
+        for j, file in enumerate(files):
+            inputPath = os.path.join(rawMRFolder, file)
+            outputPath = os.path.join(imageFolder, '{:03d}.png'.format(j+1))
+            pixel_array = pydicom.dcmread(inputPath).pixel_array
+            roof = np.max(pixel_array)
+            pixel_array = np.uint8(pixel_array / roof * scale)
+            cv2.imwrite(outputPath, pixel_array)
+        print('{} {}'.format(patientName, patientID))
+
+
+def PTVexamination():
+    """
+    through visual exam, we found that seems PTV uncropped is divided 
+    into PTV_HIGH and PTV_LOW. PTV_CROPPED is smaller than PTV uncropped, 
+    but I haven't figured out other relationship
+    """
+
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'MRdose')
+        MRFolder = os.path.join(MRdoseFolder, 'MR')
+        RTSTRUCTFile = os.path.join(MRdoseFolder, 'RTst0.dcm')
+        rtstruct = RTStructBuilder.create_from(MRFolder, RTSTRUCTFile)
+        ROInames = rtstruct.get_roi_names()
+
+        PTVuncroppedName = [a for a in ROInames if 'PTV' in a and 'uncrop' in a]
+        PTVhighName = [a for a in ROInames if 'PTV' in a and 'HIGH']
+
+
 
 if __name__ == '__main__':
     # examineMR()
@@ -407,5 +591,9 @@ if __name__ == '__main__':
     # visualizeMR()
     # visualizeRTPLAN()
     # visualizeRTdose()
-    visualizeRTstruct()
+    # visualizeRTstruct()
     # test_cv2_drawContour()
+    # visualizeDVH()
+    # DVHdraft()
+    # printAnatomy()
+    visRawMR()
