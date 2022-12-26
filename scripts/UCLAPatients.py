@@ -195,7 +195,7 @@ def folderEvaluate(template):
 
 def wash(dicomData):
     attributes = ['InstitutionName', 'Manufacturer', 'ManufacturerModelName', \
-        'OperatorName', 'PatientBirthDate', 'PatientID', 'PatientName', \
+        'OperatorsName', 'PatientBirthDate', 'PatientID', 'PatientName', \
         'PatientSex', 'PerformingPhysicianName']
     for attribute in attributes:
         if hasattr(dicomData, attribute):
@@ -584,6 +584,138 @@ def PTVexamination():
         PTVhighName = [a for a in ROInames if 'PTV' in a and 'HIGH']
 
 
+def anonymizeCT():
+    rawDataPath = os.path.join(globalFolder, 'rawData')
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    for i in range(num_patients):
+        patientID = patients[i]
+        rawPatFolder = os.path.join(rawDataPath, patientID)
+        rawCTct = os.path.join(rawPatFolder, '*CT', '*_CT_*')
+        rawCTct = folderEvaluate(rawCTct)
+        rawCTRT = os.path.join(rawPatFolder, '*CT', '*_RTst_*')
+        rawCTRT = folderEvaluate(rawCTRT)
+
+        patientName = 'patient{}'.format(i+1)
+        newPatFolder = os.path.join(anonymousDataPath, patientName)
+        newCTFolder = os.path.join(newPatFolder, 'CT')
+        newDicomFolder = os.path.join(newCTFolder, 'dicom')
+        if not os.path.isdir(newDicomFolder):
+            os.makedirs(newDicomFolder)
+
+        # copy CT dicoms
+        files = os.listdir(rawCTct)
+        for file in files:
+            fullFile = os.path.join(rawCTct, file)
+            dicomData = pydicom.dcmread(fullFile)
+            wash(dicomData)
+            outputPath = os.path.join(newDicomFolder, file)
+            dicomData.save_as(outputPath)
+        
+        # copy RTstruct
+        rawRTfile = os.listdir(rawCTRT)[0]
+        rawRTfile = os.path.join(rawCTRT, rawRTfile)
+        dicomData = pydicom.dcmread(rawRTfile)
+        wash(dicomData)
+        outputPath = os.path.join(newCTFolder, 'RTst.dcm')
+        dicomData.save_as(outputPath)
+        print('{} {}'.format(patientName, patientID))
+
+
+def visualizeCT():
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    scale = 255
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousDataPath, patientName)
+        dicomFolder = os.path.join(patFolder, 'CT', 'dicom')
+        files = dicomSort(dicomFolder, 'CT')
+
+        visPatFolder = os.path.join(visFolder, patientName)
+        visPatCTFolder = os.path.join(visPatFolder, 'CT')
+        if not os.path.isdir(visPatCTFolder):
+            os.mkdir(visPatCTFolder)
+        
+        for j, file in enumerate(files):
+            inputFile = os.path.join(dicomFolder, file)
+            pixel_array = pydicom.dcmread(inputFile).pixel_array
+            roof = np.max(pixel_array)
+            pixel_array = np.uint8(pixel_array / roof * scale)
+            outputFile = os.path.join(visPatCTFolder, '{:03d}.png'.format(j+1))
+            cv2.imwrite(outputFile, pixel_array)
+        print(patientName)
+
+
+def visualizeRTstructCT():
+    """
+    This function visualizes the RT structures of different patients,
+    each patient has three files that are of RTSTRUCT modality, they
+    are: RTst0.dcm, RTst1.dcm, and SEG.dcm
+
+    Result:
+    we could not open SEG.dcm using RTStructBuilder package
+    RTst0 and RTst1 are the same (at least visually the same)
+    the shape of RTSTRUCT mask is (hight, width, slice)
+    the slice dimension is reversed from InstanceNumber
+    """
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    
+    for i in range(1, num_patients):
+        patientName = 'patient{}'.format(i+1)
+        MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'CT')
+        MRFolder = os.path.join(MRdoseFolder, 'dicom')
+        file = 'RTst.dcm'
+        fullFile = os.path.join(MRdoseFolder, file)
+        try:
+            rtstruct = RTStructBuilder.create_from(
+                dicom_series_path=MRFolder, rt_struct_path=fullFile)
+        except:
+            print('{} error'.format(patientName))
+            continue
+        ROInames = rtstruct.get_roi_names()
+        print('{} {}\n{}\n\n'.format(patientName, file, ROInames))
+        masks = {}
+        for name in ROInames:
+            try:
+                masks[name] = rtstruct.get_roi_mask_by_name(name)
+            except:
+                print('fail to extract the mask for {}'.format(name))
+        
+        # create folder
+        visRTstructFolder = os.path.join(visFolder, patientName, 'CTrt')
+        if not os.path.isdir(visRTstructFolder):
+            os.makedirs(visRTstructFolder)
+        
+        # draw contours
+        MRfiles = dicomSort(MRFolder, 'CT')
+        for j, file in enumerate(MRfiles):
+            MRfile = os.path.join(MRFolder, file)
+            result = draw_mask(MRfile, masks, len(MRfiles) - 1 - j)
+            outputPath = os.path.join(visRTstructFolder, '{:03d}.png'.format(j+1))
+            cv2.imwrite(outputPath, result)
+            print('{} {} {}'.format(patientName, file, j+1))
+
+
+def CTrtExamine():
+    """
+    The function visualizeRTstructCT has some errors, specifically, it 
+    reports that the frame of reference UID of the RTstruct file is not 
+    consistent with the CT dicom files
+    """
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    for i in range(num_patients):
+        patientName = 'patient{}'.format(i+1)
+        patCTFolder = os.path.join(anonymousDataPath, patientName, 'CT')
+        RTstFile = os.path.join(patCTFolder, 'RTst.dcm')
+        dicomFolder = os.path.join(patCTFolder, 'dicom')
+        CTfiles = dicomSort(dicomFolder, 'CT')
+        CTfile = os.path.join(dicomFolder, CTfiles[0])
+        CTdata = pydicom.dcmread(CTfile)
+        RTdata = pydicom.dcmread(RTstFile)
+        continue
+
+
 
 if __name__ == '__main__':
     # examineMR()
@@ -596,4 +728,8 @@ if __name__ == '__main__':
     # visualizeDVH()
     # DVHdraft()
     # printAnatomy()
-    visRawMR()
+    # visRawMR()
+    # anonymizeCT()
+    # visualizeCT()
+    # visualizeRTstructCT()
+    CTrtExamine()
