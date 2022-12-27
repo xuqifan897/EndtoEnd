@@ -698,6 +698,32 @@ def visualizeRTstructCT():
             print('{} {} {}'.format(patientName, file, j+1))
 
 
+def PTVcomp():
+    """
+    This function copies the slices to a seperate folder
+    """
+    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
+    visFolder = os.path.join(globalFolder, 'visualize')
+    targetFolder = os.path.join(visFolder, 'pat1PTVcomp')
+    if not os.path.isdir(targetFolder):
+        os.mkdir(targetFolder)
+    anaFolder = os.path.join(visFolder, 'patient1' ,'anatomy')
+    objects = ['PTV uncropped', 'PTV_CROPPED', 'PTV_HIGH', 'PTV_LOW', 'GTV']
+    names = ['PTVuncropped', 'PTVcropped', 'PTVhigh', 'PTVlow', 'GTV']
+    assert len(objects) == len(names)
+    frame = '042.png'
+    for name, object in zip(names, objects):
+        inputFile = os.path.join(anaFolder, object, frame)
+        outputFile = os.path.join(targetFolder, name + '.png')
+        command = 'cp "{}" {}'.format(inputFile, outputFile)
+        os.system(command)
+
+    MRfile = os.path.join(visFolder, 'patient1', 'MR', frame)
+    targetFile = os.path.join(targetFolder, 'MR.png')
+    command = 'cp {} {}'.format(MRfile, targetFile)
+    os.system(command)
+
+
 if __name__ == '__main__':
     # examineMR()
     # anonymizeMR()
@@ -711,5 +737,6 @@ if __name__ == '__main__':
     # printAnatomy()
     # visRawMR()
     # anonymizeCT()
-    visualizeCT()
+    # visualizeCT()
     # visualizeRTstructCT()
+    PTVcomp()
