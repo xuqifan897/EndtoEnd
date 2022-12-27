@@ -195,8 +195,9 @@ def folderEvaluate(template):
 
 def wash(dicomData):
     attributes = ['InstitutionName', 'Manufacturer', 'ManufacturerModelName', \
-        'OperatorsName', 'PatientBirthDate', 'PatientID', 'PatientName', \
-        'PatientSex', 'PerformingPhysicianName']
+        'OperatorsName', 'PatientAge', 'PatientBirthDate', 'PatientID', 'PatientName', \
+        'PatientSex', 'PatientWeight', 'ReferringPhysicianName', 'PerformingPhysicianName', \
+        'SeriesDate']
     for attribute in attributes:
         if hasattr(dicomData, attribute):
             setattr(dicomData, attribute, '')
@@ -661,7 +662,7 @@ def visualizeRTstructCT():
     anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
     visFolder = os.path.join(globalFolder, 'visualize')
     
-    for i in range(1, num_patients):
+    for i in range(num_patients):
         patientName = 'patient{}'.format(i+1)
         MRdoseFolder = os.path.join(anonymousDataPath, patientName, 'CT')
         MRFolder = os.path.join(MRdoseFolder, 'dicom')
@@ -697,26 +698,6 @@ def visualizeRTstructCT():
             print('{} {} {}'.format(patientName, file, j+1))
 
 
-def CTrtExamine():
-    """
-    The function visualizeRTstructCT has some errors, specifically, it 
-    reports that the frame of reference UID of the RTstruct file is not 
-    consistent with the CT dicom files
-    """
-    anonymousDataPath = os.path.join(globalFolder, 'anonymousData')
-    for i in range(num_patients):
-        patientName = 'patient{}'.format(i+1)
-        patCTFolder = os.path.join(anonymousDataPath, patientName, 'CT')
-        RTstFile = os.path.join(patCTFolder, 'RTst.dcm')
-        dicomFolder = os.path.join(patCTFolder, 'dicom')
-        CTfiles = dicomSort(dicomFolder, 'CT')
-        CTfile = os.path.join(dicomFolder, CTfiles[0])
-        CTdata = pydicom.dcmread(CTfile)
-        RTdata = pydicom.dcmread(RTstFile)
-        continue
-
-
-
 if __name__ == '__main__':
     # examineMR()
     # anonymizeMR()
@@ -730,6 +711,5 @@ if __name__ == '__main__':
     # printAnatomy()
     # visRawMR()
     # anonymizeCT()
-    # visualizeCT()
+    visualizeCT()
     # visualizeRTstructCT()
-    CTrtExamine()
