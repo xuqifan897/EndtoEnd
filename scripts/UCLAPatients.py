@@ -724,6 +724,13 @@ def PTVcomp():
     os.system(command)
 
 
+def HengjieDemo():
+    A = {'a': 1, 'b': 2}
+    def initFunc(a, b):
+        print(a, b)
+    initFunc(**A)
+
+
 if __name__ == '__main__':
     # examineMR()
     # anonymizeMR()
@@ -739,4 +746,5 @@ if __name__ == '__main__':
     # anonymizeCT()
     # visualizeCT()
     # visualizeRTstructCT()
-    PTVcomp()
+    # PTVcomp()
+    HengjieDemo()
