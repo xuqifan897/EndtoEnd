@@ -17,8 +17,9 @@ rawFolder = '/data/datasets/UCLAPatients/rawDataNew'
 anonymousFolder = os.path.join(globalFolder, 'anonymousDataNew')
 visFolder = os.path.join(globalFolder, 'visNew')
 patients = os.listdir(rawFolder)
+patients.sort()
 patientTree = []
-numPatients = 7
+numPatients = 8
 
 # list all attributes to wipe out in CT
 AttrWipeCT = ['AccessionNumber', 'AcquisitionDate', 'AcquisitionNumber', 'AcquisitionTime', 'ContentDate',
@@ -63,15 +64,19 @@ anatomies = [
     ['Skin', 'O_Cord', 'O_Hrt', 'O_Livr', 'O_Stmc', 'O_Kdny_Rt', 'O_Bwel', 'O_Vssl', 'GTV', 
     'PTV uncropped', 'O_DUOD', 'PTV_CROPPED', 'PTV_HIGH', 'PTV_LOW'],
 
-    ['Skin', 'O_Cord', 'O_Lung_Lt', 'O_Lung_Rt', 'O_Hrt', 'O_Livr', 'O_Lung_Tt', 'O_Kdny_Rt', 'O_Kdny_Lt', 
-    'O_Vssl', 'O_Bwl', 'O_Duod', 'O_Spln', 'PTV 3mm uncroppe', 'O_Stmch', 'PTV_HIGH', 'PTV_LOW', 'PTV_CROPPED'],
+    ['Skin', 'O_Cord', 'O_Lung_Lt', 'O_Lung_Rt', 'O_Hrt', 'O_Livr', 'G_Site', 'O_Lung_Tt', 
+    'O_Kdny_Rt', 'O_Kdny_Lt', 'O_Vssl', 'O_Bwl', 'O_Duod', 'O_Spln', 'PTV 3mm uncroppe', 
+    'O_Stmch', 'PTV_HIGH', 'PTV_LOW', 'PTV_CROPPED'],
 
     ['O_Bldr', 'O_Femr_Lt', 'O_Femr_Rt', 'O_Rctm', 'Skin', 'O_Cord', 'O_Spln', 'O_Livr', 'O_Stmc', 
     'O_Kdny_Rt', 'O_Kdny_Lt', 'O_Bwel', 'O_Duod', 'O_Vssl', 'GTV', 'PTV 50 uncropped', 'PTV_CROPPED', 
     'PTV_HIGH', 'PTV_LOW'],
 
     ['Skin', 'GTV', 'PTV 50_3mm', 'PTV_High', 'O_Duod', 'O_Stmc', 'O_Bwel_Sm', 'O_Bwel_Lg', 'O_Cord', 
-    'O_Esgs', 'O_Vessle', 'O_Kdny_Rt', 'O_Kdny_Lt', 'O_Livr', 'O_Skin', 'PTV_crop', 'O_Nrlms', 'O_Nrmls_3mm']
+    'O_Esgs', 'O_Vessle', 'O_Kdny_Rt', 'O_Kdny_Lt', 'O_Livr', 'PTV_crop', 'O_Nrlms'],
+
+    ['Skin', 'GTV', 'PTV_3MM', 'PTV_crop', 'PTV_High', 'O_Duod', 'O_Stmc', 'O_Bwel_Lg', 'O_Esgs', 
+    'O_Vessle', 'O_Cord', 'O_Kdny_Rt', 'O_Kdny_Lt', 'O_Livr', 'O_Bwel_Sm', 'O_Nrlms', 'O_Panc']
 ]
 
 
@@ -139,10 +144,20 @@ def FullPatientTree():
 FullPatientTree()
 
 
-def anonymize():
+def allAnonymize():
+    modalities = ['CT', 'CTrt', 'MR', 'MRrt', 'dose']
+    for modality in modalities:
+        anonymize(modality)
+
+
+def anonymize(modality):
     if not os.path.isdir(anonymousFolder):
         os.mkdir(anonymousFolder)
-    modality = 'dose'
+    # modality = 'CT'
+    # modality = 'CTrt'
+    # modality = 'MR'
+    # modality = 'MRrt'
+    # modality = 'dose'
 
     # anonymize CT files
     if modality == 'CT':
@@ -396,6 +411,7 @@ def visCTMR():
 def showAnatomy():
     # task = 'sanity'
     task = 'MR'
+    # task = 'CT'
 
     # Firstly, check that the selected anatomies exist
     if task == 'sanity':
@@ -428,25 +444,28 @@ def showAnatomy():
                     flag = False
                     break
             print('{} CT {}\n'.format(patientName, 'correct' if flag else 'incorrect'))
+
+            # print('{}\n{}\n{}\n'.format(patientName, MRROInames, CTROInames))
     
     # Secondly, draw contours
-    # for i in range(numPatients):
-    i = 4
-    patientName = 'patient{}'.format(i+1)
-    patFolder = os.path.join(anonymousFolder, patientName)
-    dicomFolder = os.path.join(patFolder, task)
-    RTfile = os.path.join(patFolder, task + 'rt.dcm')
-    RT = RTStructBuilder.create_from(dicom_series_path=dicomFolder, rt_struct_path=RTfile)
-    anatomyList = anatomies[i]
-    result = drawContours(dicomFolder, RT, anatomyList)
-    outFolder = os.path.join(visFolder, patientName, task+'contour')
-    writeResult(outFolder, result)
-    print(patientName)
+    else:
+        for i in range(numPatients):
+            # i = 4
+            patientName = 'patient{}'.format(i+1)
+            patFolder = os.path.join(anonymousFolder, patientName)
+            dicomFolder = os.path.join(patFolder, task)
+            RTfile = os.path.join(patFolder, task + 'rt.dcm')
+            RT = RTStructBuilder.create_from(dicom_series_path=dicomFolder, rt_struct_path=RTfile)
+            anatomyList = anatomies[i]
+            result = drawContours(dicomFolder, RT, anatomyList)
+            outFolder = os.path.join(visFolder, patientName, task+'contour')
+            writeResult(outFolder, result)
+            print(patientName)
 
 
 def writeResult(outFolder, result):
     if not os.path.isdir(outFolder):
-        os.mkdir(outFolder)
+        os.makedirs(outFolder)
     nSlices = result.shape[3]
     for i in range(nSlices):
         fileName = '{:03d}.png'.format(i+1)
@@ -512,9 +531,112 @@ def colorGen():
         print(len(anatomy))
 
 
+def visDose():
+    """
+    This function is to visualize the dose of MR images
+    """
+    roof = 65535
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        # MRFolder = os.path.join(patFolder, 'MR')
+        doseFile = os.path.join(patFolder, 'MRdose.dcm')
+        dose = pydicom.dcmread(doseFile)
+        dose = dose.pixel_array
+        dose = np.flip(dose, axis=0)
+
+        visFolderDose = os.path.join(visFolder, patientName, 'dose')
+        if not os.path.isdir(visFolderDose):
+            os.mkdir(visFolderDose)
+        for j in range(dose.shape[0]):
+            outFile = '{:03d}.png'.format(j+1)
+            outFile = os.path.join(visFolderDose, outFile)
+            plt.imsave(outFile, dose[j, :, :], vmin=0, vmax=roof)
+        print(patientName)
+
+
+def visDVH():
+    """
+    This function draws DVH
+    """
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        MRFolder = os.path.join(patFolder, 'MR')
+        MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+        MRdoseFile = os.path.join(patFolder, 'MRdose.dcm')
+
+        # get mask
+        MRrt = RTStructBuilder.create_from(dicom_series_path=MRFolder, rt_struct_path=MRrtFile)
+        anatomy = anatomies[i]
+        anatomy.remove('Skin')
+        dose = pydicom.dcmread(MRdoseFile).pixel_array
+        dose = np.flip(dose, axis=0)  # (slice, height, width)
+
+        for name in anatomy:
+            mask = MRrt.get_roi_mask_by_name(name)
+            mask = np.flip(mask, axis=2)  # (height, width, slice)
+            mask = np.transpose(mask, (2, 0, 1))
+            maskedDose = dose[mask]
+            maskedDose = np.sort(maskedDose)
+            size = maskedDose.size
+            xAxis = np.zeros(size+1, dtype=maskedDose.dtype)
+            xAxis[1:] = maskedDose
+            yAxis = np.zeros(size+1, dtype=np.float32)
+            yAxis[0] = 1
+            yAxis[1:] = 1 - np.arange(size) / size
+            plt.plot(xAxis, yAxis)
+        plt.legend(anatomy)
+        plt.title('{} DVH'.format(patientName))
+        plt.xlabel('dose (a.u.)')
+        plt.ylabel('relative volume')
+        outputFile = os.path.join(visFolder, patientName, 'DVH.png')
+        plt.savefig(outputFile)
+        plt.clf()
+        print(patientName)
+
+
+def checkCTrt():
+    """
+    It seems that the RTstruct for CT is empty. This is to check the RTstructures.
+    It turns out that CT anatomy is empty
+    """
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        CTFolder = os.path.join(patFolder, 'CT')
+        CTrtFile = os.path.join(patFolder, 'CTrt.dcm')
+        # anatomy = anatomies[i]
+        CTrt = RTStructBuilder.create_from(dicom_series_path=CTFolder, rt_struct_path=CTrtFile)
+
+        # skin is in anatomy
+        skinMask = CTrt.get_roi_mask_by_name('Skin')
+        print(np.max(skinMask))
+
+
+def moveDVH():
+    """
+    This function moves DVH images to a single file for forward
+    """
+    destFolder = os.path.join(visFolder, 'DVH')
+    if not os.path.isdir(destFolder):
+        os.mkdir(destFolder)
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        source = os.path.join(visFolder, patientName, 'DVH.png')
+        dest = os.path.join(destFolder, patientName + '.png')
+        command = 'cp {} {}'.format(source, dest)
+        os.system(command)
+        
+
 
 if __name__ == '__main__':
+    # allAnonymize()
     # anonymize()
     # visCTMR()
-    showAnatomy()
+    # showAnatomy()
     # colorGen()
+    # visDose()
+    # visDVH()
+    # checkCTrt()
+    moveDVH()
