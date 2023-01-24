@@ -24,7 +24,7 @@ numPatients = 8
 # list all attributes to wipe out in CT
 AttrWipeCT = ['AccessionNumber', 'AcquisitionDate', 'AcquisitionNumber', 'AcquisitionTime', 'ContentDate',
     'ContentTime', 'InstanceCreationDate', 'InstanceCreationTime', 'InstitutionName', 'Manufacturer', 
-    'ManufacturerModelName', 'OperatorsName', 'PatientAge', 'PatientBirthDate', 'PatientName', 'PatientSex', 
+    'ManufacturerModelName', 'OperatorsName', 'PatientAge', 'PatientBirthDate', 'PatientID', 'PatientName', 'PatientSex', 
     'PatientSize', 'PatientWeight', 'PerformingPhysicianName', 'ReferringPhysicianName', 'SeriesDate', 
     'StationName', 'StudyDate']
 
@@ -49,6 +49,11 @@ AttrWipeDose = ['AccessionNumber', 'AcquisitionDate', 'AcquisitionTime', 'Conten
     'InstanceCreationTime', 'InstitutionName', 'Laterality', 'Manufacturer', 'ManufacturerModelName', 'OperatorsName', 
     'PatientAge', 'PatientBirthDate', 'PatientID', 'PatientName', 'PatientSex', 'ReferringPhysicianName', 'SeriesDate', 
     'SeriesDescription', 'SeriesTime', 'StudyDate', 'StudyDescription', 'StudyTime', 'parent']
+
+AttrWipeREG = ['AccessionNumber', 'ContentDate', 'ContentTime', 'InstanceCreationDate', 'InstanceCreationTime', 
+    'InstitutionName', 'Manufacturer', 'ManufacturerModelName', 'PatientAge', 'PatientBirthDate', 'PatientID', 
+    'PatientName', 'PatientSex', 'PerformingPhysicianName', 'PositionReferenceIndicator', 'ReferringPhysicianName', 
+    'SeriesDate', 'StationName', 'StudyDate', 'StudyDescription', 'StudyID', 'StudyTime']
 
 
 anatomies = [
@@ -110,7 +115,7 @@ def FullPatientTree():
         subFolder = folderEvaluate(subFolder)
 
         # find CT folder
-        CTFolder = folderEvaluate(os.path.join(subFolder, '*_CT_*'))
+        CTFolder = folderEvaluate(os.path.join(subFolder, '*_CT_*rotated*'))
         chunks = CTFolder.split('/')[-1]
         chunks = chunks.split('_')
         number = findNumber(chunks)
@@ -129,9 +134,16 @@ def FullPatientTree():
 
         # find MR dose folder
         RTDOSEFolder = folderEvaluate(os.path.join(subFolder, '*_RTDOSE_*_{}_*'.format(number)))
+
+        # find REG folder
+        REGFolder = folderEvaluate(os.path.join(subFolder, '*_REG_*'))
+
+        # find CT Aligned folder
+        CTAlignedFolder = folderEvaluate(os.path.join(subFolder, '*_CT_*Align*'))
         
         patientTree.append({'CT': CTFolder, 'CTrt': CTRTstFolder, 'MR': MRFolder, 
-            'MRrt': MRRTstFolder, 'dose': RTDOSEFolder})
+            'MRrt': MRRTstFolder, 'dose': RTDOSEFolder, 'REG': REGFolder, 
+            'CTAlign': CTAlignedFolder})
 
     # # take a look
     # attrs = patientTree[0].keys()
@@ -145,19 +157,16 @@ FullPatientTree()
 
 
 def allAnonymize():
-    modalities = ['CT', 'CTrt', 'MR', 'MRrt', 'dose']
-    for modality in modalities:
-        anonymize(modality)
+    # modalities = ['CT', 'CTrt', 'MR', 'MRrt', 'dose', 'CTAlign']
+    # for modality in modalities:
+    #     anonymize(modality)
+    modality = 'CTAlign'
+    anonymize(modality)
 
 
 def anonymize(modality):
     if not os.path.isdir(anonymousFolder):
         os.mkdir(anonymousFolder)
-    # modality = 'CT'
-    # modality = 'CTrt'
-    # modality = 'MR'
-    # modality = 'MRrt'
-    # modality = 'dose'
 
     # anonymize CT files
     if modality == 'CT':
@@ -302,6 +311,44 @@ def anonymize(modality):
             wipeMRdose(data)
             data.save_as(newFile)
             print(patientName)
+    
+    elif modality == 'REG':
+        for i in range(len(patientTree)):
+            idx = i + 1
+            patientName = 'patient{}'.format(idx)
+            patFolder = os.path.join(anonymousFolder, patientName)
+            newFile = os.path.join(patFolder, 'REG.dcm')
+
+            patInfo = patientTree[i]
+            REGFolder = patInfo[modality]
+            file = os.listdir(REGFolder)[0]
+            file = os.path.join(REGFolder, file)
+            data = pydicom.dcmread(file)
+            
+            wipeREG(data)
+            data.save_as(newFile)
+            print(patientName)
+    
+
+    if modality == 'CTAlign':
+        for i in range(len(patientTree)):
+            idx = i + 1
+            patientName = 'patient{}'.format(idx)
+            patFolder = os.path.join(anonymousFolder, patientName)
+            newFolder = os.path.join(patFolder, 'CTAlign')
+            if not os.path.isdir(newFolder):
+                os.makedirs(newFolder)
+
+            patInfo = patientTree[i]
+            CTAlignFolder = patInfo[modality]
+            files = dicomSort(CTAlignFolder, 'CT')
+            for j, file in enumerate(files):
+                file_ = os.path.join(CTAlignFolder, file)
+                data = pydicom.dcmread(file_)
+                wipeCT(data)
+                outFile = os.path.join(newFolder, '{:03d}.dcm'.format(j+1))
+                data.save_as(outFile)
+            print(patientName)
 
 
 def wipeCT(CTdata):
@@ -325,6 +372,11 @@ def wipeMRrt(data):
 
 def wipeMRdose(data):
     for attr in AttrWipeDose:
+        setattr(data, attr, '')
+
+
+def wipeREG(data):
+    for attr in AttrWipeREG:
         setattr(data, attr, '')
 
 
@@ -473,7 +525,7 @@ def writeResult(outFolder, result):
         plt.imsave(fileName, result[:, :, :, i])
         
 
-def drawContours(dicomFolder, RT, anatomyList):
+def drawContours(dicomFolder, RT, anatomyList, shape=None):
     """
     This function draws contour on the dicom images
     """
@@ -498,11 +550,15 @@ def drawContours(dicomFolder, RT, anatomyList):
         roof = np.max(pixel_array)
         pixel_array = np.uint8(pixel_array / roof * scale)
         pixel_array = np.stack((pixel_array, ) * channels, axis=2)
-        result[:, :, :, i] = pixel_array
+        result[:, :, :, i] = cv2.resize(pixel_array, shape[:2])
     
     image = np.ones((height, width, channels), dtype=np.uint8) * scale
     for j, anatomy in enumerate(anatomyList):
-        mask = RT.get_roi_mask_by_name(anatomy)
+        try:
+            mask = RT.get_roi_mask_by_name(anatomy)
+        except:
+            print(anatomy)
+            exit()
         mask = np.flip(mask, axis=2)
         for i in range(slices):
             maskSlice = mask[:, :, i]
@@ -627,7 +683,165 @@ def moveDVH():
         dest = os.path.join(destFolder, patientName + '.png')
         command = 'cp {} {}'.format(source, dest)
         os.system(command)
+
+
+def showAnatomyCT():
+    """
+    This function draws anatomy on aligned CT images
+    """
+    for i in range(numPatients):
+        idx = i + 1
+        patientName = 'patient{}'.format(idx)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        CTAlignedFolder = os.path.join(patFolder, 'CTAlign')
+        MRFolder = os.path.join(patFolder, 'MR')
+        MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+
+        # generate RTstruct
+        RTstruct = RTStructBuilder.create_from(
+            dicom_series_path=MRFolder, rt_struct_path=MRrtFile)
+        anatomy = anatomies[i]
         
+        # extract MR shape
+        exampleMRFile = os.listdir(MRFolder)[0]
+        exampleMRFile = os.path.join(MRFolder, exampleMRFile)
+        MRdata = pydicom.dcmread(exampleMRFile).pixel_array
+        MRshape = MRdata.shape
+        result = drawContours(CTAlignedFolder, RTstruct, anatomy, shape=MRshape)
+        
+        outFolder = os.path.join(visFolder, patientName, 'CTContour')
+        if not os.path.isdir(outFolder):
+            os.makedirs(outFolder)
+        for j in range(result.shape[3]):
+            slice = result[:, :, :, j]
+            outFile = os.path.join(outFolder, '{:03d}.png'.format(j+1))
+            plt.imsave(outFile, slice)
+        print(patientName)
+
+
+def CTAlignReshape():
+    """
+    Though CTAlign is supposed to be aligned with MR images, 
+    they share different sizes. So this function aims to resize 
+    original CT slices to MR slice sizes
+    """
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        CTAlignFolder = os.path.join(patFolder, 'CTAlign')
+        MRFolder = os.path.join(patFolder, 'MR')
+        exampleMRFile = os.listdir(MRFolder)[0]
+        exampleMRFile = os.path.join(MRFolder, exampleMRFile)
+        exampleMRSlice = pydicom.dcmread(exampleMRFile).pixel_array
+        MRSliceSize = exampleMRSlice.shape
+
+        newCTFolder = os.path.join(patFolder, 'CTAlignResize')
+        if not os.path.isdir(newCTFolder):
+            os.makedirs(newCTFolder)
+
+        CTFiles = os.listdir(CTAlignFolder)
+        CTFiles.sort()
+        for j in range(len(CTFiles)):
+            file = CTFiles[j]
+            file_ = os.path.join(CTAlignFolder, file)
+            dicomData = pydicom.dcmread(file_)
+            pixel_array = dicomData.pixel_array
+            pixel_array = cv2.resize(pixel_array, MRSliceSize)
+            # dicomData.pixel_array = pixel_array
+            dicomData.PixelData = pixel_array
+
+            ColumnsOrg = dicomData.Columns
+            RowsOrg = dicomData.Rows
+            PixelSpacingOrg = dicomData.PixelSpacing
+
+            dicomData.Columns = MRSliceSize[0]
+            dicomData.Rows = MRSliceSize[1]
+            PixelSpacingNew = [PixelSpacingOrg[0] * ColumnsOrg / MRSliceSize[0],
+                PixelSpacingOrg[1] * RowsOrg / MRSliceSize[1]]
+            dicomData.PixelSpacing = PixelSpacingNew
+
+            outFile = os.path.join(newCTFolder, file)
+            dicomData.save_as(outFile)
+        print(patientName)
+
+
+def createCTAnatomy():
+    """
+    As the original anatomy is annotated on MR images, 
+    here we transfer to CT images
+    """
+    for i in range(numPatients):
+        idx = i + 1
+        patientName = 'patient{}'.format(idx)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        MRFolder = os.path.join(patFolder, 'MR')
+        MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+        CTAlignFolder = os.path.join(patFolder, 'CTAlignResize')
+        MRrt = RTStructBuilder.create_from(
+            dicom_series_path=MRFolder, rt_struct_path=MRrtFile)
+        RTnames = MRrt.get_roi_names()
+
+        # create CTrt
+        CTrt = RTStructBuilder.create_new(dicom_series_path=CTAlignFolder)
+        for RTname in RTnames:
+            try:
+                mask = MRrt.get_roi_mask_by_name(RTname)
+            except:
+                print(patientName, RTname)
+                continue
+            CTrt.add_roi(mask=mask, name=RTname)
+        
+        outputFile = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
+        CTrt.save(outputFile)
+        print(patientName)
+
+
+def visCTrtAgain():
+    """
+    This function draws the RTstruct of CTAlignResize
+    """
+
+    # # firstly, draw original images
+    # scale = 255
+    # for i in range(numPatients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     patFolder = os.path.join(anonymousFolder, patientName)
+    #     CTFolder = os.path.join(patFolder, 'CTAlignResize')
+
+    #     outFolder = os.path.join(visFolder, patientName, 'CTnew')
+    #     if not os.path.isdir(outFolder):
+    #         os.makedirs(outFolder)
+        
+    #     files = os.listdir(CTFolder)
+    #     files.sort()
+    #     for j, file in enumerate(files):
+    #         inFile = os.path.join(CTFolder, file)
+    #         outFile = os.path.join(outFolder, '{:03d}.png'.format(j+1))
+    #         pixel_array = pydicom.dcmread(inFile).pixel_array
+    #         roof = np.max(pixel_array)
+    #         pixel_array = np.uint8(pixel_array / roof * scale)
+    #         plt.imsave(outFile, pixel_array, cmap='gray')
+    #     print(patientName)
+
+    # secondly, draw CT images with anatomy
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        CTFolder = os.path.join(patFolder, 'CTAlignResize')
+        CTrtFile = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
+        CTrt = RTStructBuilder.create_from(
+            dicom_series_path=CTFolder, rt_struct_path=CTrtFile)
+        anatomy = anatomies[i]
+        result = drawContours(CTFolder, CTrt, anatomy)
+        outFolder = os.path.join(visFolder, patientName, 'CTnew')
+
+        if not os.path.isdir(outFolder):
+            os.mkdir(outFolder)
+        for j in range(result.shape[3]):
+            outFile = os.path.join(outFolder, '{:03d}.png'.format(j+1))
+            slice = result[:, :, :, j]
+            plt.imsave(outFile, slice, cmap='gray')
+        print(patientName)
 
 
 if __name__ == '__main__':
@@ -639,4 +853,8 @@ if __name__ == '__main__':
     # visDose()
     # visDVH()
     # checkCTrt()
-    moveDVH()
+    # moveDVH()
+    # showAnatomyCT()
+    # CTAlignReshape()
+    createCTAnatomy()
+    # visCTrtAgain()
