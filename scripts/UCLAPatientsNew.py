@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pydicom
 import cv2
 from rt_utils import RTStructBuilder
+from rt_utils import ds_helper
 
 """
 Last time we processed some patients. However, we noticed that the RTstruct 
@@ -525,7 +526,7 @@ def writeResult(outFolder, result):
         plt.imsave(fileName, result[:, :, :, i])
         
 
-def drawContours(dicomFolder, RT, anatomyList, shape=None):
+def drawContours(dicomFolder, RT, anatomyList):
     """
     This function draws contour on the dicom images
     """
@@ -552,13 +553,24 @@ def drawContours(dicomFolder, RT, anatomyList, shape=None):
         pixel_array = np.stack((pixel_array, ) * channels, axis=2)
         result[:, :, :, i] = cv2.resize(pixel_array, shape[:2])
     
+    # firstly, verify that anatomyList is contained
+    anatomyGT = RT.get_roi_names()
+    flag = False
+    for ana in anatomyList:
+        if ana not in anatomyList:
+            print(ana)
+            flag = True
+    if flag:
+        exit()
+
     image = np.ones((height, width, channels), dtype=np.uint8) * scale
     for j, anatomy in enumerate(anatomyList):
-        try:
-            mask = RT.get_roi_mask_by_name(anatomy)
-        except:
-            print(anatomy)
-            exit()
+        # try:
+        #     mask = RT.get_roi_mask_by_name(anatomy)
+        # except:
+        #     print(anatomy)
+        #     exit()
+        mask = RT.get_roi_mask_by_name(anatomy)
         mask = np.flip(mask, axis=2)
         for i in range(slices):
             maskSlice = mask[:, :, i]
@@ -707,7 +719,7 @@ def showAnatomyCT():
         exampleMRFile = os.path.join(MRFolder, exampleMRFile)
         MRdata = pydicom.dcmread(exampleMRFile).pixel_array
         MRshape = MRdata.shape
-        result = drawContours(CTAlignedFolder, RTstruct, anatomy, shape=MRshape)
+        result = drawContours(CTAlignedFolder, RTstruct, anatomy)
         
         outFolder = os.path.join(visFolder, patientName, 'CTContour')
         if not os.path.isdir(outFolder):
@@ -719,7 +731,7 @@ def showAnatomyCT():
         print(patientName)
 
 
-def CTAlignReshape():
+def CTAlignResize():
     """
     Though CTAlign is supposed to be aligned with MR images, 
     they share different sizes. So this function aims to resize 
@@ -770,6 +782,17 @@ def createCTAnatomy():
     As the original anatomy is annotated on MR images, 
     here we transfer to CT images
     """
+
+    # # seems something wrong with PTV_LOW, below is the debug block
+    # patientName = 'patient1'
+    # patFolder = os.path.join(anonymousFolder, patientName)
+    # MRFolder = os.path.join(patFolder, 'MR')
+    # MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+    # MRrt = RTStructBuilder.create_from(MRFolder, MRrtFile)
+    # PTV_LOW_mask = MRrt.get_roi_mask_by_name('PTV_LOW')
+    # print(np.sum(PTV_LOW_mask))
+    # return
+
     for i in range(numPatients):
         idx = i + 1
         patientName = 'patient{}'.format(idx)
@@ -777,9 +800,17 @@ def createCTAnatomy():
         MRFolder = os.path.join(patFolder, 'MR')
         MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
         CTAlignFolder = os.path.join(patFolder, 'CTAlignResize')
+        assert os.path.isdir(CTAlignFolder)
         MRrt = RTStructBuilder.create_from(
             dicom_series_path=MRFolder, rt_struct_path=MRrtFile)
-        RTnames = MRrt.get_roi_names()
+        RTnames_pre = MRrt.get_roi_names()
+
+        # filter RTnames
+        RTnames = []
+        for a in RTnames_pre:
+            if a not in RTnames:
+                RTnames.append(a)
+        print(RTnames)
 
         # create CTrt
         CTrt = RTStructBuilder.create_new(dicom_series_path=CTAlignFolder)
@@ -794,6 +825,126 @@ def createCTAnatomy():
         outputFile = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
         CTrt.save(outputFile)
         print(patientName)
+
+    # # the previous method fails. Instead of converting every mask to CT anatomy, 
+    # # maybe we can transfer the file as a whole?
+    # for i in range(numPatients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     patFolder = os.path.join(anonymousFolder, patientName)
+    #     MRFolder = os.path.join(patFolder, 'MR')
+    #     MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+    #     MRrt = RTStructBuilder.create_from(dicom_series_path=MRFolder, rt_struct_path=MRrtFile)
+
+    #     # frame_of_reference_uid = MRrt.frame_of_reference_uid
+    #     # # iterate through all MR files
+    #     # MRfiles = dicomSort(MRFolder, 'MR')
+    #     # for file in MRfiles:
+    #     #     File = os.path.join(MRFolder, file)
+    #     #     data = pydicom.dcmread(File)
+    #     #     print(data.FrameOfReferenceUID)
+    #     # print('MRrt UID: {}'.format(frame_of_reference_uid))
+        
+    #     # find CT FrameOfReferenceUID
+    #     CTAlignResize = os.path.join(patFolder, 'CTAlignResize')
+    #     file = os.listdir(CTAlignResize)[0]
+    #     file = os.path.join(CTAlignResize, file)
+    #     data = pydicom.dcmread(file)
+    #     print(patientName)
+    #     print('CT FrameOfReferenceUID: {}'.format(data.FrameOfReferenceUID))
+    #     print('MRrt frame_of_reference_uid: {}\n'.format(MRrt.frame_of_reference_uid))
+
+    # # maybe it's okay to just copy the original RTstruct?
+    # # however, the mask is empty, don't know why
+    # for i in range(numPatients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     patFolder = os.path.join(anonymousFolder, patientName)
+    #     CTFolder = os.path.join(patFolder, 'CTAlignResize')
+    #     CTrtFile = os.path.join(patFolder, 'MRrt.dcm')
+    #     CTrt = RTStructBuilder.create_from(CTFolder, CTrtFile)
+    #     anatomies = CTrt.get_roi_names()
+    #     for ana in anatomies:
+    #         try:
+    #             mask = CTrt.get_roi_mask_by_name(ana)
+    #         except:
+    #             print('{} {}'.format(patientName, mask))
+    #         print('{} {} number of voxels: {}'.format(patientName, ana, np.sum(mask)))
+
+    # # just copy it!
+    # for i in range(numPatients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     patFolder = os.path.join(anonymousFolder, patientName)
+    #     sourceFile = os.path.join(patFolder, 'MRrt.dcm')
+    #     targetFile = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
+    #     command = 'cp {} {}'.format(sourceFile, targetFile)
+    #     os.system(command)
+    #     print(command)
+
+
+def createCTAnatomy_mini():
+    """
+    This function focuses on the particular case of patient one with anatomy 'PTV_LOW'
+    """
+    # phase = 'write'
+    # phase = 'read'
+    # phase = 'debug'
+    phase = 'examine'
+
+    # write
+    patientName = 'patient1'
+    patFolder = os.path.join(anonymousFolder, patientName)
+    CTFolder = os.path.join(patFolder, 'CTAlignResize')
+    assert os.path.isdir(CTFolder)
+    CTrtFile = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
+    MRFolder = os.path.join(patFolder, 'MR')
+    assert os.path.isdir(MRFolder)
+    MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+    key = 'PTV_LOW'
+    MRrt = RTStructBuilder.create_from(MRFolder, MRrtFile)
+
+    if phase == 'write':
+        anatomies = MRrt.get_roi_names()
+        assert key in anatomies
+        print(MRrt.series_data)
+
+        keyMask = MRrt.get_roi_mask_by_name(key)
+        CTrt = RTStructBuilder.create_new(dicom_series_path=CTFolder)
+        CTrt.add_roi(mask=keyMask, name=key)
+
+        maskTemp = CTrt.get_roi_mask_by_name(key)
+
+        CTrt.save(CTrtFile)
+    
+    elif phase == 'read':
+        CTrt = RTStructBuilder.create_from(CTFolder, CTrtFile)
+        keyMask = CTrt.get_roi_mask_by_name(key)
+        print(np.max(keyMask))
+    
+    elif phase == 'debug':
+        for structure_roi in MRrt.ds.StructureSetROISequence:
+            # print(structure_roi.ROIName)
+            if structure_roi.ROIName == key:
+                contour_sequence = ds_helper.get_contour_sequence_by_roi_number(
+                    MRrt.ds, structure_roi.ROINumber)
+        print(patientName)
+    
+    elif phase == 'examine':
+        # here we study different attributes of MR series and CT series
+        # seems that the geometry parameters of the two modalities are the same (almost)
+        MRfile = dicomSort(MRFolder, 'MR')[0]
+        MRfile = os.path.join(MRFolder, MRfile)
+        CTfile = dicomSort(CTFolder, 'CT')[0]
+        CTfile = os.path.join(CTFolder, CTfile)
+        MRdata = pydicom.dcmread(MRfile)
+        CTdata = pydicom.dcmread(CTfile)
+        print('CT:')
+        print('offset: {}'.format(CTdata.ImagePositionPatient))
+        print('pixel spacing: {}'.format(CTdata.PixelSpacing))
+        print('orientation: {}\n'.format(CTdata.ImageOrientationPatient))
+
+        print('MR:')
+        print('offset: {}'.format(MRdata.ImagePositionPatient))
+        print('pixel spacing; {}'.format(MRdata.PixelSpacing))
+        print('orientation: {}\n'.format(MRdata.ImageOrientationPatient))
 
 
 def visCTrtAgain():
@@ -844,6 +995,42 @@ def visCTrtAgain():
         print(patientName)
 
 
+def CTAlignResizeSanityCheck():
+    """
+    There seems to be something wrong with the RTstructure of the newly 
+    generated CTAlignResize. This function is for sanity check
+    """
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        CTAlignResize = os.path.join(patFolder, 'CTAlignResize')
+        CTrtFile = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
+        MRFolder = os.path.join(patFolder, 'MR')
+        MRrtFile = os.path.join(patFolder, 'MRrt.dcm')
+
+        CTrt = RTStructBuilder.create_from(
+            dicom_series_path=CTAlignResize, rt_struct_path=CTrtFile)
+        MRrt = RTStructBuilder.create_from(
+            dicom_series_path=MRFolder, rt_struct_path=MRrtFile)
+        CTAnatomies = CTrt.get_roi_names()
+        MRAnatomies = MRrt.get_roi_names()
+        
+        # calculate intersection
+        Anatomies = [a for a in CTAnatomies if a in MRAnatomies]
+        print(patientName)
+        for ana in Anatomies:
+            try:
+                maskCT = CTrt.get_roi_mask_by_name(ana)
+            except:
+                print('Having problem extracting the mask of {}'.format(ana))
+                continue
+            maskMR = MRrt.get_roi_mask_by_name(ana)
+            diff = (maskCT != maskMR)
+            Ndiff = np.sum(diff)
+            print(ana, Ndiff)
+        print('\n')
+
+
 if __name__ == '__main__':
     # allAnonymize()
     # anonymize()
@@ -855,6 +1042,8 @@ if __name__ == '__main__':
     # checkCTrt()
     # moveDVH()
     # showAnatomyCT()
-    # CTAlignReshape()
-    createCTAnatomy()
+    # CTAlignResize()
+    # createCTAnatomy()
     # visCTrtAgain()
+    # CTAlignResizeSanityCheck()
+    createCTAnatomy_mini()
