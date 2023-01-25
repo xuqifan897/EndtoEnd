@@ -56,7 +56,6 @@ AttrWipeREG = ['AccessionNumber', 'ContentDate', 'ContentTime', 'InstanceCreatio
     'PatientName', 'PatientSex', 'PerformingPhysicianName', 'PositionReferenceIndicator', 'ReferringPhysicianName', 
     'SeriesDate', 'StationName', 'StudyDate', 'StudyDescription', 'StudyID', 'StudyTime']
 
-
 anatomies = [
     ['Skin', 'GTV', 'PTV 50 uncropped', 'O_Cord', 'O_Esgs', 'O_Hrt', 'O_Livr', 'O_Stmc', 'O_Kdny_Rt', 
     'O_Kdny_Lt', 'O_Bwel_Sm', 'O_Bwel_Lg', 'O_Duodenum', 'PTV_CROP', 'PTV_LOW', 'PTV_HIGH'],
@@ -85,6 +84,9 @@ anatomies = [
     'O_Vessle', 'O_Cord', 'O_Kdny_Rt', 'O_Kdny_Lt', 'O_Livr', 'O_Bwel_Sm', 'O_Nrlms', 'O_Panc']
 ]
 
+# some of the anatomies are not working properly, so just skip them
+skipList = [['PTV_LOW'], ['PTV_LOW'], ['PTV_LOW'], ['PTV_LOW'], 
+    ['PTV_HIGH', 'PTV_LOW', 'PTV_CROPPED'], ['PTV_LOW', 'PTV_CROPPED'], ['PTV_crop'], []]
 
 colors = [(231, 203, 107), (152, 153, 139), (97, 111, 175), (60, 42, 162), (75, 172, 12), 
     (35, 69, 171), (86, 201, 174), (16, 103, 52), (204, 19, 136), (121, 104, 80), 
@@ -565,12 +567,10 @@ def drawContours(dicomFolder, RT, anatomyList):
 
     image = np.ones((height, width, channels), dtype=np.uint8) * scale
     for j, anatomy in enumerate(anatomyList):
-        # try:
-        #     mask = RT.get_roi_mask_by_name(anatomy)
-        # except:
-        #     print(anatomy)
-        #     exit()
-        mask = RT.get_roi_mask_by_name(anatomy)
+        try:
+            mask = RT.get_roi_mask_by_name(anatomy)
+        except:
+            print(anatomy)
         mask = np.flip(mask, axis=2)
         for i in range(slices):
             maskSlice = mask[:, :, i]
@@ -880,6 +880,29 @@ def createCTAnatomy():
     #     print(command)
 
 
+def CTAnatomyPurify():
+    """
+    Some of the CT anatomies does not work properly, just skip them
+    """
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        patFolder = os.path.join(anonymousFolder, patientName)
+        CTFolder = os.path.join(patFolder, 'CTAlignResize')
+        CTrtSource = os.path.join(patFolder, 'CTAlignResizeRT.dcm')
+        CTrtDest = os.path.join(patFolder, 'CTrtFilter.dcm')
+        CTrt = RTStructBuilder.create_from(CTFolder, CTrtSource)
+        CTrtNew = RTStructBuilder.create_new(CTFolder)
+
+        names = CTrt.get_roi_names()
+        skip = skipList[i]
+        for name in names:
+            if name in skip:
+                continue
+            mask = CTrt.get_roi_mask_by_name(name)
+            CTrtNew.add_roi(mask=mask, name=name)
+        CTrtNew.save(CTrtDest)
+
+
 def createCTAnatomy_mini():
     """
     This function focuses on the particular case of patient one with anatomy 'PTV_LOW'
@@ -983,7 +1006,9 @@ def visCTrtAgain():
         CTrt = RTStructBuilder.create_from(
             dicom_series_path=CTFolder, rt_struct_path=CTrtFile)
         anatomy = anatomies[i]
+        print(patientName)
         result = drawContours(CTFolder, CTrt, anatomy)
+        print('\n')
         outFolder = os.path.join(visFolder, patientName, 'CTnew')
 
         if not os.path.isdir(outFolder):
@@ -992,7 +1017,6 @@ def visCTrtAgain():
             outFile = os.path.join(outFolder, '{:03d}.png'.format(j+1))
             slice = result[:, :, :, j]
             plt.imsave(outFile, slice, cmap='gray')
-        print(patientName)
 
 
 def CTAlignResizeSanityCheck():
@@ -1044,6 +1068,7 @@ if __name__ == '__main__':
     # showAnatomyCT()
     # CTAlignResize()
     # createCTAnatomy()
+    CTAnatomyPurify()
     # visCTrtAgain()
     # CTAlignResizeSanityCheck()
-    createCTAnatomy_mini()
+    # createCTAnatomy_mini()
