@@ -1,0 +1,113 @@
+MANIFEST.in
+tox.ini
+pytest.ini
+pykern_setup.yaml
+.python-version
+.#*
+\#*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+.eggs/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# IDE
+.idea/
+
+# project data blobs (either generated or stored elsewhere)
+data/ctdata/*
+data/temp
+data/sparse_output*
+data/results
+data/debug/*
+!data/temp/beam_list.txt
+!doc/example*
+!data/spectra/*
+data/dsa/generated/*
+extern/**/*.h5
+# nvcc/cuda visual profiling saves
+profiling/
+*.nvvp
+
+**/__pycache__
+
+# nvidia nsight eclipse project files
+.settings/*
+.project
+.cproject
+
+# vscode project files
+.vscode/*
+
+# code completion definitions
+.ycm_extra_conf.py
+
+# local debug scripts
+local_tests/*
+
+# autotesting log files
+*.log
+*.log.*
+# valgrind profiling output
+tests/*.out.*
+include/version.h
+
+*.h5
+venv/
+test_data/
+test_results/

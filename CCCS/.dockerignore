@@ -1,0 +1,13 @@
+*.log
+*.gdb
+*.out
+*.prof
+tags*
+*.taghl
+build*/
+venv
+validation/
+profiling/
+test_data/
+test_results/
+

@@ -1,0 +1,15 @@
+Copy template folder
+Open "run_dosecalc.sh" in gedit
+change name of BBOX (body contour) if necessary
+save file
+
+Open terminal
+change directory to folder
+	"cd <folder_name>"
+Run dosecalc script
+	"bash run_dosecalc.sh"
+dose results (M-matrix) will be saved to "Dose_Coefficients.h5"
+
+Read M-matrix into matlab
+Run the command: 
+	dose_data = read_dose_data("Dose_Coefficients.h5")
