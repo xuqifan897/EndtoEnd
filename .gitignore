@@ -54,7 +54,6 @@ lib/*
 bin/*
 .vscode/*
 
-data
 kernelGen
 *.pptx
 *.aux
