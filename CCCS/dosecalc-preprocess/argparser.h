@@ -40,6 +40,7 @@ struct CLIArgs {
     std::string  ctlut_file;                          // path to file defining CT number to mass density conversion
 
     /* Beamlet Params */
+    std::string  structures_file;                     // path to structures.json describing optimization structures
     float2       beamlet_size        = {0.5f, 0.5f};  // bi-directional size of beamlet [unit: cm]
     uint2        fmap_dims           = {40,40};       // bi-directional size of fluence map
 
@@ -50,6 +51,7 @@ struct CLIArgs {
     unsigned int dev                 = 0;             // GPU id
 
     /* Flags */
+    bool         reduce              = false;         // reduction prunes all voxels from sparse dose that aren't in specified structures
     bool         apertureready       = false;         // perform aperture-ready post-processing on automatically defined fluence maps
     bool         all_beamlets        = false;         // activate all beamlets in field rather than just those touching target
     bool         nolut               = false;         // disable use of the CT LUT (hotfix)
@@ -87,6 +89,8 @@ void print_usage() {
     printf("     --ssfactor=<int>                terma anti-aliasing factor (must be >=1; 1 to disable)\n");
     printf("\n");
     printf("   Data Definition:\n");
+    printf("     --structures=<file>             json file listing optimization/target structures\n");
+    printf("     --reduce                        reduce M matrix to A matrix using OAR structures\n");
     printf("     --spec=<file>                   name of file describing beam energy spectrum (def: \"spec_6mv\")\n");
     printf("     --target=<str>                  substring of name of PTV defined in rtstruct file\n");
     printf("     --target-exact=<str>            exact name of PTV defined in rtstruct file\n");
@@ -107,6 +111,7 @@ void print_usage() {
 }
 int parse_flags(CLIArgs& args, int argc, char *argv[]) {
     // parse only for boolean flags
+    if (checkCmdLineFlag( argc, (const char**)argv, "reduce"  )) { args.reduce = true; };
     if (checkCmdLineFlag( argc, (const char**)argv, "aperture-ready"  )) { args.apertureready = true; };
     if (checkCmdLineFlag( argc, (const char**)argv, "all-beamlets"  )) { args.all_beamlets = true; };
     if (checkCmdLineFlag( argc, (const char**)argv, "nolut"  )) { args.nolut = true; };
@@ -202,6 +207,9 @@ int parse_data(CLIArgs& args, int argc, char *argv[]) {
         args.beam_spec = std::string(arg);
     }
 
+    if (getCmdLineArgumentString( argc, (const char**)argv, "structures", &arg )) {
+        args.structures_file = std::string(arg);
+    }
     if (getCmdLineArgumentString( argc, (const char**)argv, "ctlut", &arg )) {
         args.ctlut_file = std::string(arg);
     }
@@ -264,6 +272,7 @@ int parse_config(CLIArgs& args, int argc, char *argv[]) {
     get_and_assign_scalar<int>(args.verbose, conf, "verbose", verbose);
     get_and_assign_scalar<bool>(args.timing, conf, "timing", verbose);
     get_and_assign_scalar<int>(args.nbeams_requested, conf, "nbeams", verbose);
+    get_and_assign_scalar<bool>(args.reduce, conf, "reduce", verbose);
     get_and_assign_scalar<bool>(args.apertureready, conf, "apertureready", verbose);
 
     get_and_assign_scalar<std::string>(args.beam_spec, conf, "spec", verbose);
@@ -274,6 +283,7 @@ int parse_config(CLIArgs& args, int argc, char *argv[]) {
     }
     get_and_assign_scalar<std::string>(args.bbox_roi_name, conf, "bbox-roi", verbose);
     get_and_assign_scalar<std::string>(args.beam_file, conf, "beamlist", verbose);
+    get_and_assign_scalar<std::string>(args.structures_file, conf, "structures", verbose);
     get_and_assign_scalar<std::string>(args.ctlut_file, conf, "ctlut", verbose);
     get_and_assign_scalar<std::string>(args.fmaps_file, conf, "fmaps", verbose);
     if (verbose) { std::cout << std::endl; }

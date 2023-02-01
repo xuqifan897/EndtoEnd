@@ -22,7 +22,7 @@ RUN cd /src && mkdir build && cd build && \
 COPY ./docker_run.sh /docker_run.sh
 WORKDIR /dosecalc
 ENV DOSECALC_DATA="/dosecalc/share"
-CMD ["/docker_run.sh"]
+CMD ["bash", "/docker_run.sh"]
 
 #######################
 # BEGIN RUNTIME BUILD #

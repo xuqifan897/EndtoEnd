@@ -20,7 +20,8 @@ int write_omni_header(
         float kernel_extent,
         uint  ss_factor,
         uint3 max_rev_size,
-        float penumbra
+        float penumbra,
+        bool reduce
 ) {
     char headerfile[1024];
     FILE *hout;
@@ -53,6 +54,7 @@ int write_omni_header(
             "# | beam_count         - Number of beams to pick from beam_list.txt  |\n"
             "# | beam_spectrum      - beam energy spectrum file to use            |\n"
             "# | target_structure   - Name of selected target contour             |\n"
+            "# | reduce coeff. mat  - M-matrix to A-matrix reduction requested?   |\n"
             "# ===================================================================\n\n"
             );
 
@@ -71,6 +73,7 @@ int write_omni_header(
     fprintf(hout,"%d\n",       beam_count );
     fprintf(hout,"%s\n",       beam_spec.c_str());
     fprintf(hout,"%s\n",       target_structure.c_str());
+    fprintf(hout,"%d\n",       (int)reduce);
     fclose(hout);
 
     return 1;
@@ -111,6 +114,9 @@ int load_omni_header( CONSTANTS *host, bool verbose )
     host->beam_spec[strlen(host->beam_spec)-1] = '\0';
     fgets(host->target_structure,99, header_in );
     host->target_structure[strlen(host->target_structure)-1] = '\0';
+    int tempreduce;
+    fscanf(header_in, "%d", &tempreduce);
+    host->reduce = (bool)tempreduce;
 
     if (ferror(header_in) || feof(header_in)) {
         printf("Error Reading Omni-header, Aborting\n");
@@ -148,6 +154,7 @@ int load_omni_header( CONSTANTS *host, bool verbose )
         printf("  # Beams:                %d\n", host->beam_count );
         printf("  Beam-spec:              %s\n", host->beam_spec);
         printf("  Target Structure:       %s\n", host->target_structure);
+        printf("  Reduce Dose Matrix:     %s\n\n", host->reduce ? "yes" : "no");
     }
 
     return 1;

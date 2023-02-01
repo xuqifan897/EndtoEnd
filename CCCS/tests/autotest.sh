@@ -53,6 +53,7 @@ test_main() {
         data/spectra/spec_6mv.spec
         'data/ctdata/dosecalc_testdata001_prostate/2.16.840.1.114362.1.6.6.5.16628.11442066728.464245670.819.211.dcm'
         tests/input_files/beamlist_4pi.txt
+        tests/input_files/structures_prostate.json
     )
     for f in ${test_files[@]}; do
         test_existence_file "$f"

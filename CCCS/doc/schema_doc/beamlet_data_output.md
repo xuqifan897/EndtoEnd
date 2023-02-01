@@ -1,11 +1,11 @@
 ## Data Hierarchy:
-Description of HDF5 group/attribute/dataset hierarchy with valid field names, datatypes, and element counts
+Description of HDF5 group/attribute/dataset hierarchy with valid field names, datatypes, and element counts (`!|-` indicates a conditional field only added when ROI-masking/row-reduction is performed)
 ```c++
 GROUP "/" {
 |-  GROUP "filetype" {
 |   |-  ATTRIBUTE "ftmagic"               { [1] H5T_STD_U8LE = 43 }
 |   |-  ATTRIBUTE "ftversionmajor"        { [1] H5T_STD_U8LE = 1 }
-|   |-  ATTRIBUTE "ftversionminor"        { [1] H5T_STD_U8LE = 3 }
+|   |-  ATTRIBUTE "ftversionminor"        { [1] H5T_STD_U8LE = 2 }
 |   }
 | 
 |+  GROUP "calc_specs" {
@@ -24,6 +24,8 @@ GROUP "/" {
 |   |-  ATTRIBUTE "voxel_size_cm"         { H5T_ARRAY { [3] H5T_IEEE_F32LE } }
 |   |-  ATTRIBUTE "beam_spectrum"         { [str_len] H5T_STRING }
 |   |-  ATTRIBUTE "target_structure"      { [str_len] H5T_STRING }
+|  !|-  ATTRIBUTE "roi_order"             { [N_roi [variable] ] H5T_STRING }
+|  !|-  ATTRIBUTE "row_block_capacities"  { [N_roi] H5T_STD_U64LE }
 |   }
 |
 |+  GROUP "beams" {
@@ -34,6 +36,7 @@ GROUP "/" {
 |   |   |   |   |-  ATTRIBUTE "beamlet_uid"           { [3] H5T_STD_U16LE }
 |   |   |   |   |-  ATTRIBUTE "perc_dropped"          { [1] H5T_IEEE_F32LE DATASPACE }
 |   |   |   |   |-  ATTRIBUTE "perc_nonzero"          { [1] H5T_IEEE_F32LE DATASPACE }
+|   |   |  !|   |-  ATTRIBUTE "row_block_sizes        { [N_roi] H5T_STD_U64LE } 
 |   |   |   |   |-  DATASET "coeffs"                  { [N_coeffs] H5T_IEEE_F32BE }
 |   |   |   |   |-  DATASET "lindex"                  { [N_coeffs] H5T_STD_U32LE }
 |   |   |   |   }
@@ -95,6 +98,10 @@ struct HEADER_PATIENT {
     float       kernel_extent_cm;     // maximum radial distance used in CCCS [cm]
     std::string beam_spectrum;        // name of beam spectrum file (describes beam energy)
     std::string target_structure;     // name of structure to which dose is delivered
+
+    // Added after reduction of column
+    std::vector<std::string> roi_order{};            // ordered list of roi_names for Row-Blocks in reduced A-matrix
+    std::vector<uint64_t>    row_block_capacities{}; // ord. list of row block capacities matching roi_order
 };
 ```
 ### Beam Attributes [`/beam_###/`]:
@@ -129,6 +136,9 @@ enum class ISO_T {
 struct HEADER_BEAMLET {
     ushort      beamlet_uid;      // UID for beamlet (linearized index into 2D fluence map)
     uint64_t    N_coeffs;         // number of non-zero coeffs in column
+
+    // added after reduction of column
+    std::vector<uint64_t> row_block_sizes;                      // list indicating true non-zeros per row-block after reduction
 };
 ```
 ### Sparse Dataset: [`/beam_###/beamlet_###/{lindex,coeffs}`]:

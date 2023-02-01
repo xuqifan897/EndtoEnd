@@ -27,6 +27,7 @@
 
 // Sparsify Worker Queue from main.cu shared across threads
 extern SparsifyManager   sparsifymanager;
+extern ROIMaskList       roi_list;
 extern CONSTANTS*        constants;
 
 extern bool extra_verbose; // print findREV verbose output
@@ -1314,6 +1315,7 @@ int radconvolveTexture(
                     data.props = props;
                     data.beamlet_header = std::move(beamlet_header);
                     data.beam_header = beam_header;
+                    data.roi_list = &roi_list;
 
                     sparsifymanager.push(data);
                     // host memory for h_unpacked_dose is free'd inside of worker thread after each job is finished

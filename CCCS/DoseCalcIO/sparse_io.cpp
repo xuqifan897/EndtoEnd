@@ -20,7 +20,6 @@
 using namespace dcio;
 
 void _sparsify(SparseData& sparsedata, const float* array, ArrayProps& props, float thresh) {
-    // AutoTimer timer_task;
     if (props.crop_size.x <= 0 || props.crop_size.y <= 0 || props.crop_size.z <= 0) {
         props.crop_size = props.size;
     }
@@ -57,9 +56,125 @@ void _sparsify(SparseData& sparsedata, const float* array, ArrayProps& props, fl
 
     sparsedata.perc_nonzero = 100.0*nnonzero/ntotal;
     sparsedata.perc_dropped = 100.0*ndropped/ntotal;
-    // timer_task.stop_print_time_elapsed("sparsify");
 }
 
+//TODO: pre-cache mask indices rather than recompute for each beamlet
+void _reduce_by_roi(SparseData& reduceddata, SparseData& sparsedata, ROIMaskList& roi_list, ArrayProps& props) {
+     /* Accepts sparsedata as a sparse column of keys (over full dicom volume) and associated dose contribs.
+      * and produces reduceddata which is sparsedata with rows removed where the corresponding voxel is not
+      * present in any of the input ROIs and thus has no effect on the optimization result
+      *
+      * reduceddata is further ordered such that PTV is the first row-block, followed by each OAR in arbitrary
+      * but defined order. The key for each block becomes the index into the ROI not including any voxels that
+      * are masked out of the ROI. the first possible key value for each block depends on the total number of
+      * potential rows in the previous blocks (sum of total unmasked voxels in all previous ROIs)
+      *
+      * outputs:
+      *     - reduceddata [KeyValPairs]: key is converted to encode which ROI and index of voxel within that
+      *         ROI to which the accompanying dose-value corresponds.
+      *     - ordered list of ROIs and accompanying Nvoxel counts. (sum of Nvoxel counts should be total #rows
+      *         in dense representation of sparse column vector).
+      * */
+
+    // create sparsevect for efficient random access based on key (time: 3ms, mem: 64-500MB)
+    // AutoTimer timer_task;
+    std::vector<float> sparsevect(props.size.x*props.size.y*props.size.z, 0.f);
+    for (uint64_t i=0; i<sparsedata.kvp.keys.size(); ++i) {
+        uint64_t key = sparsedata.kvp.keys.at(i);
+        sparsevect.at(key) = sparsedata.kvp.vals.at(i);
+    }
+    // timer_task.stop_print_time_elapsed("sparsevect creation");
+
+    // Guess at appropriate size for reduceddata keys/vals (time: 0ms)
+    uint64_t MAGIC = static_cast<uint64_t>(
+            sparsedata.size() * 0.4 +                            // PTV nonzero Density
+            (roi_list._coll.size()-1)*sparsedata.size() * 0.15   // OAR nonzero Density
+            );
+    reduceddata.kvp.keys.reserve( MAGIC );
+    reduceddata.kvp.vals.reserve( MAGIC );
+    // printf("roi_list.size = %zu\n", roi_list._coll.size());
+    // printf("sparsedata.size = %zu\n", sparsedata.size());
+    // printf("MAGIC = %lu\n", MAGIC);
+    // printf("capacity: %lu\n", reduceddata.keys.capacity());
+
+    // density statistics
+    uint64_t nnonzero = 0;
+    uint64_t ntotal = props.nvoxels();
+
+    // Loop over ROI structures within calc_bbox
+    uint64_t mark = 0;
+    for (auto &roi : roi_list._coll) {
+        // ensure mask dims match Dicom dims (so calc_bbox spec can be applied to both)
+        if (!(props.size.x == roi->props.size.x && props.size.y == roi->props.size.y && props.size.z == roi->props.size.z)) {
+            throw std::runtime_error("props.size != roi.props.size");
+        }
+        // printf("roi: %s, nones: %d\n",roi->name.c_str(),roi->nones());
+
+        // iterate over array and keep elements where mask == 1
+        uint64_t Nkept = 0;
+        uint64_t elem_key = 0; // iterator only over voxels in ROI
+        // Implement bbox over just the ROI volume instead of full dose calc volume
+        // This ensures that every voxel in ROI is touched and that iterator has fewer points to test
+        for (uint ii=0; ii<roi->props.crop_size.x; ii++) {
+            for (uint jj=0; jj<roi->props.crop_size.y; jj++) {
+                for (uint kk=0; kk<roi->props.crop_size.z; kk++) {
+                    uint64_t crop_key = (kk*roi->props.crop_size.y + jj)*roi->props.crop_size.x + ii;
+                    uint64_t orig_key = ((kk+roi->props.crop_start.z)*roi->props.size.y + (jj+roi->props.crop_start.y))*roi->props.size.x + (ii+roi->props.crop_start.x); // iterator over roi_bbox volume
+
+                    // convert to reduced matrix key
+                    // printf("crop_key: %lu, bool: %u\n", crop_key, (*roi)[crop_key]);
+                    if ((*roi)[crop_key]) {
+                        float& dose_val = sparsevect.at(orig_key);
+                        if (dose_val) { // || sparsemap.count(orig_key)) {
+                            uint64_t pos = mark + elem_key;
+                            // if (pos>=max_key) {
+                            //     // std::cout << set_color(COLOR::RED) << "ASSERT: max_key:"<<max_key<<" roi: "<<roi->name<< " ii:"<<ii<<" jj:"<<jj<<" kk:"<<kk<<" crop_key:"<<crop_key<<" orig_key:"<<orig_key<<" crop_size:("<<props.crop_size.x<<","<<props.crop_size.y<<","<<props.crop_size.z<<") crop_start:("<<props.crop_start.x<<","<<props.crop_start.y<<","<<props.crop_start.z<<")"<<" size:("<<props.size.x<<","<<props.size.y<<","<<props.size.z<<" elem_key:"<<elem_key<<" mark:"<<mark<<" pos:"<<pos<<" dose_val:"<<dose_val<<" nkept:"<<Nkept<<set_color()<<std::endl;
+                            //     throw std::runtime_error("stored sparse key was greater than expected");
+                            // }
+                            // printf("%lu, %0.2e\n", pos, sparsevect.at(orig_key));
+                            reduceddata.kvp.keys.push_back(pos);
+                            reduceddata.kvp.vals.push_back(dose_val);
+                            ++Nkept;
+                        }
+                        ++elem_key;
+                    }
+                }
+            }
+        }
+        // printf("#elements in mask(%d) || #elements in reduced vector for ROI=\"%s\" (%d)\n", roi->nones(), roi->name.c_str(), Nkept);
+            if (elem_key != roi->nones()) {
+                throw std::runtime_error("elem_key != roi->nones()");
+            }
+        assert(elem_key == roi->nones() /* "# iterated roi elements must equal number of masked ROI voxels" */);
+        mark += elem_key;
+        reduceddata.row_block_sizes.push_back(Nkept);
+        nnonzero += Nkept;
+    }
+    double perc_nonzero = 100.0*nnonzero/ntotal;
+    reduceddata.perc_reducedrop = sparsedata.perc_nonzero-perc_nonzero;
+    reduceddata.perc_nonzero = perc_nonzero;
+    reduceddata.perc_dropped = sparsedata.perc_dropped;
+    // printf("total elements in reduced: %lu\n", reduceddata.keys.size());
+}
+void _sparsify_and_reduce(SparseData& data, const float* array, ArrayProps& props, ROIMaskList* roi_list, float thresh) {
+    // ALWAYS CALL THIS for sparsify task. If roi_list is non-empty, reduction and reordering of rows will
+    // also occur
+    if (roi_list != nullptr && roi_list->size()) {
+        // store to tempvar for use in reduce
+        SparseData sparsedata;
+        // AutoTimer timer_task;
+        _sparsify(sparsedata, array, props, thresh);
+        // timer_task.restart_print_time_elapsed("sparsify");
+        _reduce_by_roi(data, sparsedata, *((ROIMaskList*)roi_list), props);
+        // timer_task.stop_print_time_elapsed("reduce");
+    } else {
+        // directly modify outvar
+        // AutoTimer timer_task;
+        _sparsify(data, array, props, thresh);
+        // timer_task.stop_print_time_elapsed("sparsify");
+    }
+
+}
 int _write_beamlet_to_hdf5(H5::Group& h5group, const SparseData& data, HEADER_BEAMLET& beamlet_header, int compress_lvl, uint64_t chunksize) {
     hsize_t dims[] = { beamlet_header.N_coeffs };
     H5::DataSpace simplespace(1, dims);
@@ -106,6 +221,23 @@ int _write_beamlet_metadata(H5::Group& h5group, const HEADER_BEAMLET& beamlet_he
     } {
         auto att = h5group.createAttribute("perc_dropped", H5::PredType::IEEE_F32LE, scalarspace);
         att.write(H5::PredType::NATIVE_FLOAT, &data.perc_dropped);
+    }
+    // only for reduced case
+    if (beamlet_header.reduced()) {
+        // write attribute - ord. list of # nonzeros per row-block
+        hsize_t dims[] = {beamlet_header.row_block_sizes.size()};
+        auto att = h5group.createAttribute("row_block_sizes", H5::PredType::STD_U64LE, H5::DataSpace(1, dims));
+        std::vector<uint64_t> temp(beamlet_header.row_block_sizes.size());
+        uint ii = 0;
+        for (const auto& xx : beamlet_header.row_block_sizes) {
+            temp[ii] = xx;
+            ++ii;
+        }
+        att.write(H5::PredType::NATIVE_UINT64, temp.data());
+        {
+            auto att = h5group.createAttribute("perc_reducedrop", H5::PredType::IEEE_F32LE, scalarspace);
+            att.write(H5::PredType::NATIVE_FLOAT, &data.perc_reducedrop);
+        }
     }
 
     return 1;
@@ -213,6 +345,26 @@ int _write_patient_metadata(H5::Group& h5group, const HEADER_PATIENT& patient_he
         auto att = h5group.createAttribute("target_structure", str_t, scalarspace);
         att.write(str_t, patient_header.target_structure);
     }
+    // only for reduced case
+    if (patient_header.reduced()) {
+        // write attribute - ord. list of capacities per block
+        {
+            hsize_t dims[] = {patient_header.row_block_capacities.size()};
+            auto att = h5group.createAttribute("row_block_capacities", H5::PredType::STD_U64LE, H5::DataSpace(1, dims));
+            att.write(H5::PredType::NATIVE_UINT64, patient_header.row_block_capacities.data());
+        }
+        // write attribute - ord. list of roi name strings
+        {
+            hsize_t dims[] = {patient_header.roi_order.size()};
+            H5::StrType str_t(H5::PredType::C_S1, H5T_VARIABLE);
+            auto att = h5group.createAttribute("roi_order", str_t, H5::DataSpace(1, dims));
+            std::vector<const char*> temp;
+            for (auto& xx : patient_header.roi_order) {
+                temp.push_back( xx.c_str() );
+            }
+            att.write(str_t, temp.data());
+        }
+    }
     return 1;
 }
 
@@ -268,15 +420,16 @@ int sparse_to_hdf5(const std::string& filename, const SparseData& data, const vo
 }
 
 
-int write_sparse_beamlet_to_file(const std::string& filename, const float* array, ArrayProps& props, int(*tofile)(const std::string&, const SparseData&, const void* header), void* header, const float thresh) {
+int write_sparse_beamlet_to_file(const std::string& filename, const float* array, ArrayProps& props, int(*tofile)(const std::string&, const SparseData&, const void* header), void* header, ROIMaskList* roi_list, const float thresh) {
     // loop through dense array of size: arr_size, encoding non-zero vals in Dict of Keys style sparse matrix
     SparseData data;
-    _sparsify(data, array, props, thresh);
+    _sparsify_and_reduce(data, array, props, roi_list, thresh);
 
     // store discovered data in header
     if (header!=nullptr) {
         HEADER_BEAMLET* beamlet_header = (HEADER_BEAMLET*)header;
         beamlet_header->N_coeffs = data.size();
+        beamlet_header->row_block_sizes = data.row_block_sizes;
     }
 
     // write to file

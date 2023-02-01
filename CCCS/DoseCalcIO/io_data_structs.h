@@ -20,11 +20,20 @@ struct SparseData {
     size_t size() const { return kvp.size(); }
     float perc_nonzero; // percentage of calc_bbox that remains as nonzero (above thresh)
     float perc_dropped; // percentage of calc_bbox that has been zero'd (below thresh)
+
+    // extra data added after row reduction/reordering
+    std::vector<uint64_t> row_block_sizes;
+    bool reduced() { return !row_block_sizes.empty(); }
+    float perc_reducedrop; // percentage of calc_bbox that has been excluded due to roi masking
 };
 // POD describing storage of meta to HDF5 group for each beamlet (column)
 struct HEADER_BEAMLET {
     ushort      beamlet_uid;      // UID for beamlet (linearized index into 2D fluence map)
     uint64_t    N_coeffs;         // number of non-zero coeffs in column
+
+    // added after reduction of column
+    std::vector<uint64_t> row_block_sizes;                      // list indicating true non-zeros per row-block after reduction
+    bool  reduced() const { return !row_block_sizes.empty(); }; // flag indicating whether reduction occured
 };
 // POD describing storage of meta to HDF5 group for each beam (collection of beamlets)
 struct HEADER_BEAM {
@@ -51,6 +60,12 @@ struct HEADER_PATIENT {
     float       kernel_extent_cm;     // maximum radial distance used in CCCS [cm]
     std::string beam_spectrum;        // name of beam spectrum file (describes beam energy)
     std::string target_structure;     // name of structure to which dose is delivered
+
+    // Added after reduction of column
+    std::vector<std::string> roi_order{};            // ordered list of roi_names for Row-Blocks in reduced A-matrix
+    std::vector<uint64_t>    row_block_capacities{}; // ord. list of row block capacities matching roi_order
+    bool reduced() { return !roi_order.empty(); }  // flag indicating setting of remaining members
+    bool reduced() const { return !roi_order.empty(); }  // flag indicating setting of remaining members
 };
 
 // Describes sub-volume for iterating or calculating

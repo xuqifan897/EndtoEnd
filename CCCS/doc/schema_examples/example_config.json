@@ -12,9 +12,11 @@
   "verbose":       false,
   "timing":        false,
   "nbeams":        1162,
+  "noreduce":      false,
   "spec":          "spec_6mv",
   "target":        "PTV [for partial matching]",
   "target-exact":  "PTV [for exact matching]",
   "bbox-roi":      "Body [follows partial match semantics]",
-  "beamlist":      "doc/example_beamlist.txt"
+  "beamlist":      "doc/example_beamlist.txt",
+  "structures":    "doc/example_structures.json"
 }

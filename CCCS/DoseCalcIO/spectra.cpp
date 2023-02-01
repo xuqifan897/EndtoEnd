@@ -14,7 +14,7 @@ int read_spectrum_file(MONO_KERNELS *mono, bool verbose)
     //open spectrum file
     sprintf(filename,"%s/%s.spec",Paths::Instance()->spectra_dir().c_str(),mono->spectrum_file.c_str());
     if ( (specfile = fopen(filename,"r")) == NULL){
-        printf("Cannot open spectrum file from \"%s\"\n", filename);
+        printf("Cannot open spectrum file\n");
         return(-1);
     }
 

@@ -313,14 +313,6 @@ RTStruct::loadRTStructInfo(bool verbose)
     if (verbose) printf("\n");
 }
 
-std::vector<std::string> RTStruct::getROINames() {
-  std::vector<std::string> roi_names;
-  for (int ii=0; ii<getNumberOfROIs(); ++ii) {
-    roi_names.push_back(getROIName(ii));
-  }
-  return roi_names;
-}
-
 void
 RTStruct::chooseContours()
 {

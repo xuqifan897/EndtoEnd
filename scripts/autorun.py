@@ -76,9 +76,10 @@ def autorun():
     expFolder = "/data/qifan/dataset_qlyu/UCLAPatients/experiment"
     DataFolder = "/data/qifan/dataset_qlyu/UCLAPatients/anonymousDataNew"
     projectFolder = "/data/qifan/projects_qlyu/EndtoEnd4"
-    voxelsize='0.25' # unit: cm, 0.25 is the recommended value
-    sparsity='1e-4'
-
+    voxelsize = '0.25' # unit: cm, 0.25 is the recommended value
+    sparsity = '1e-4'
+    # debug = True
+    debug = False
 
     # All variables below are derived
     DOSECALC_DATA = os.path.join(projectFolder, 'CCCS', 'data')
@@ -86,7 +87,7 @@ def autorun():
     os.system(command)
     prepExec = os.path.join(projectFolder, 'CCCS', 'build', 
         'dosecalc-preprocess/dosecalc-preprocess')
-    doseCalcExec = os.path.join(projectFolder, 'CCCS', 'build', 'dosecalc-beam', 'dosecalc-beam')
+    doseCalcExec = os.path.join(projectFolder, 'CCCS', 'build', 'dosecalc-beamlet', 'dosecalc-beamlet')
 
     for i in range(numPatients):
         patientName = 'patient{}'.format(i+1)
@@ -105,29 +106,38 @@ def autorun():
 
         # preprocessing
         command = \
-        f"""export DOSECALC_DATA={DOSECALC_DATA}
+        f"""export DOSECALC_DATA="{DOSECALC_DATA}"
     (time {prepExec} \\
     --dicom={dicomFolder} \\
     --beamlist={beamlist} \\
-    --target-exact="{PTVname}" \\
+    --structures={structuresFile} \\
     --config={configfile} \\
     --bbox-roi={BBox} \\
     --voxsize={voxelsize} \\
     --verbose \\
     ) 2>&1 | tee "{os.path.join(patExpFolder, 'dosecalc-preprocess.log')}"
 """
-        # os.system(command)
+        if debug:
+            print(command)
+        else:
+            os.system(command)
 
         command = 'echo "\n\n{}\n\n"'.format(40*'=')
-        # os.system(command)
+        if debug:
+            print(command)
+        else:
+            os.system(command)
 
         # dose calculation
-        command = f'export CUDA_VISIBLE_DEVICES={CUDAdevice}' \
+        command = f'cd {patExpFolder}\n' \
+            f'export CUDA_VISIBLE_DEVICES={CUDAdevice}\n' \
             f'export DOSECALC_DATA="{DOSECALC_DATA}"\n' \
             f'( time {doseCalcExec} --sparsity-threshold={sparsity} ) ' \
-            f'2>&1 | tee {os.path.join(patExpFolder, "dosecalc-beamlst.log")}'
-        print(command)
-        os.system(command)
+            f'2>&1 | tee {os.path.join(patExpFolder, "dosecalc-beamlet.log")}'
+        if debug:
+            print(command)
+        else:
+            os.system(command)
 
 
 if __name__ == '__main__':

@@ -111,9 +111,16 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    // read from structures.json now to check for ptv spec
+    std::vector<std::string> roi_names = getROINamesFromJSON(args.structures_file);
     if (args.ptv_name.empty()) {
-        // fallback string for PTV matching - no other spec provided
-        args.ptv_name = std::string("P_");
+        if (!roi_names.empty()) {
+            // use ptv in json as low priority match
+            args.ptv_name = std::string(roi_names.front());
+        } else {
+            // fallback string for PTV matching - no other spec provided
+            args.ptv_name = std::string("P_");
+        }
     }
 
     if (args.timing) { // write args.timing
@@ -216,10 +223,7 @@ int main(int argc, char *argv[])
             printf(" Couldn't load rtstruct from \"%s\". exiting\n", args.dicom_dir.c_str());
             return 1;
         }
-
-        // populate list of rois from rtstruct
         rtstruct.loadRTStructInfo(args.verbose);
-        std::vector<std::string> roi_names = rtstruct.getROINames();
         logger.print_tail();
 
         logger.print_head("PTV SELECTION");
@@ -229,6 +233,7 @@ int main(int argc, char *argv[])
             return 1;
         } else {
             args.ptv_name = std::string{rtstruct.getROIName(ptv_idx)};
+            if (!roi_names.empty()) { roi_names.front() = args.ptv_name; } // overwrite structures setting of ptv
             printf("Structure found: #%d - %s\n",ptv_idx+1, args.ptv_name.c_str());
         }
         StructureSet ptv;
@@ -277,13 +282,19 @@ int main(int argc, char *argv[])
         }
 
         // hotfix - prevent bbox from meeting x and y edges
-        // TODO: This may be unnecessary since replacing mask generator with opencv function
         calc_bbox_start.x = max(calc_bbox_start.x, 1);
         calc_bbox_start.y = max(calc_bbox_start.y, 1);
         calc_bbox_start.z = max(calc_bbox_start.z, 1);
         calc_bbox_size.x = min(calc_bbox_size.x, frameofref.size.x-2);
         calc_bbox_size.y = min(calc_bbox_size.y, frameofref.size.y-2);
         calc_bbox_size.z = min(calc_bbox_size.z, frameofref.size.z-2);
+
+        /* if (args.debug) { */
+        /*     calc_bbox_start = make_uint3(60, 75, 61); */
+        /*     // end at (200, 175, 195) */
+        /*     calc_bbox_size = make_uint3(140, 100, 134); */
+        /*     std::cout << set_color(COLOR::RED) << "WARNING: DEBUG BBOX SETTINGS IN USE - CONTACT args.dev IF YOU ARE SEEING THIS!!" << set_color() << std::endl; */
+        /* } */
 
         std::cout << std::endl;
         printf("-- bbox start: (%3d, %3d, %3d)\n", calc_bbox_start.x, calc_bbox_start.y, calc_bbox_start.z);
@@ -401,82 +412,93 @@ int main(int argc, char *argv[])
             std::cout << std::endl;
         }
 
-        logger.print_head("LOADING MASK STRUCTURES");
-        ROIMaskList roi_list {};
+        logger.print_head("LOADING OPTIMIZATION STRUCTURES");
+        if (roi_names.empty()) {
+            std::cout << "No structures loaded - no valid structures file was specified" << std::endl;
+        } else {
+            ROIMaskList roi_list {};
 
-        // Fetch binary volumes for each ROI name
-        for (const auto& roi_name : roi_names) {
-            // Check for duplicates
-            bool unique = true;
-            for (const auto& r : roi_list.getROINames()) {
-                if (r == roi_name) { unique = false; break; }
-            }
-            if (!unique) {
-                std::cout << "Excluding redundant ROI specification: \""<<roi_name<< "\"" << std::endl<<std::endl;
-                continue;
-            }
+            // Fetch binary volumes for each ROI name
+            for (const auto& roi_name : roi_names) {
+                // Check for duplicates
+                bool unique = true;
+                for (const auto& r : roi_list.getROINames()) {
+                    if (r == roi_name) { unique = false; break; }
+                }
+                if (!unique) {
+                    std::cout << "Excluding redundant ROI specification: \""<<roi_name<< "\"" << std::endl<<std::endl;
+                    continue;
+                }
 
-            // validate name against rtstruct
-            int roi_idx = getROIIndex(rtstruct, roi_name, true, args.verbose);
-            StructureSet roi;
-            if (!loadStructureSet(roi, rtstruct, roi_idx, args.verbose)) {
-                if (!args.verbose) std::cout << "Failed to load ROI Data for: \""<< roi_name <<"\"" << std::endl;
-                return 1;
-            }
+                // validate name against rtstruct
+                int roi_idx = getROIIndex(rtstruct, roi_name, true, args.verbose);
+                if (roi_idx < 0) {
+                    std::cout << set_color(COLOR::YELLOW) <<
+                        "No contour could be matched from search string: "<<roi_name<<". skipping"<<
+                        set_color()<<std::endl;
+                    continue;
+                } else {
+                    printf("Structure found: #%d - %s\n",roi_idx+1, roi_name.c_str());
+                }
+                StructureSet roi;
+                if (!loadStructureSet(roi, rtstruct, roi_idx, args.verbose)) {
+                    if (!args.verbose) std::cout << "Failed to load ROI Data for: \""<< roi_name <<"\"" << std::endl;
+                    return 1;
+                }
 
-            // Construct BaseROIMask using rtstruct contour data from file
-            ArrayProps roi_bbox = getROIExtents(roi, frameofref, args.verbose);
-            Volume<uint8_t> roi_mask {};
-            std::cout << "Creating ROI Mask" << std::endl;
-            roi_mask = generateContourMask(roi, ctdata.get_frame(), density.get_frame());
+                // Construct BaseROIMask using rtstruct contour data from file
+                ArrayProps roi_bbox = getROIExtents(roi, frameofref, args.verbose);
+                Volume<uint8_t> roi_mask {};
+                std::cout << "Creating ROI Mask" << std::endl;
+                roi_mask = generateContourMask(roi, ctdata.get_frame(), density.get_frame());
 
-            // crop mask to roi_bbox
-            std::vector<uint8_t> cropped_mask(roi_bbox.nvoxels());
-            for (uint ii=0; ii<roi_bbox.crop_size.x; ii++) {
-                for (uint jj=0; jj<roi_bbox.crop_size.y; jj++) {
-                    for (uint kk=0; kk<roi_bbox.crop_size.z; kk++) {
-                        uint64_t full_key = ((kk+roi_bbox.crop_start.z)*roi_bbox.size.y + (jj+roi_bbox.crop_start.y))*roi_bbox.size.x + (ii+roi_bbox.crop_start.x); // iterator over roi_bbox volume
-                        uint64_t crop_key = (kk*roi_bbox.crop_size.y + jj)*roi_bbox.crop_size.x + ii;
-                        cropped_mask.at(crop_key) = roi_mask.at(full_key);
+                // crop mask to roi_bbox
+                std::vector<uint8_t> cropped_mask(roi_bbox.nvoxels());
+                for (uint ii=0; ii<roi_bbox.crop_size.x; ii++) {
+                    for (uint jj=0; jj<roi_bbox.crop_size.y; jj++) {
+                        for (uint kk=0; kk<roi_bbox.crop_size.z; kk++) {
+                            uint64_t full_key = ((kk+roi_bbox.crop_start.z)*roi_bbox.size.y + (jj+roi_bbox.crop_start.y))*roi_bbox.size.x + (ii+roi_bbox.crop_start.x); // iterator over roi_bbox volume
+                            uint64_t crop_key = (kk*roi_bbox.crop_size.y + jj)*roi_bbox.crop_size.x + ii;
+                            cropped_mask.at(crop_key) = roi_mask.at(full_key);
+                        }
                     }
                 }
-            }
 
-            // write binary volume to file to check
-            if (debugwrite) {
-                {
-                    std::ostringstream outpath;
-                    outpath << "mask_" << roi_name;
-                    std::vector<float> temp(roi_mask.nvoxels());
-                    for (uint i=0; i<roi_mask.nvoxels(); ++i) { temp[i] = roi_mask[i]; }
-                    std::cout << set_color(COLOR::BLUE)<<"Writing mask to \""<<outpath.str()<<".raw"<<"\""<<set_color()<< std::endl;
-                    write_debug_data<float>(temp.data(), roi_mask.size, outpath.str().c_str(), true);
+                // write binary volume to file to check
+                if (debugwrite) {
+                    {
+                        std::ostringstream outpath;
+                        outpath << "mask_" << roi_name;
+                        std::vector<float> temp(roi_mask.nvoxels());
+                        for (uint i=0; i<roi_mask.nvoxels(); ++i) { temp[i] = roi_mask[i]; }
+                        std::cout << set_color(COLOR::BLUE)<<"Writing mask to \""<<outpath.str()<<".raw"<<"\""<<set_color()<< std::endl;
+                        write_debug_data<float>(temp.data(), roi_mask.size, outpath.str().c_str(), true);
+                    }
+                    {
+                        std::ostringstream outpath;
+                        outpath << "cropmask_" << roi_name;
+                        std::vector<float> temp(cropped_mask.size());
+                        for (uint i=0; i<cropped_mask.size(); ++i) { temp[i] = cropped_mask.at(i); }
+                        std::cout << set_color(COLOR::BLUE)<<"Writing cropmask to \""<<outpath.str()<<".raw"<<"\""<<set_color()<< std::endl;
+                        write_debug_data<float>(temp.data(), roi_bbox.crop_size, outpath.str().c_str(), true);
+                    }
                 }
-                {
-                    std::ostringstream outpath;
-                    outpath << "cropmask_" << roi_name;
-                    std::vector<float> temp(cropped_mask.size());
-                    for (uint i=0; i<cropped_mask.size(); ++i) { temp[i] = cropped_mask.at(i); }
-                    std::cout << set_color(COLOR::BLUE)<<"Writing cropmask to \""<<outpath.str()<<".raw"<<"\""<<set_color()<< std::endl;
-                    write_debug_data<float>(temp.data(), roi_bbox.crop_size, outpath.str().c_str(), true);
-                }
-            }
 
-            roi_list.push_back(new DenseROIMask(roi_name, cropped_mask, roi_bbox));
+                roi_list.push_back(new DenseROIMask(roi_name, cropped_mask, roi_bbox));
+                std::cout << std::endl;
+            }
             std::cout << std::endl;
+            std::cout << "Discovered " << roi_list.size() << " ROIs in \""<<args.structures_file<<"\":" << std::endl;
+            uint idx = 0;
+            for (const auto& v : roi_list.getROINames()) {
+                ++idx;
+                std::cout << "  " << idx << ": "<< v << std::endl;
+            }
+            std::ostringstream roi_list_outpath;
+            roi_list_outpath << Paths::Instance()->temp_dir() << "/" << "roi_list.h5";
+            if (args.verbose) { std::cout << "\nWriting ROI List to \""<<roi_list_outpath.str()<<"\"" << std::endl; }
+            roi_list.writeToFile(roi_list_outpath.str());
         }
-        std::cout << std::endl;
-        std::cout << "Discovered " << roi_list.size() << " ROIs"<< std::endl;
-        uint idx = 0;
-        for (const auto& v : roi_list.getROINames()) {
-            ++idx;
-            std::cout << "  " << idx << ": "<< v << std::endl;
-        }
-        std::ostringstream roi_list_outpath;
-        roi_list_outpath << Paths::Instance()->temp_dir() << "/" << "roi_list.h5";
-        if (args.verbose) { std::cout << "\nWriting ROI List to \""<<roi_list_outpath.str()<<"\"" << std::endl; }
-        roi_list.writeToFile(roi_list_outpath.str());
-
         logger.print_tail();
         std::cout << std::endl;
     } else if (!args.densvol.empty()) {
@@ -565,7 +587,8 @@ int main(int argc, char *argv[])
                 args.kernel_extent,
                 args.ss_factor,
                 args.max_rev_size,
-                args.penumbra
+                args.penumbra,
+                args.reduce && !roi_names.empty()
                 );
         if (!result) {
             printf("Failed writing omni-header!\n");

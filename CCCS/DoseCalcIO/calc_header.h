@@ -20,7 +20,8 @@ int write_omni_header(
         float kernel_extent,
         uint ss_factor,
         uint3 max_rev_size,
-        float penumbra
+        float penumbra,
+        bool reduce
 );
 int load_omni_header( CONSTANTS *host, bool verbose );
 

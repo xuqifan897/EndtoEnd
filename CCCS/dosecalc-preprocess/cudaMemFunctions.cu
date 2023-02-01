@@ -87,9 +87,7 @@ void cudaCreateTexIso( FloatVolume& dens, FloatVolume& data, float iso_voxel, CT
     /* if ctlut is valid ptr, HU values are converted to density values in kernel: cudaMakeIsotropic */
     // get GPU properties
     cudaDeviceProp devProp;
-    int currentDevice;
-    cudaGetDevice(&currentDevice);
-    cudaGetDeviceProperties( &devProp, currentDevice );
+    cudaGetDeviceProperties( &devProp, 0 );
 
     /////////////////// Bind Inputs to 3D Texture Arrays //////////////////////////////////////////////
     // bind the HU data volume (data.data) to a 3D texture

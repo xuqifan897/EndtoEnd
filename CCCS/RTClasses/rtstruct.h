@@ -1,9 +1,6 @@
 #ifndef __RTSTRUCT_H__
 #define __RTSTRUCT_H__
 
-#include <string>
-#include <vector>
-
 #include <helper_cuda.h>
 #include <helper_math.h>
 #include "dcmtk/dcmdata/dctk.h"
@@ -70,7 +67,6 @@ public:
     {
         return roi_array[r].roi_number;
     };
-    std::vector<std::string> getROINames();
     char*  getROIName( unsigned int r )
     {
         return (char*)roi_array[r].roi_name.data();

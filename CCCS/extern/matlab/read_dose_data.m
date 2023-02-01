@@ -49,7 +49,6 @@ Revisions:
     - 11 Mar.  2019 [v1.5]:   Redesigned function input/output format for better flexibility; dropped support for old file formats
     - 11 Jun.  2019 [v1.6]:   Fixed beam count check when some can be skipped; replaced double with single quotes to define string
     - 13 Jun.  2019 [v1.7]:   Add support for "skipped" beams (0 beamlets); joined Modes.m into this file
-    - 6  Jan.  2020 [v1.8]:   Added support to read beam metadata from FMAPS files
 %}
 VERSION_MAJOR = '1';
 VERSION_MINOR = '7';
@@ -81,18 +80,18 @@ else
     verbose = max(0, min(2, double(verbose) ));
 end
 if nargin < 3
-    MODE = MODE_SPARSEMAT; % default
+    mode = MODE_SPARSEMAT; % default
 else
     % mode selection
     switch lower(mode)
         case 'sparsemat'
-            MODE = MODE_SPARSEMAT;
+            mode = MODE_SPARSEMAT;
         case 'sparsedata'
-            MODE = MODE_SPARSEDATA;
+            mode = MODE_SPARSEDATA;
         case 'metadata'
-            MODE = MODE_METADATA;
+            mode = MODE_METADATA;
         case 'all'
-            MODE = MODE_ALL;
+            mode = MODE_ALL;
         otherwise
             error('Acceptable modes are: ["sparsemat" (default), "sparsedata", "metadata", "all"]');
     end
@@ -141,15 +140,11 @@ end
 vhash = version_hash(ftversionmajor, ftversionminor);
 switch ftmagic
     case 43
-        ;
-    case 44
-        MODE = MODE_METADATA;
-        fprintf(['File only contains beam metadata. Setting mode to "metadata"\n']);
+        result = read_sparse_format(h5file, metainfo, vhash, mode, verbose);
     otherwise
         fprintf('Invalid filetype: %s. Reading of this filetype is not supported by this function\n', ftname);
         return;
 end
-result = read_sparse_format(h5file, metainfo, vhash, MODE, verbose);
 
 time = toc(timer);
 result.read_time_sec = time;
@@ -186,43 +181,36 @@ if verbose
     disp('-------------------');
 end
 
-try
-    idx = 0;
-    for i=numel(metainfo.Groups):-1:1 % usually found at end - faster to reverse iterate
-        if strcmp(metainfo.Groups(i).Name,  '/calc_specs')
-            idx = i;
-            if verbose
-                fprintf('  Found calc_meta at index %d\n', i);
-            end
-            break
+idx = 0;
+for i=numel(metainfo.Groups):-1:1 % usually found at end - faster to reverse iterate
+    if strcmp(metainfo.Groups(i).Name,  '/calc_specs')
+        idx = i;
+        if verbose
+            fprintf('  Found calc_meta at index %d\n', i);
         end
+        break
     end
-    if idx == 0
-        error('  /calc_specs was not found. Please check the format of the supplied hdf5 file path. Exiting early');
-    end
-    meta_attrs = metainfo.Groups(idx).Attributes;
-    nattrs = numel(meta_attrs);
-    if verbose
-        fprintf('  Located %d attributes\n', nattrs);
-    end
-    calc_meta = struct; %OUTVAR
-    for i=1:nattrs
-        calc_meta.(meta_attrs(i).Name) = meta_attrs(i).Value;
-    end
-
-    % check if data is for reduced matrix or full matrix
-    reduced = isfield(calc_meta, 'roi_order');
-    if verbose
-        if reduced; fprintf('  *Reduced matrix data detected*'); end
-        fprintf('\n');
-    end
-    clear meta_attrs nattrs;
-catch exception
-    if mode ~= MODE_METADATA
-        error(exception)
-    end
-    calc_meta = struct();
 end
+if idx == 0
+    error('  /calc_specs was not found. Please check the format of the supplied hdf5 file path. Exiting early');
+end
+meta_attrs = metainfo.Groups(idx).Attributes;
+nattrs = numel(meta_attrs);
+if verbose
+    fprintf('  Located %d attributes\n', nattrs);
+end
+calc_meta = struct; %OUTVAR
+for i=1:nattrs
+    calc_meta.(meta_attrs(i).Name) = meta_attrs(i).Value;
+end
+
+% check if data is for reduced matrix or full matrix
+reduced = isfield(calc_meta, 'roi_order');
+if verbose
+    if reduced; fprintf('  *Reduced matrix data detected*'); end
+    fprintf('\n');
+end
+clear meta_attrs nattrs;
 
 
 %% Sort beams
@@ -261,82 +249,74 @@ for B=1:(numel(beammetagroup.Groups))
             end
         end
 
-        try
-            % Sort Beamlets
-            Nb = 0; % number of beamlets discovered (for this beam)
-            beamlets = struct([]);
-            bspdata = struct([]);
-            bgroup = beamdatagroup.Groups(B);
-            bgroups = bgroup.Groups;
-            if numel(bgroups)<=0
-                continue
-            end
-            for b=1:numel(bgroups)
-                [~, bname, ~] = fileparts(bgroups(b).Name);
-                if strcontains(bname, 'beamlet_')
-                    Nb = Nb+1;
-                    Nbt = Nbt+1;
-                    attrs = bgroups(b).Attributes;
-                    beamlets(Nb).Name = bname;
-                    for aa=1:numel(attrs)
-                        attname = attrs(aa).Name;
-                        beamlets(Nb).(attname) = attrs(aa).Value;
-                        if keep_spdata && ~isempty(strfind(attrs(aa).Name, '_uid'))
-                            bspdata(Nb).(attname) = beamlets(Nb).(attname);
-                        end
-                    end
-                    if verbose == 2
-                        fprintf('  || beam: %4d | beamlet: %4d (%4d) | N_coeffs: %7d ||\n', ...
-                            B, b, beamlets(Nb).beamlet_uid, beamlets(Nb).N_coeffs);
-                    end
-                    % store coeffs to separate data struct
-                    if keep_spdata
-                        for dd=1:numel(bgroups(b).Datasets)
-                            dsname = bgroups(b).Datasets(dd).Name;
-                            if keep_spdata
-                                if vhash >= 101
-                                    dspath = ['/beams/data/', Bname, '/', bname, '/', dsname];
-                                else
-                                    dspath = ['/', Bname, '/', bname, '/', dsname];
-                                end
-                                bspdata(Nb).(dsname) = h5read(h5file, dspath); % repeated h5read() call, wasteful
-                            end
-                            % error check
-                            if numel(bspdata(Nb).(dsname)) ~= beamlets(Nb).N_coeffs
-                                error('  Number of elements in "%s" (%d) doesn"t match metadata count (%d)', dsname, numel(beamlets(Nb).(dsname)), beamlets(Nb).N_coeffs);
-                            end
-                        end %for dd
-                    end %keep_spdata
-                    Nnonzero = Nnonzero + beamlets(Nb).N_coeffs;
-                end %if isempty
-            end %for b
-            % error check
-            if beam_meta(NB).N_beamlets ~= Nb
-                error('  Number of beamlets found (%d) doesn"t match metadata count (%d)', Nb, beam_meta(NB).N_beamlets)
-            end
-            % apply sorting
-            [~, beamletord] = sort([beamlets(:).beamlet_uid], 'ascend');
-            beamlets = beamlets(beamletord);
-            beam_meta(NB).beamlets = beamlets;
-            if keep_spdata
-                bspdata = bspdata(beamletord);
-                spdata(NB).beamlets = bspdata;
-            end
-            clear beamlets beamletord;
-        catch exception
-            if mode ~= MODE_METADATA
-                error(exception);
-            end
+        % Sort Beamlets
+        Nb = 0; % number of beamlets discovered (for this beam)
+        beamlets = struct([]);
+        bspdata = struct([]);
+        bgroup = beamdatagroup.Groups(B);
+        bgroups = bgroup.Groups;
+        if numel(bgroups)<=0
+            continue
         end
+        for b=1:numel(bgroups)
+            [~, bname, ~] = fileparts(bgroups(b).Name);
+            if strcontains(bname, 'beamlet_')
+                Nb = Nb+1;
+                Nbt = Nbt+1;
+                attrs = bgroups(b).Attributes;
+                beamlets(Nb).Name = bname;
+                for aa=1:numel(attrs)
+                    attname = attrs(aa).Name;
+                    beamlets(Nb).(attname) = attrs(aa).Value;
+                    if keep_spdata && ~isempty(strfind(attrs(aa).Name, '_uid'))
+                        bspdata(Nb).(attname) = beamlets(Nb).(attname);
+                    end
+                end
+                if verbose == 2
+                    fprintf('  || beam: %4d | beamlet: %4d (%4d) | N_coeffs: %7d ||\n', ...
+                        B, b, beamlets(Nb).beamlet_uid, beamlets(Nb).N_coeffs);
+                end
+                % store coeffs to separate data struct
+                if keep_spdata
+                    for dd=1:numel(bgroups(b).Datasets)
+                        dsname = bgroups(b).Datasets(dd).Name;
+                        if keep_spdata
+                            if vhash >= 101
+                                dspath = ['/beams/data/', Bname, '/', bname, '/', dsname];
+                            else
+                                dspath = ['/', Bname, '/', bname, '/', dsname];
+                            end
+                            bspdata(Nb).(dsname) = h5read(h5file, dspath); % repeated h5read() call, wasteful
+                        end
+                        % error check
+                        if numel(bspdata(Nb).(dsname)) ~= beamlets(Nb).N_coeffs
+                            error('  Number of elements in "%s" (%d) doesn"t match metadata count (%d)', dsname, numel(beamlets(Nb).(dsname)), beamlets(Nb).N_coeffs);
+                        end
+                    end %for dd
+                end %keep_spdata
+                Nnonzero = Nnonzero + beamlets(Nb).N_coeffs;
+            end %if isempty
+        end %for b
+        % error check
+        if beam_meta(NB).N_beamlets ~= Nb
+            error('  Number of beamlets found (%d) doesn"t match metadata count (%d)', Nb, beam_meta(NB).N_beamlets)
+        end
+        % apply sorting
+        [~, beamletord] = sort([beamlets(:).beamlet_uid], 'ascend');
+        beamlets = beamlets(beamletord);
+        beam_meta(NB).beamlets = beamlets;
+        if keep_spdata
+            bspdata = bspdata(beamletord);
+            spdata(NB).beamlets = bspdata;
+        end
+        clear beamlets beamletord;
     end %if isempty
 end %for B
 clear beammetagroup beamdatagroup bgroup bgroups Bname bname attname aa;
 
  % error check
- if mode ~= MODE_METADATA
-     if calc_meta.N_beams ~= NB
-         warning('  Number of beams found (%d) doesn"t match metadata count (%d)', NB, calc_meta.N_beams);
-     end
+ if calc_meta.N_beams ~= NB
+     warning('  Number of beams found (%d) doesn"t match metadata count (%d)', NB, calc_meta.N_beams);
  end
  if verbose
      fprintf('  Discovered %d beams\n', NB);

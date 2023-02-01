@@ -27,6 +27,6 @@ sudo docker build --tag "${fulltag}" .
 echo "Pushing docker image to registry..."
 sudo docker push "${fulltag}"
 
-if ! [[ ${DEVELOP:=} == 1 ]]; then echo "Cleaning up development system"
+if ! [ ${DEVELOP:=} == 1 ]; then echo "Cleaning up development system"
   sudo docker image rm "${fulltag}"
 fi

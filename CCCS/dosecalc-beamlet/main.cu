@@ -47,6 +47,7 @@ bool TERMA_ONLY = false; // XXX temporary
 
 static float            sparsity_thresh = 1e-6;
 SparsifyManager         sparsifymanager;
+ROIMaskList             roi_list;
 
 CONSTANTS*   constants;
 BEAM* device_beam_arr[MAXIMUM_DEVICE_COUNT];
@@ -292,6 +293,21 @@ int main(int argc, char *argv[])
     // LOAD ROIs from file - into global roi_list
     std::ostringstream roi_list_inpath;
     roi_list_inpath << Paths::Instance()->temp_dir() << "/" << "roi_list.h5";
+    if (constants->reduce) {
+        std::cout << "LOADING OPTIMIZATION STRUCTURES:" << std::endl;
+        std::cout << "--------------------------------------" << std::endl;
+        if (ROIMaskList::readFromFile(roi_list, roi_list_inpath.str())) {
+            std::cout << "Discovered " << roi_list._coll.size() << " ROIs in \""<<roi_list_inpath.str()<<"\":" << std::endl;
+            uint idx = 0;
+            for (const auto& v : roi_list._coll) {
+                ++idx;
+                std::cout << "  " << idx << ": "<< v->name << std::endl;
+            }
+        }
+        std::cout << "--------------------------------------" << std::endl;
+        std::cout << std::endl;
+    }
+
 
     if (timing) {
         timer_task.restart_print_time_elapsed("Read_Specfile & Data Prep");
@@ -304,7 +320,6 @@ int main(int argc, char *argv[])
     int ndevices = 0;
     int ndev = 0;
     int gpuid_arr[MAXIMUM_DEVICE_COUNT] = {0};
-    printf("First device to use is %d\n", DEVICE);
     /* init_devices_uva(ndev_uva, gpuid_arr, MAXIMUM_DEVICE_COUNT, ndev_requested, DEVICE, verbose); */
     init_devices(ndev, gpuid_arr, MAXIMUM_DEVICE_COUNT, ndev_requested, DEVICE, verbose);
 
@@ -416,6 +431,11 @@ int main(int argc, char *argv[])
     patient_header.kernel_extent_cm = constants->kernel_extent;
     patient_header.beam_spectrum = std::string(mono_kernels.spectrum_file);
     patient_header.target_structure = std::string{constants->target_structure};
+    // Add only if reduction is to be used after sparsify()
+    if (!roi_list._coll.empty()) {
+        patient_header.roi_order = roi_list.getROINames();
+        patient_header.row_block_capacities = roi_list.getROICapacities();
+    }
 
     if (sparsify_strategy != SPARSIFY_STRATEGY::THREADED) {
         // TODO: Add InlineSparsifyWorker that processes on ->push() synchronously

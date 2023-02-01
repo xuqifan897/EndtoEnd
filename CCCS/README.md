@@ -21,37 +21,9 @@ After preprocessing is complete, one can select between a _beamlet-based_ or _be
 * __`dosecalc-beam`__ - reads binary problem data from `dosecalc-preprocess` and schedules gpu kernel execution for efficient dose calculation and accumulation. This is different from `dosecalc-beamlet` in that it produces a single dose volume from all beams.
 
 ## Installation
-By far the easiest way to begin using this program is via Docker. For convenience, a Dockerfile is provided which defines a fully-working build of a local Docker Image. This can be built by cloning the repo then running
-```bash
-sudo docker build --tag dose-calculation .
-```
+By far the easiest way to begin using this program is via Docker. For convenience, a Dockerfile is provided which defines a fully-working build of a local Docker Image. A pre-built image is also provided on the gitlab registry for the project (<https://gitlab.com/shenglab/dose-calculation/container_registry>) and can be pulled using the command: 
 
-A pre-built image is also provided on the gitlab registry for the project (<https://gitlab.com/shenglab/dose-calculation/container_registry>) and can be pulled using the commands:
-```bash
-sudo docker login registry.gitlab.com/shenglab/dose-calculation
-sudo docker pull registry.gitlab.com/shenglab/dose-calculation:stable
-```
-
-## Usage
-If using docker, you can run the `dosecalc-preprocess`, `dosecalc-beamlet`, and `dosecalc-beam` commands automatically by first setting up a standard directory structure:
-```
-plandata/
-├── beamlist.txt
-├── config.json
-└── ct
-    ├── slice001.dcm
-    ├── slice002.dcm
-    :
-    ├── slice159.dcm
-    └── rtstruct.dcm
-```
-Then replace and `plandata` with the location of your plandata directory and run the command:
-```
-sudo docker run --gpus all -v $(realpath plandata):/data registry.gitlab.com/shenglab/dose-calculation:stable
-```
-The results will be saved to `<plandata>/results`
-
-(note: the image name may be different depending on whether you built yourself or pulled from the registry. Use `docker image ls` to confirm the correct name)
+    docker pull registry.gitlab.com/shenglab/dose-calculation:stable
 
 ### Dependencies
 #### Software
@@ -72,9 +44,6 @@ The results will be saved to `<plandata>/results`
 * Ubuntu 14.04 LTS (kernel 3.19.x) / GCC 4.9.x / DCMTK development snapshot 3.6.1-20170228
 * Ubuntu 16.04 LTS (kernel 4.4.x) / GCC 5.4.x / DCMTK development snapshot 3.6.1-20170228
 * Ubuntu 16.04 LTS (kernel 4.4.x) / GCC 5.4.x / DCMTK 3.6.2
-
-
-
 
 [neph-gpu-dosecalc-paper]: https://aapm.onlinelibrary.wiley.com/doi/10.1002/mp.13651
 [neylon-nvb-dosecalc-paper]: https://aapm.onlinelibrary.wiley.com/doi/abs/10.1118/1.4895822

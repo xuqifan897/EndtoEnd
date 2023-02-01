@@ -10,18 +10,18 @@
 
 static uint FTMAGIC = 0x2B;
 static uint FTVERSIONMAJOR = 1;
-static uint FTVERSIONMINOR = 3;
+static uint FTVERSIONMINOR = 2;
 
 void SRWorker::run() {
     while(true) {
         SRData data {}; // data must go out of scope each loop for dense_array to be destroyed
         if (parent.m_srqueue.try_pop(data, m_workerid)) { // recvd valid data via move assignment
-            WLOG(m_workerid, "Preparing to sparsify");
+            WLOG(m_workerid, "Preparing to sparsify+reduce");
             WLOG(m_workerid, "recieved data: " << &data);
             SparseData sparsedata {};
             if (data.dense_array) {
-                _sparsify(sparsedata, data.dense_array.get(), data.props, parent.m_thresh);
-                WLOG(m_workerid, "done sparsify");
+                _sparsify_and_reduce(sparsedata, data.dense_array.get(), data.props, data.roi_list, parent.m_thresh);
+                WLOG(m_workerid, "done sparsify+reduce");
             }
 
             // package and send to w2fqueue via move
@@ -50,6 +50,7 @@ void BaseW2FWorker::run() {
         if (parent.m_w2fqueue.try_pop(data)) { // recvd valid data via move assign
             // store discovered meta in header
             data.beamlet_header.N_coeffs = data.sparsedata.size();
+            data.beamlet_header.row_block_sizes = data.sparsedata.row_block_sizes;
 
             // write_to_file(data);
             write_beam_metadata(data);

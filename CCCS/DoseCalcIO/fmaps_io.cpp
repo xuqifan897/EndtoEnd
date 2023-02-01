@@ -68,6 +68,21 @@ int _read_patient_metadata(H5::Group& h5group, HEADER_PATIENT& patient_header) {
         att.read(str_t, buf);
         patient_header.target_structure = buf;
     }
+    // only for reduced case
+    if (h5group.attrExists("roi_order")) {
+        auto att = h5group.openAttribute("roi_order");
+        hsize_t N = att.getSpace().getSimpleExtentNpoints();
+        std::unique_ptr<char*[]> temp(new char*[N]);
+        att.read(att.getDataType(), (void*)temp.get());
+        patient_header.roi_order = std::vector<std::string>(&temp[0], &temp[N]);
+    }
+    if (h5group.attrExists("row_block_capacities")) {
+        auto att = h5group.openAttribute("row_block_capacities");
+        hsize_t N = att.getSpace().getSimpleExtentNpoints();
+        std::unique_ptr<uint64_t[]> temp(new uint64_t[N]);
+        att.read(H5::PredType::NATIVE_UINT64, temp.get());
+        patient_header.row_block_capacities = std::vector<uint64_t>(&temp[0], &temp[N]);
+    }
 
     return true;
 }

@@ -1,11 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# must match RTStruct structure names
+# must match MIM structure names
 BBox="BODY" # bounding box - dose is calculated in this box (speed up runtime)
 dicomdata="dicomdata/"
 configfile="config.json"
 beamlist="beamlist.txt"
+structures="structures.json"
 
 # Quality Settings
 voxelsize='0.25' # [units: cm]
@@ -18,8 +19,9 @@ export DOSECALC_DATA="/raid10/rs4pi/latest/data"
 dosecalc-preprocess \
     --dicom="$dicomdata" \
     --beamlist="$beamlist" \
+    --structures="$structures" \
     --config="$configfile" \
-    --bbox-roi="$BBox" \
+    --bbox="$BBox" \
     --voxsize="$voxelsize" \
     2>&1 | tee "dosecalc-preprocess.log"
 

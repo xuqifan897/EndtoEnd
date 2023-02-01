@@ -5,7 +5,7 @@ Config.json Schema
 | **Schema Version**     | 1.3         |
 | **Structure**          | text/json   |
 | **Last Modified By**   | Ryan Neph   |
-| **Last Modified Date** | Apr 29 2020 |
+| **Last Modified Date** | Jul 13 2018 |
 
 
 ------------------------------------------------------------------------
@@ -25,10 +25,13 @@ Config.json Schema
 | verbose       | bool                      | enable verbose output                                                                                          |
 | timing        | bool                      | enable timing output                                                                                           |
 | nbeams        | uint                      | limit number of beams to read from _beamlist_                                                                  |
+| noreduce      | bool                      | do not perform costly reduction to voxels within ROIs in _structures_ (calculate M-matrix instead of A-matrix) |
 | spec          | string                    | specify name of beam spectrum definition file (w/o path)                                                       |
 | target        | string                    | use first structure containing this substring as target                                                        |
 | target-exact  | string                    | use first structure exactly matching this string as target                                                     |
 | bbox-roi      | string                    | use first structure containing this substring as dose calculation volume                                       |
 | beamlist      | string                    | path to file containing specification of beams to calculate                                                    |
+| structures    | string                    | path to file containing names of PTV and OARS to use in M-->A matrix reduction (if _noreduce_ == false)        |
 | fmaps         | string                    | path to file containing beam orientation specifications and fluence map intensities                            |
-| ctlut         | string                    | path to file containing CT# to material mass density table.                                                    |
+| ctlut         | string                    | path to file containing CT# to material mass density table.
+
