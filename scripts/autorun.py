@@ -72,14 +72,26 @@ def autorun():
     This function runs dose calculation for all the patients
     please change the variables below
     """
+    ## runs on shenggpu4
     numPatients = 8
-    expFolder = "/data/qifan/dataset_qlyu/UCLAPatients/experiment"
-    DataFolder = "/data/qifan/dataset_qlyu/UCLAPatients/anonymousDataNew"
-    projectFolder = "/data/qifan/projects_qlyu/EndtoEnd4"
+    expFolder = "/data/datasets/UCLAPatients/experiment"
+    DataFolder = "/data/datasets/UCLAPatients/anonymousDataNew"
+    projectFolder = "/data/qifan/projects/EndtoEnd4"
     voxelsize = '0.25' # unit: cm, 0.25 is the recommended value
     sparsity = '1e-4'
     # debug = True
     debug = False
+    
+
+    ## runs on shenggpu2
+    # numPatients = 8
+    # expFolder = "/data/qifan/dataset_qlyu/UCLAPatients/experiment"
+    # DataFolder = "/data/qifan/dataset_qlyu/UCLAPatients/anonymousDataNew"
+    # projectFolder = "/data/qifan/projects_qlyu/EndtoEnd4"
+    # voxelsize = '0.25' # unit: cm, 0.25 is the recommended value
+    # sparsity = '1e-4'
+    # # debug = True
+    # debug = False
 
     # All variables below are derived
     DOSECALC_DATA = os.path.join(projectFolder, 'CCCS', 'data')
@@ -121,6 +133,7 @@ def autorun():
             print(command)
         else:
             os.system(command)
+        # break
 
         command = 'echo "\n\n{}\n\n"'.format(40*'=')
         if debug:

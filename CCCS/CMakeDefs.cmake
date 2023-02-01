@@ -68,16 +68,17 @@ set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS}
     # at least one PTX backend (code=compute_XX) should be included to maintain compatability with newer \
     # architectures (CC) using JIT compilation
     #-arch=sm_30;  # shorthand for following two lines
-    -gencode=arch=compute_35,code=compute_35 # GeForce GTX >=600 series PTX
+    # -gencode=arch=compute_35,code=compute_35 # GeForce GTX >=600 series PTX
 
     # adds additional cubin (backend) compilation targets, bypassing JIT compilation if executing hw matches CC
     #-gencode=arch=compute_20,code=sm_20
     # -gencode=arch=compute_30,code=sm_30     # GeForce GTX 600 series cubin
     #-gencode=arch=compute_35,code=sm_35
     #-gencode=arch=compute_50,code=sm_50
-    -gencode=arch=compute_52,code=sm_52     # GeForce GTX Titan X cubin
+    # -gencode=arch=compute_52,code=sm_52     # GeForce GTX Titan X cubin
     #-gencode=arch=compute_53,code=sm_53    # Titan X cubin (w/ support for 16bit floating point "half" types)
     # -gencode=arch=compute_70,code=sm_70     # volta v100 cubin
+    -gencode=arch=compute_86,code=sm_86
     )
 
 # set build type
