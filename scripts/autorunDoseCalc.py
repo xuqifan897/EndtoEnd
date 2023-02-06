@@ -17,8 +17,8 @@ def autorun():
     projectFolder = "/data/qifan/projects/EndtoEnd4"
     voxelsize = '0.25' # unit: cm, 0.25 is the recommended value
     sparsity = '1e-4'
-    # debug = True
-    debug = False
+    debug = True
+    # debug = False
     
 
     ## runs on shenggpu2
@@ -39,7 +39,8 @@ def autorun():
         'dosecalc-preprocess/dosecalc-preprocess')
     doseCalcExec = os.path.join(projectFolder, 'CCCS', 'build', 'dosecalc-beamlet', 'dosecalc-beamlet')
 
-    for i in range(numPatients):
+    # for i in range(numPatients):
+    for i in [6]:
         patientName = 'patient{}'.format(i+1)
         # the user may also revise the command below, 'CTAlignResize' specifically
         dicomFolder = os.path.join(DataFolder, patientName, 'CTAlignResize')
