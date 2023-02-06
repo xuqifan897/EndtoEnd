@@ -8,7 +8,7 @@ addpath(genpath('CERRaddins'));
 addpath(genpath('utilities'));
 addpath(genpath('beamlogs'));
 
-globalFolder = '/media/raid0/qifan/datasets/UCLAPatients';
+globalFolder = '/data/datasets/UCLAPatients';
 dataFolder = fullfile(globalFolder, 'anonymousDataNew');
 expFolder = fullfile(globalFolder, 'experiment');
 numPatients = 1;
@@ -22,11 +22,19 @@ for idx = 1:numPatients
     if ~ isfolder(optFolder)
         mkdir(optFolder)
     end
+    h5file = fullfile(patExpFolder, 'Dose_Coefficients.h5');
     maskfile = fullfile(patExpFolder, 'Dose_Coefficients.mask');
-    DoseCoeFolder = fullfile(patExpFolder, 'Dose_Coefficients');
-    for j = 1:nPartitions
-        parFile = fullfile(DoseCoeFolder, ['patient', num2str(j), '.h5']);
-        [M,dose_data,masks]=BuildDoseMatrix(parFile, maskfile, thresh);
-        outFile = 
-    end
+    [M, dose_data, masks] = BuildDoseMatrix(h5file, maskfile, thresh);
+    MorgFile = fullfile(patExpFolder, [patientName, '_M_original.mat']);
+    save(MorgFile, 'M', 'dose_data', 'masks', '-v7.3');
+
+    % save parameter files
+    [StructureInfo, params] = InitIMRTparams(M, dose_data, masks, PrescriptionDose);
+    ParamsNum = 0;
+    paramsPath = fullfile(optFolder, ['params', num2str(ParamsNum), '_original.mat'], 'params');
+    save(paramsPath, 'params');
+    InfoNum = 0;
+    intoPath = fullfile(optFolder, ['StructureInfo', num2str(InfoNum), '.mat'], 'StructureInfo');
+
+    % Remove beams goring through 
 end

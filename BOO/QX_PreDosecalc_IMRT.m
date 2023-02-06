@@ -5,7 +5,7 @@ addpath(genpath('CERRaddins'));
 addpath(genpath('utilities'));
 addpath(genpath('beamlogs'));
 
-globalFolder = '/data/qifan/dataset_qlyu/UCLAPatients';
+globalFolder = '/data/datasets/UCLAPatients';
 dataFolder = fullfile(globalFolder, 'anonymousDataNew');
 expFolder = fullfile(globalFolder, 'experiment');
 beamlogfile = 'spine_T1-6_beamlog.mat';
