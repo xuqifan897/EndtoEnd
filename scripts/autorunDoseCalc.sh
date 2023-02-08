@@ -7,7 +7,7 @@ DataFolder='/data/datasets/UCLAPatients/anonymousDataNew'
 projectFolder='/data/qifan/projects/EndtoEnd4'
 voxelsize='0.25'
 sparsity='1e-4'
-CUDAdevice=0
+CUDAdevice=3
 
 
 # echo ${expFolder}
@@ -17,7 +17,7 @@ export CUDA_VISIBLE_DEVICES=${CUDAdevice}
 export DOSECALC_DATA="${projectFolder}/CCCS/data"
 
 # for ((i=1; i<=${numPatients}; i++))
-for i in 6
+for i in 5
 do
     patientName="patient${i}"
     dicomFolder="${DataFolder}/${patientName}/CTAlignResize"

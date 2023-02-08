@@ -3,7 +3,8 @@
 expFolder="/data/datasets/UCLAPatients/experiment"
 numPatients=8
 cd ./BOO
-for ((i=7; i<=${numPatients}; i++))
+# for ((i=8; i<=${numPatients}; i++))
+for i in 5
 do
     patientName="patient${i}"
     logFile="${expFolder}/${patientName}/preOpt.log"
