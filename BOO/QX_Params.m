@@ -6,13 +6,14 @@ globalFolder = '/data/datasets/UCLAPatients';
 dataFolder = fullfile(globalFolder, 'anonymousDataNew');
 expFolder = fullfile(globalFolder, 'experiment');
 numPatients = 8;
-trialNO = 1;
+trialNO = 2;
 
-for patientIdx = 1:numPatients
-    if patientIdx == 5
-        % some problems
-        continue
-    end
+% for patientIdx = 1:numPatients
+% patientIdx = 5;
+
+list = [3, 5];
+for iii = 1:length(list)
+    patientIdx = list(iii);
     patientName = ['patient', num2str(patientIdx)];
     patExpFolder = fullfile(expFolder, patientName);
     optFolder = fullfile(patExpFolder, 'optimize');
@@ -22,7 +23,7 @@ for patientIdx = 1:numPatients
     load(paramFile);
     load(StructInfoFile);
 
-    params.beamWeight = 600;
+    params.beamWeight = 1200;
     params.showTrigger = 500;
 
     nStructures = length(StructureInfo);

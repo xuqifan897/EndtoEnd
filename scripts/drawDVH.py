@@ -1,7 +1,12 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.io
+import pydicom
+from scipy.io import loadmat
+from rt_utils import RTStructBuilder
+from PIL import Image
+import json
+import glob
 # import mat73
 
 
@@ -109,8 +114,264 @@ def draw_DVH():
         print(patientName)
 
 
+def doseResize():
+    """
+    As the CCCS dose calculation method reshapes the dose,
+    we have to reshape it back to the original shape
+    """
+    globalFolder = '/data/datasets/UCLAPatients'
+    dataFolder = os.path.join(globalFolder, 'anonymousDataNew')
+    expFolder = os.path.join(globalFolder, 'experiment')
+    numPatients = 8
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        expPatFolder = os.path.join(expFolder, patientName)
+        optFolder = os.path.join(expPatFolder, 'optimize')
+        BOOFile, polishFile = findResultPath(optFolder)
+
+        # get original dose
+        polishData = loadmat(polishFile)['polishResult'][0, 0]
+        polishDose = polishData['dose']
+        print(polishDose.shape)
+
+        # get original dose shape
+        dataPatFolder = os.path.join(dataFolder, patientName)
+        MRdoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
+        MRdose = pydicom.dcmread(MRdoseFile).pixel_array
+        MRdoseShape = MRdose.shape
+        targetShape = (MRdoseShape[1], MRdoseShape[2], MRdoseShape[0])
+        print(targetShape)
+
+        resizedDose = ReSize(polishDose, targetShape)
+        # break
+        
+        # extract trailNO
+        trailNO = 1
+        BOOFile_ = BOOFile.split('/')[-1]
+        while True:
+            if str(trailNO) in BOOFile_:
+                break
+            else:
+                trailNO += 1
+        
+        # save
+        outFile = os.path.join(optFolder, 'dose{}.npy'.format(trailNO))
+        np.save(outFile, resizedDose)
+
+
+def ReSize(input, newShape):
+    """
+    This function resizes a 3D array using trilinear 
+    interpoliation. Inputs:
+    input: the input 3D array
+    newShape: target shape
+    output: resized input of the target shape
+    """
+
+    newIndices = np.indices(newShape)
+    newIndices = newIndices.astype(np.float32)
+    oldShape = input.shape
+
+    oldIndices = np.zeros_like(newIndices)
+    oldIndices[0, :, :, :] = (newIndices[0, :, :, :] + 0.5) \
+        / newShape[0] * oldShape[0] - 0.5
+    oldIndices[1, :, :, :] = (newIndices[1, :, :, :] + 0.5) \
+        / newShape[1] * oldShape[1] - 0.5
+    oldIndices[2, :, :, :] = (newIndices[2, :, :, :] + 0.5) \
+        / newShape[2] * oldShape[2] - 0.5
+    
+    # # for debug purposes
+    # coeffs = []
+    
+    base = np.floor(oldIndices).astype(int)
+    diff = oldIndices - base
+    result = np.zeros(newShape, dtype=np.float32)
+    for i in range(2):
+        coeffx = np.abs(i - (1 - diff[0, :, :]))
+        coordx = base[0, :, :, :] + i
+        flag = np.logical_and(coordx >= 0, coordx < oldShape[0])
+        coeffx = coeffx * flag
+        coordx[coordx<0] = 0
+        coordx[coordx>=oldShape[0]] = oldShape[0] - 1
+        for j in range(2):
+            coeffy = np.abs(j - (1 - diff[1, :, :]))
+            coordy = base[1, :, :, :] + j
+            flag = np.logical_and(coordy >= 0, coordy < oldShape[1])
+            coeffy = coeffy * flag
+            coordy[coordy<0] = 0
+            coordy[coordy>=oldShape[1]] = oldShape[1] - 1
+            for k in range(2):
+                coeffz = np.abs(k - (1 - diff[2, :, :]))
+                coordz = base[2, :, :, :] + k
+                flag = np.logical_and(coordz >= 0, coordz < oldShape[2])
+                coeffz = coeffz * flag
+                coordz[coordz<0] = 0
+                coordz[coordz>=oldShape[2]] = oldShape[2] - 1
+                coeff = coeffx * coeffy * coeffz
+                result += input[coordx, coordy, coordz] * coeff
+                # # for debug purposes
+                # coeffs.append(coeff)
+    # # for debug purposes
+    # coeffs = [np.expand_dims(a, axis=0) for a in coeffs]
+    # coeffs = np.concatenate(coeffs, axis=0)
+    # outFile = '/data/datasets/UCLAPatients/visNew/temp/coeffs.npy'
+    # np.save(outFile, coeffs)
+
+    return result
+
+
+def viewDose():
+    """
+    This function compares the resized dose and original dose
+    """
+
+    # # before the goal above, we firstly take a look at the coefficients matrix
+    # file = '/data/datasets/UCLAPatients/visNew/temp/coeffs.npy'
+    # coeffs = np.load(file)
+    # reduce = np.sum(coeffs, axis=0)
+    # return
+
+    globalFolder = '/data/datasets/UCLAPatients'
+    dataFolder = os.path.join(globalFolder, 'anonymousDataNew')
+    expFolder = os.path.join(globalFolder, 'experiment')
+    numPatients = 8
+
+    outFolder = os.path.join(globalFolder, 'visNew', 'temp')
+    if not os.path.isdir(outFolder):
+        os.mkdir(outFolder)
+
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        expPatFolder = os.path.join(expFolder, patientName)
+        optFolder = os.path.join(expPatFolder, 'optimize')
+
+        # find trailNO
+        BOOfile, polishFile = findResultPath(optFolder)
+        trailNO = 1
+        while True:
+            if str(trailNO) in BOOfile:
+                break
+            else:
+                trailNO += 1
+
+        polishData = loadmat(polishFile)['polishResult'][0, 0]
+        polishDose = polishData['dose']
+        reshapeFile = os.path.join(optFolder, 'dose{}.npy'.format(trailNO))
+        reshapeData = np.load(reshapeFile)
+        # print(polishDose.shape, reshapeData.shape)
+
+        polishProfile = np.mean(polishDose, axis=(0, 1))
+        reshapeProfile = np.mean(reshapeData, axis=(0, 1))
+        plt.plot(polishProfile)
+        plt.plot(reshapeProfile)
+        plt.legend(['polish', 'reshape'])
+        outFile = os.path.join(outFolder, '{}.png'.format(patientName))
+        plt.savefig(outFile)
+        plt.clf()
+        break
+
+
+def DVHCompClinicalOptimize():
+    """
+    This function compares the DVHs for clinical plans and MATLAB optimized plans
+    """
+    # this function runs on shenggpu4
+
+    globalFolder = '/data/datasets/UCLAPatients'
+    dataFolder = os.path.join(globalFolder, 'anonymousDataNew')
+    expFolder = os.path.join(globalFolder, 'experiment')
+    indices = [1, 2, 4, 6, 7, 8]  # patient indices to examine
+
+    # # take a try
+    # path = '/data/datasets/UCLAPatients/experiment/patient3/optimize'
+    # BOOFile, polishFile = findResultPath(path)
+    # print(BOOFile, polishFile)
+
+    for idx in indices:
+        patientName = 'patient{}'.format(idx)
+        dataPatFolder = os.path.join(dataFolder, patientName)
+        clinicalDoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
+        
+        expPatFolder = os.path.join(expFolder, patientName)
+        optFolder = os.path.join(expPatFolder, 'optimize')
+        BOOfile, polishFile = findResultPath(optFolder)
+
+        # load clinical dose
+        # We state that the array shape should be of (height, width, slice)
+        clinicalDose = pydicom.dcmread(clinicalDoseFile)
+        clinicalDose = clinicalDose.pixel_array
+        clinicalDose = np.transpose(clinicalDose, (1, 2, 0))
+        print(clinicalDose.shape)
+
+        # load polishData
+        polishData = loadmat(polishFile)['polishResult'][0, 0]
+        polishDose = polishData['dose']
+        # polishDose = np.transpose(polishDose, (2, 0, 1))
+        print(polishDose.shape)
+        StructureInfo = polishData['StructureInfo'][0]
+
+        # firstElement = StructureInfo[0]
+        # firstName = firstElement['Name']
+        # firstName = np.array2string(firstName)
+        # firstName = firstName[2:-2]
+
+        # load names of relevant structures
+        names = [np.array2string(a['Name'])[2:-2] for a in StructureInfo]
+        names = [a for a in names if 'PTV' in a or 'O_' in a]
+
+        # load masks
+        MRFolder = os.path.join(dataPatFolder, 'MR')
+        rtFile = os.path.join(dataPatFolder, 'MRrt.dcm')
+        rtstruct = RTStructBuilder.create_from(
+            dicom_series_path=MRFolder, rt_struct_path=rtFile)
+        # mask_names = rtstruct.get_roi_names()
+        # masks = {a: rtstruct.get_roi_mask_by_name(a) for a in names}
+
+        # load PTV name
+        PTVname = getPTVname(expPatFolder)
+        newNames = names.copy()
+        newNames[0] = PTVname
+        # print(names, newNames)
+        masks = {a: rtstruct.get_roi_mask_by_name(a) for a in newNames}
+        print(masks[PTVname].shape)
+        break
+
+
+def findResultPath(path):
+    """
+    This function finds the path to the most updated results.
+    file names are in the form 'BOOresult${trailNO}.mat' and
+    'polishResult${trailNO}.mat'. We find the files with the
+    largest ${trailNO}
+    """
+    BOOFileTemplate = os.path.join(path, 'BOOresult{}.mat')
+    BOOFile = None
+    polishFileTemplate = os.path.join(path, 'polishResult{}.mat')
+    polishFile = None
+    count = 1
+    while True:
+        if os.path.isfile(BOOFileTemplate.format(count)) \
+            and os.path.isfile(polishFileTemplate.format(count)):
+            BOOFile = BOOFileTemplate.format(count)
+            polishFile = polishFileTemplate.format(count)
+            count += 1
+        else:
+            break
+    return BOOFile, polishFile
+
+
+def getPTVname(expPatFolder):
+    structuresFile = os.path.join(expPatFolder, 'structures.json')
+    with open(structuresFile, 'r') as f:
+        data = json.load(f)
+        PTVname = data['ptv']
+    return PTVname
+
 
 if __name__ == '__main__':
     # examineMask()
     # examineDose()
-    draw_DVH()
+    # draw_DVH()
+    # doseResize()
+    viewDose()
+    # DVHCompClinicalOptimize()

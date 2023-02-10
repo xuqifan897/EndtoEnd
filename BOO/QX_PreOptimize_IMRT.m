@@ -102,4 +102,3 @@ PrescriptionDose = 20;
     params = newparams;
     save(fullfile(optFolder,['params' num2str(ParamsNum) '.mat']),'params');
 % end
-exit;
