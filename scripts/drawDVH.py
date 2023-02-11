@@ -258,10 +258,12 @@ def viewDose():
         polishDose = polishData['dose']
         reshapeFile = os.path.join(optFolder, 'dose{}.npy'.format(trailNO))
         reshapeData = np.load(reshapeFile)
-        # print(polishDose.shape, reshapeData.shape)
+        print(polishDose.shape, reshapeData.shape)
 
-        polishProfile = np.mean(polishDose, axis=(0, 1))
-        reshapeProfile = np.mean(reshapeData, axis=(0, 1))
+        # polishProfile = np.mean(polishDose, axis=(0, 1))
+        # reshapeProfile = np.mean(reshapeData, axis=(0, 1))
+        polishProfile = np.mean(polishDose, axis=(0, 2))
+        reshapeProfile = np.mean(reshapeData, axis=(0, 2))
         plt.plot(polishProfile)
         plt.plot(reshapeProfile)
         plt.legend(['polish', 'reshape'])
@@ -280,61 +282,73 @@ def DVHCompClinicalOptimize():
     globalFolder = '/data/datasets/UCLAPatients'
     dataFolder = os.path.join(globalFolder, 'anonymousDataNew')
     expFolder = os.path.join(globalFolder, 'experiment')
-    indices = [1, 2, 4, 6, 7, 8]  # patient indices to examine
+    visFolder = os.path.join(globalFolder, 'visNew')
+    numPatients = 8
 
-    # # take a try
-    # path = '/data/datasets/UCLAPatients/experiment/patient3/optimize'
-    # BOOFile, polishFile = findResultPath(path)
-    # print(BOOFile, polishFile)
-
-    for idx in indices:
-        patientName = 'patient{}'.format(idx)
-        dataPatFolder = os.path.join(dataFolder, patientName)
-        clinicalDoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
-        
-        expPatFolder = os.path.join(expFolder, patientName)
-        optFolder = os.path.join(expPatFolder, 'optimize')
-        BOOfile, polishFile = findResultPath(optFolder)
+    for idx in range(numPatients):
+    # for idx in range(6, numPatients):
+        patientName = 'patient{}'.format(idx+1)
 
         # load clinical dose
         # We state that the array shape should be of (height, width, slice)
+        dataPatFolder = os.path.join(dataFolder, patientName)
+        clinicalDoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
         clinicalDose = pydicom.dcmread(clinicalDoseFile)
         clinicalDose = clinicalDose.pixel_array
         clinicalDose = np.transpose(clinicalDose, (1, 2, 0))
-        print(clinicalDose.shape)
+        # print(clinicalDose.shape)
 
-        # load polishData
-        polishData = loadmat(polishFile)['polishResult'][0, 0]
-        polishDose = polishData['dose']
-        # polishDose = np.transpose(polishDose, (2, 0, 1))
-        print(polishDose.shape)
-        StructureInfo = polishData['StructureInfo'][0]
+        # load BOO dose. Firstly, find the correct trailNO
+        expPatFolder = os.path.join(expFolder, patientName)
+        optFolder = os.path.join(expPatFolder, 'optimize')
+        doseFiles = glob.glob(os.path.join(optFolder, 'dose*.npy'))
+        doseFiles.sort()
+        doseFile = doseFiles[-1]
+        BOOdose = np.load(doseFile)
 
-        # firstElement = StructureInfo[0]
-        # firstName = firstElement['Name']
-        # firstName = np.array2string(firstName)
-        # firstName = firstName[2:-2]
+        last = doseFile.split('/')[-1]
+        digit = ""
+        for c in last:
+            if c.isdigit():
+                digit = digit + c
+        trailNO = int(digit)
+        # print(trailNO)
+        # print(BOOdose.shape, '\n')
+        # continue
 
-        # load names of relevant structures
-        names = [np.array2string(a['Name'])[2:-2] for a in StructureInfo]
-        names = [a for a in names if 'PTV' in a or 'O_' in a]
+        # load structures
+        structuresFile = os.path.join(expPatFolder, 'structures.json')
+        with open(structuresFile, 'r') as f:
+            structures = json.load(f)
+        PTVname = structures['ptv']
+        OARnames = structures['oar']
+        ROIs = [PTVname, ] + OARnames[1:]  # to exclude skin/body
+        # print(ROIs)
 
         # load masks
         MRFolder = os.path.join(dataPatFolder, 'MR')
         rtFile = os.path.join(dataPatFolder, 'MRrt.dcm')
         rtstruct = RTStructBuilder.create_from(
             dicom_series_path=MRFolder, rt_struct_path=rtFile)
-        # mask_names = rtstruct.get_roi_names()
-        # masks = {a: rtstruct.get_roi_mask_by_name(a) for a in names}
+        masks = {name: rtstruct.get_roi_mask_by_name(name) for name in ROIs}
+        # print(masks[PTVname].shape)
 
-        # load PTV name
-        PTVname = getPTVname(expPatFolder)
-        newNames = names.copy()
-        newNames[0] = PTVname
-        # print(names, newNames)
-        masks = {a: rtstruct.get_roi_mask_by_name(a) for a in newNames}
-        print(masks[PTVname].shape)
-        break
+        visPatFolder = os.path.join(visFolder, patientName)
+        outFile = os.path.join(visPatFolder, 'DVHcomp{}.png'.format(trailNO))
+        DVHgroup(BOOdose, masks)
+        plt.legend(ROIs)
+        plt.savefig(outFile)
+        plt.clf()
+        print(patientName)
+
+
+def DVHgroup(dose, masks):
+    for mask, array in masks.items():
+        doseMasked = dose[array]
+        doseMasked = np.sort(doseMasked)
+        doseMasked = np.insert(doseMasked, 0, 0)
+        yAxis = 1 - np.arange(len(doseMasked)) / len(doseMasked)
+        plt.plot(doseMasked, yAxis)
 
 
 def findResultPath(path):
@@ -373,5 +387,5 @@ if __name__ == '__main__':
     # examineDose()
     # draw_DVH()
     # doseResize()
-    viewDose()
-    # DVHCompClinicalOptimize()
+    # viewDose()
+    DVHCompClinicalOptimize()
