@@ -57,7 +57,7 @@ def examineDose():
         optFolder = os.path.join(patFolder, 'optimize_OAR{}'.format(OARweight))
         resultFile = os.path.join(optFolder, 
             'result {} Info0 params1 beam20.mat'.format(patientName))
-        dose = scipy.io.loadmat(resultFile)['result']['dose'][0][0]
+        dose = loadmat(resultFile)['result']['dose'][0][0]
         dosePath = os.path.join(debugFolder, 'dose')
         if not os.path.isdir(dosePath):
             os.mkdir(dosePath)
@@ -85,10 +85,10 @@ def draw_DVH():
         assert os.path.isdir(debugFolder)
         resultFile = os.path.join(optFolder, 
             'result {} Info0 params1 beam20.mat'.format(patientName))
-        dose = scipy.io.loadmat(resultFile)['result']['dose'][0][0]
+        dose = loadmat(resultFile)['result']['dose'][0][0]
 
         maskPath = os.path.join(patFolder, 'masks.mat')
-        masks = scipy.io.loadmat(maskPath)['masks']
+        masks = loadmat(maskPath)['masks']
         namelist = []
         for j in range(len(masks)):
             mask = masks[j]
