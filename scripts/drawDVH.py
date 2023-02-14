@@ -1,5 +1,8 @@
 import os
 import numpy as np
+import sys
+from PyQt5 import QtWidgets
+QtWidgets.QApplication(sys.argv)
 import matplotlib.pyplot as plt
 import pydicom
 from scipy.io import loadmat
@@ -24,7 +27,7 @@ def examineMask():
             os.mkdir(debugFolder)
         optFolder = os.path.join(patFolder, 'optimize_OAR{}'.format(OARweight))
         maskPath = os.path.join(patFolder, 'masks.mat')
-        masks = scipy.io.loadmat(maskPath)['masks']
+        masks = loadmat(maskPath)['masks']
         for j in range(len(masks)):
             mask = masks[j]
             name = mask[0][0][0][0][0]
@@ -333,16 +336,53 @@ def DVHCompClinicalOptimize():
         masks = {name: rtstruct.get_roi_mask_by_name(name) for name in ROIs}
         # print(masks[PTVname].shape)
 
+        # dose normalization. As the clinical Dose and 
+        # BOOdose are not of the same scale
+        # here we normalize using D98.
+        PTVmask = masks[PTVname]
+        BOOPTV = BOOdose[PTVmask]
+        clinicalPTV = clinicalDose[PTVmask]
+        thresh = 98
+        BOOPercentile = np.percentile(BOOPTV, thresh)
+        clinicalPercentile = np.percentile(clinicalPTV, thresh)
+        clinicalDose = clinicalDose / clinicalPercentile * BOOPercentile
+
         visPatFolder = os.path.join(visFolder, patientName)
         outFile = os.path.join(visPatFolder, 'DVHcomp{}.png'.format(trailNO))
-        DVHgroup(BOOdose, masks)
+        # DVHgroup_old(BOOdose, masks)
+        colorList = DVHgroup(BOOdose, masks)
+        DVHgroup(clinicalDose, masks, linestyle='--', colorList=colorList)
+
         plt.legend(ROIs)
         plt.savefig(outFile)
         plt.clf()
         print(patientName)
+        # break
 
 
-def DVHgroup(dose, masks):
+def DVHgroup(dose, masks, linestyle='-', colorList=None):
+    if colorList is None:
+        colorList = []
+        for mask, array in masks.items():
+            doseMasked = dose[array]
+            doseMasked = np.sort(doseMasked)
+            doseMasked = np.insert(doseMasked, 0, 0)
+            yAxis = 1 - np.arange(len(doseMasked)) / len(doseMasked)
+            p = plt.plot(doseMasked, yAxis, linestyle=linestyle)
+            colorList.append(p[0].get_color())
+        return colorList
+    else:
+        count = 0
+        for mask, array in masks.items():
+            doseMasked = dose[array]
+            doseMasked = np.sort(doseMasked)
+            doseMasked = np.insert(doseMasked, 0, 0)
+            yAxis = 1 - np.arange(len(doseMasked)) / len(doseMasked)
+            p = plt.plot(doseMasked, yAxis, linestyle=linestyle, color=colorList[count])
+            count += 1
+
+
+def DVHgroup_old(dose, masks):
     for mask, array in masks.items():
         doseMasked = dose[array]
         doseMasked = np.sort(doseMasked)

@@ -82,5 +82,5 @@ for i = 1:numPatients
     newStructureFile = fullfile(optFolder, ['StructureInfo', num2str(newTrailNO), '.mat']);
     save(newParamsFile, 'params');
     save(newStructureFile, 'StructureInfo');
-    patientName
+    
 end
