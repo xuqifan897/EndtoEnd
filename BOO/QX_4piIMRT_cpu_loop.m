@@ -5,9 +5,13 @@ addpath(genpath('CERRaddins'), '-end');
 addpath(genpath('utilities'), '-end');
 addpath(genpath('beamlogs'), '-end');
 
-numPatients = 8;
-for patientIdx = 1:numPatients
-    clearvars -except patientIdx numPatients
+% numPatients = 8;
+% for patientIdx = 1:numPatients
+
+patientIndices = [5, 6];
+for i = 1:length(patientIndices)
+    patientIdx = patientIndices(i);
+    clearvars -except patientIdx numPatients patientIndices
     globalFolder = '/data/datasets/UCLAPatients';
     dataFolder = fullfile(globalFolder, 'anonymousDataNew');
     expFolder = fullfile(globalFolder, 'experiment');

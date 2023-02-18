@@ -1055,6 +1055,107 @@ def CTAlignResizeSanityCheck():
         print('\n')
 
 
+def drawPTVduodenum():
+    """
+    In the previous optimization, the duodenums of patients 3, 5, and 6
+    gets hotspots, which cannot be addressed by simply using higher weights.
+    So in here, we plan to crop PTV into subregions, and apply different 
+    weights to them. Before that, we firstly draw the PTV countours.
+    """
+    patients = ['patient3', 'patient5', 'patient6']
+    structures = [['PTV uncropped', 'PTV_CROPPED', 'PTV_HIGH', 'PTV_LOW', 'O_Duod'], 
+        ['PTV 3mm uncroppe', 'PTV_CROPPED', 'PTV_HIGH', 'PTV_LOW', 'O_Duod'],
+        ['PTV 50 uncropped', 'PTV_CROPPED', 'PTV_HIGH', 'PTV_LOW', 'O_Duod']]
+    
+    # print anatomy names
+    for patient, structure in zip(patients, structures):
+        outFolder = os.path.join(visFolder, patient, 'PTVduod')
+        if not os.path.isdir(outFolder):
+            os.mkdir(outFolder)
+        
+        # firstly, draw an example of colors
+        nColors = 5  # len(structures[0])
+        canvas = np.zeros((500, 500, 3), dtype=np.uint8)
+        stride = 100
+        for j in range(nColors):
+            color = colors[j]
+            canvas[j * stride: (j+1)*stride, :, 0] = color[0]
+            canvas[j * stride: (j+1)*stride, :, 1] = color[1]
+            canvas[j * stride: (j+1)*stride, :, 2] = color[2]
+        canvas = cv2.putText(canvas, 'PTV uncropped', (0, 1*stride), 
+            cv2.FONT_HERSHEY_SIMPLEX, 2, color=(0, 0, 0))
+        canvas = cv2.putText(canvas, 'PTV cropped', (0, 2*stride), 
+            cv2.FONT_HERSHEY_SIMPLEX, 2, color=(0, 0, 0))
+        canvas = cv2.putText(canvas, 'PTV_HIGH', (0, 3*stride), 
+            cv2.FONT_HERSHEY_SIMPLEX, 2, color=(0, 0, 0))
+        canvas = cv2.putText(canvas, 'PTV_LOW', (0, 4*stride), 
+            cv2.FONT_HERSHEY_SIMPLEX, 2, color=(0, 0, 0))
+        canvas = cv2.putText(canvas, 'duodenum', (0, 5*stride), 
+            cv2.FONT_HERSHEY_SIMPLEX, 2, color=(0, 0, 0))
+        outFile = os.path.join(outFolder, 'color.png')
+        plt.imsave(outFile, canvas)
+
+        if False:
+            expPatFolder = os.path.join(anonymousFolder, patient)
+            MRFolder = os.path.join(expPatFolder, 'MR')
+            MRrtFile = os.path.join(expPatFolder, 'MRrt.dcm')
+            rtstruct = RTStructBuilder.create_from(MRFolder, MRrtFile)
+
+            # sanity check
+            names = rtstruct.get_roi_names()
+            for name in structure:
+                assert name in names, '{} name {} error'.format(patient, name)
+            
+            output = drawContours(MRFolder, rtstruct, structure)
+            writeResult(outFolder, output)
+            print(patient)
+
+
+def visPTVcropped():
+    """
+    This function visualizes the PTV cropped and duodenum, 
+    to see whether they overlap or not. The purpose is to 
+    penalize the PTV dose while preserving the duodenum
+    """
+
+    structures = {'patient1': ['PTV_CROP', 'O_Duodenum'], 
+        'patient2': ['PTV_CROPPED'], 
+        'patient3': ['PTV_CROPPED', 'O_Duod'],
+        'patient4': ['PTV_CROPPED', 'O_DUOD'],
+        'patient5': ['PTV_CROPPED', 'O_Duod'],
+        'patient6': ['PTV_CROPPED', 'O_Duod'],
+        'patient7': ['PTV_crop', 'O_Duod'],
+        'patient8': ['PTV_crop', 'O_Duod']}
+
+    # # firstly, print the structures
+    # for i in range(numPatients):
+    #     patientName = 'patient{}'.format(i+1)
+    #     expPatFolder = os.path.join(anonymousFolder, patientName)
+    #     MRFolder = os.path.join(expPatFolder, 'MR')
+    #     MRrtFile = os.path.join(expPatFolder, 'MRrt.dcm')
+    #     rtstruct = RTStructBuilder.create_from(MRFolder, MRrtFile)
+    #     names = rtstruct.get_roi_names()
+    #     names_selected = [a for a in names if ('PTV' in a) 
+    #         or ('Duod' in a) or ('duod' in a)]
+    #     print(patientName, names_selected, '\n')
+
+    for patientName, structs in structures.items():
+        expPatFolder = os.path.join(anonymousFolder, patientName)
+        MRFolder = os.path.join(expPatFolder, 'MR')
+        MRrtFile = os.path.join(expPatFolder, 'MRrt.dcm')
+        rtstruct = RTStructBuilder.create_from(MRFolder, MRrtFile)
+
+        # # to ensure correctness
+        # names = rtstruct.get_roi_names()
+        # for struct in structs:
+        #     assert struct in names, '{} {} not correct'.format(patientName, struct)
+
+        output = drawContours(MRFolder, rtstruct, structs)
+        outFolder = os.path.join(visFolder, patientName, 'PTVCrop_duod')
+        writeResult(outFolder, output)
+        print(patientName)
+
+
 if __name__ == '__main__':
     # allAnonymize()
     # anonymize()
@@ -1068,7 +1169,9 @@ if __name__ == '__main__':
     # showAnatomyCT()
     # CTAlignResize()
     # createCTAnatomy()
-    CTAnatomyPurify()
+    # CTAnatomyPurify()
     # visCTrtAgain()
     # CTAlignResizeSanityCheck()
     # createCTAnatomy_mini()
+    # drawPTVduodenum()
+    visPTVcropped()
