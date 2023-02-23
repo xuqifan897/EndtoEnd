@@ -85,7 +85,6 @@ for i = 1:numPatients
     save(newStructureFile, 'StructureInfo');
     patientName
 end
-end
 
 %% this is to update the parameters to outperform the clinical plans
 globalFolder = '/data/datasets/UCLAPatients';
@@ -143,6 +142,60 @@ for i = 1:length(patientList)
     [ParamsOut, StructureOut] = getFiles(optFolder, source+1);
     save(ParamsOut, 'params');
     save(StructureOut, 'StructureInfo');
+end
+end
+
+%% Here we revise the parameters
+globalFolder = '/data/datasets/UCLAPatients';
+dataFolder = fullfile(globalFolder, 'anonymousDataNew');
+expFolder = fullfile(globalFolder, 'experiment');
+numPatients = 8;
+trailNOs = [2, 2, 4, 2, 4, 3, 2, 2];
+for i = 1:numPatients
+    patientName = ['patient', num2str(i)];
+    expPatFolder = fullfile(expFolder, patientName);
+    optFolderOld = fullfile(expPatFolder, 'optimize');
+    optFolderNew = fullfile(expPatFolder, 'optimizePTVcropped');
+    trailNO = trailNOs(i);
+
+    structuresOld = fullfile(optFolderOld, ['StructureInfo', num2str(trailNO), '.mat']);
+    paramsOld = fullfile(optFolderOld, ['params', num2str(trailNO), '.mat']);
+    load(structuresOld, 'StructureInfo');
+    StructureInfoOld = StructureInfo;
+    clear StructureInfo
+    load(paramsOld, 'params');
+    paramsOld = params;
+    clear params;
+    
+    structuresNew = fullfile(optFolderNew, 'StructureInfo0.mat');
+    paramsNew = fullfile(optFolderNew, 'params0.mat');
+    load(structuresNew, 'StructureInfo');
+    StructureInfoNew = StructureInfo;
+    clear StructureInfo;
+    load(paramsNew, 'params');
+    paramsNew = params;
+    clear params;
+
+    % transfer weights
+    for j = 1:length(StructureInfoNew)
+        nameNew = StructureInfoNew(j).Name;
+        for k = 1:length(StructureInfoOld)
+            nameOld = StructureInfoOld(k).Name;
+            if strcmp(nameNew, nameOld)
+                weight = StructureInfoOld(k).OARWeights;
+                StructureInfoNew(j).OARWeights = weight;
+                break
+            end
+        end
+    end
+    
+    % save variables
+    params = paramsOld;
+    StructureInfo = StructureInfoNew;
+    paramsOut = fullfile(optFolderNew, 'params1.mat');
+    StructuresOut = fullfile(optFolderNew, 'StructureInfo1.mat');
+    save(paramsOut, 'params');
+    save(StructuresOut, 'StructureInfo');
 end
 
 function [paramsFile, StructureFile] = getFiles(optFolder, sourceNO)
