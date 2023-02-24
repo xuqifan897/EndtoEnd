@@ -1,9 +1,16 @@
 import os
+import glob
+import sys
+from PyQt5 import QtWidgets
+QtWidgets.QApplication(sys.argv)
 import numpy as np
 import json
 import pydicom
+import matplotlib.pyplot as plt
+import pydicom
 from rt_utils import RTStructBuilder
-import UCLAPatientsNew
+from scipy.io import loadmat
+from drawDVH import ReSize, DVHgroup
 
 globalFolder = '/data/datasets/UCLAPatients'
 expFolder = os.path.join(globalFolder, 'experiment')
@@ -144,12 +151,50 @@ def createCTanatomy():
         # then, check SOPInstanceUID
 
 
+def doseResizeCropped():
+    """
+    Firstly, resize the dose after the BOO 
+    optimization to the original shape
+    """
+    numPatients = 8
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        expPatFolder = os.path.join(expFolder, patientName)
+        optFolder = os.path.join(expPatFolder, 'optimizePTVcropped')
 
+        # get trailNO
+        template = os.path.join(optFolder, 'polishResult*.mat')
+        files = glob.glob(template)
+        files.sort()
+        polishResultFile = files[-1]
+        polishResultFile_ = polishResultFile.split('/')[-1]
+        digits = [a for a in polishResultFile_ if a.isdigit()]
+        trailNO = ''.join(digits)
+        trailNO = int(trailNO)
+
+        # get original dose
+        polishData = loadmat(polishResultFile)['polishResult'][0, 0]
+        polishDose = polishData['dose']
+        print(polishDose.shape)
+
+        # get original dose shape
+        dataPatFolder = os.path.join(anonymousDataFolder, patientName)
+        MRdoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
+        MRdose = pydicom.dcmread(MRdoseFile).pixel_array
+        MRdoseShape = MRdose.shape
+        targetShape = (MRdoseShape[1], MRdoseShape[2], MRdoseShape[0])
+        print(targetShape)
+
+        resizedDose = ReSize(polishDose, targetShape)
+        
+        targetFile = os.path.join(optFolder, 'dose{}.npy'.format(trailNO))
+        np.save(targetFile, resizedDose)
+        print(patientName, '\n')
 
 
 def visDVH_PTVcropped():
     """
-    This function dras the DVH graph of the 
+    This function draws the DVH graph of the 
     optimization results using PTV cropped.
     """
     numPatients = 8
@@ -157,14 +202,61 @@ def visDVH_PTVcropped():
         patientName = 'patient{}'.format(i+1)
         expPatFolder = os.path.join(expFolder, patientName)
         optFolder = os.path.join(expPatFolder, 'optimizePTVcropped')
-        polishResultFile = os.path.join(optFolder, 'polishResult1.mat')
+        # get trailNO
+        template = os.path.join(optFolder, 'dose*.npy')
+        files = glob.glob(template)
+        files.sort()
+        BOOdoseFile = files[-1]
+        BOOdoseFile_ = BOOdoseFile.split('/')[-1]
+        digits = [a for a in BOOdoseFile_ if a.isdigit()]
+        trailNO = ''.join(digits)
+        trailNO = int(trailNO)
+        BOOdose = np.load(BOOdoseFile)
 
         dataPatFolder = os.path.join(anonymousDataFolder, patientName)
-        MRFolder = os.path.join(dataPatFolder, 'MR')
-        MRrtFile = os.path.join(dataPatFolder, 'MRrt.dcm')
         MRdoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
+        clinicalDose = pydicom.dcmread(MRdoseFile).pixel_array
+        clinicalDose = np.transpose(clinicalDose, (1, 2, 0))
+
+        # load structures
+        structuresFile = os.path.join(optFolder, 'structures.json')
+        with open(structuresFile, 'r') as f:
+            structures = json.load(f)
+        PTVname = structures['ptv']
+        OARnames = structures['oar']
+        ROIs = [PTVname, ] + OARnames[1:]  # to exclude skin/body
+
+        # load masks
+        MRFolder = os.path.join(dataPatFolder, 'MR')
+        rtFile = os.path.join(dataPatFolder, 'MRrt.dcm')
+        rtstruct = RTStructBuilder.create_from(
+            dicom_series_path=MRFolder, rt_struct_path=rtFile)
+        masks = {name: rtstruct.get_roi_mask_by_name(name) for name in ROIs}
+
+        # dose normalization. As the clinical Dose and 
+        # BOOdose are not of the same scale
+        # here we normalize using D98.
+        PTVmask = masks[PTVname]
+        BOOPTV = BOOdose[PTVmask]
+        clinicalPTV = clinicalDose[PTVmask]
+        thresh = 5
+        BOOPercentile = np.percentile(BOOPTV, thresh)
+        clinicalPercentile = np.percentile(clinicalPTV, thresh)
+        clinicalDose = clinicalDose / clinicalPercentile * BOOPercentile
+        
+        # draw DVH
+        colorList = DVHgroup(BOOdose, masks)
+        DVHgroup(clinicalDose, masks, linestyle='--', colorList=colorList)
+        visPatFolder = os.path.join(visFolder, patientName)
+        outFile = os.path.join(visPatFolder, 'DVH_PTVcropped{}.png'.format(trailNO))
+        plt.legend(ROIs)
+        plt.savefig(outFile)
+        plt.clf()
+        print(patientName)
 
 
 if __name__ == '__main__':
     # reviseStructures()
-    createCTanatomy()
+    # createCTanatomy()
+    # doseResizeCropped()
+    visDVH_PTVcropped()

@@ -201,42 +201,26 @@ end
 %% here we revise the parameters for PTV cropped
 patientList = [1, 3, 5, 8];
 trailNOs = [1, 1, 1, 1];
-structures = {'O_Esgs', 'O_Esgs', 'O_Duod', 'O_Esgs'};
-weights = [5, 5, 20, 5];
+structures = {'O_Esgs', 'O_Esgs', 'O_Duod', 'O_Esgs'}
 expFolder = '/data/datasets/UCLAPatients/experiment';
 for i = 1:length(patientList)
-    idx = patientList(i);
-    patientName = ['patient', num2str(idx)];
+    patientName = ['patient', num2str(i)];
     trailNO = trailNOs(i);
     expPatFolder = fullfile(expFolder, patientName);
     optFolder = fullfile(expPatFolder, 'optimizePTVcropped');
     StructureInfoFile = fullfile(optFolder, ...
         ['StructureInfo', num2str(trailNO), '.mat']);
     paramsFile = fullfile(optFolder, ['params', num2str(trailNO), '.mat']);
-    clearvars StructureInfo params
     load(StructureInfoFile, 'StructureInfo');
     load(paramsFile, 'params');
-%     StructureInfoOld = StructureInfo;
-%     paramsOld = params;
-%     clearvars StructureInfo params
+    StructureInfoOld = StructureInfo;
+    paramsOld = params;
+    clearvars StructureInfo params
 
     % revise variable
-    structureName = structures{i};
-    weight = weights(i);
     for j = 1:length(StructureInfo)
-        if strcmp(StructureInfo(j).Name, structureName)
-%             fprintf([patientName, structureName, num2str(StructureInfo(j).OARWeights), '\n']);
-            StructureInfo(j).OARWeights = weight;
-            break
-        end
+        
     end
-
-    % save result
-    StructureInfoOutFile = fullfile(optFolder, ['StructureInfo', num2str(trailNO+1), '.mat']);
-    paramsOutFile = fullfile(optFolder, ['params', num2str(trailNO+1), '.mat']);
-    save(StructureInfoOutFile, 'StructureInfo');
-    save(paramsOutFile, 'params');
-    fprintf([patientName, structureName, num2str(StructureInfo(j).OARWeights), '\n']);
 end
 
 function [paramsFile, StructureFile] = getFiles(optFolder, sourceNO)

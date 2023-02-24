@@ -8,7 +8,8 @@ addpath(genpath('beamlogs'), '-end');
 % numPatients = 8;
 % for patientIdx = 1:numPatients
 
-patientIndices = [1, 2, 3, 4, 5, 6, 7, 8];
+% patientIndices = [1, 2, 3, 4, 5, 6, 7, 8];
+patientIndices = [1, 3, 5, 8];
 for i = 1:length(patientIndices)
     patientIdx = patientIndices(i);
     clearvars -except patientIdx numPatients patientIndices
