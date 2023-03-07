@@ -488,7 +488,7 @@ def PTVHomogeneity():
     """
     numPatients = 8
     BOOHomogeneity = []
-    cliincalHomogeneity = []
+    clinicalHomogeneity = []
     for i in range(numPatients):
         patientName = 'patient{}'.format(i+1)
         expPatFolder = os.path.join(expFolder, patientName)
@@ -534,17 +534,263 @@ def PTVHomogeneity():
         BOOD95 = np.percentile(BOOPTV, thresh)
         clinicalD95 = np.percentile(clinicalPTV, thresh)
         clinicalDose = clinicalDose / clinicalD95 * BOOD95
+        clinicalPTV = clinicalDose[PTVmask]  # update clinicalPTV after the normalization
 
         # now D95 of the two plans are equal, we measure the D5
         thresh = 95
         BOOD5 = np.percentile(BOOPTV, thresh)
         clinicalD5 = np.percentile(clinicalPTV, thresh)
-        BOODHI = BOOD5 / BOOD95
-        clinicalDHI = clinicalD5 / BOOD95
+        BOODHI = BOOD95 / BOOD5
+        clinicalDHI = BOOD95 / clinicalD5
         BOOHomogeneity.append(BOODHI)
-        cliincalHomogeneity.append(clinicalDHI)
-    result = np.array([a < b for a, b in zip(BOOHomogeneity, cliincalHomogeneity)])
-    print(np.sum(result))
+        clinicalHomogeneity.append(clinicalDHI)
+        print(patientName)
+    
+    # result = np.array([a > b for a, b in zip(BOOHomogeneity, cliincalHomogeneity)])
+    # print(np.sum(result))
+    print('BOOHomogeneity average: {}, detail: {}'.format(
+        np.mean(np.array(BOOHomogeneity)), BOOHomogeneity))
+    print('clinicalHomogeneity average: {}, detail: {}'.format(
+        np.mean(np.array(clinicalHomogeneity)), clinicalHomogeneity))
+
+
+def OARDoseAnalysis():
+    """
+    This function analyze the OAR dose Dmax, D95 etc
+    """
+    numPatients = 8
+    duodDmax = {}
+    duodD95 = {}
+    stomachDmax = {}
+    stomachD95 = {}
+    Bwel_SmDmax = {}
+    Bwel_SmD95 = {}
+    for i in range(numPatients):
+        patientName = 'patient{}'.format(i+1)
+        expPatFolder = os.path.join(expFolder, patientName)
+        optFolder = os.path.join(expPatFolder, 'optimizePTVcropped')
+        # get trailNO
+        template = os.path.join(optFolder, 'dose*.npy')
+        files = glob.glob(template)
+        files.sort()
+        BOOdoseFile = files[-1]
+        BOOdoseFile_ = BOOdoseFile.split('/')[-1]
+        digits = [a for a in BOOdoseFile_ if a.isdigit()]
+        trailNO = ''.join(digits)
+        trailNO = int(trailNO)
+        BOOdose = np.load(BOOdoseFile)
+
+        dataPatFolder = os.path.join(anonymousDataFolder, patientName)
+        MRdoseFile = os.path.join(dataPatFolder, 'MRdose.dcm')
+        clinicalDose = pydicom.dcmread(MRdoseFile).pixel_array
+        clinicalDose = np.transpose(clinicalDose, (1, 2, 0))
+
+        # load structures
+        structuresFile = os.path.join(optFolder, 'structures.json')
+        with open(structuresFile, 'r') as f:
+            structures = json.load(f)
+        PTVname = structures['ptv']
+        OARnames = structures['oar']
+        ROIs = [PTVname, ] + OARnames[1:]  # to exclude skin/body
+
+        # load masks
+        MRFolder = os.path.join(dataPatFolder, 'MR')
+        rtFile = os.path.join(dataPatFolder, 'MRrt.dcm')
+        rtstruct = RTStructBuilder.create_from(
+            dicom_series_path=MRFolder, rt_struct_path=rtFile)
+        masks = {name: rtstruct.get_roi_mask_by_name(name) for name in ROIs}
+
+        # dose normalization. As the clinical Dose and 
+        # BOOdose are not of the same scale
+        # here we normalize using D98.
+        PTVmask = masks[PTVname]
+        BOOPTV = BOOdose[PTVmask]
+        clinicalPTV = clinicalDose[PTVmask]
+        thresh = 5
+        BOOD95 = np.percentile(BOOPTV, thresh)
+        clinicalD95 = np.percentile(clinicalPTV, thresh)
+        clinicalDose = clinicalDose / clinicalD95 * BOOD95
+        clinicalPTV = clinicalDose[PTVmask]  # update clinicalPTV after the normalization
+
+        # calculate the statistics
+        thresh = 5
+        duodMask = None
+        for name in OARnames:
+            if 'duod' in name.lower():
+                duodMask = masks[name]
+                print(patientName, name)
+                break
+        if duodMask is not None:
+            BOOduodDose = BOOdose[duodMask]
+            clinicalduodDose = clinicalDose[duodMask]
+            duodDmax[patientName] = \
+                (np.max(BOOduodDose), np.max(clinicalduodDose))
+            duodD95[patientName] = \
+                (np.percentile(BOOduodDose, thresh), np.percentile(clinicalduodDose, thresh))
+
+        stmcMask = None
+        for name in OARnames:
+            if 'stmc' in name.lower():
+                stmcMask = masks[name]
+                print(patientName, name)
+                break
+        if stmcMask is not None:
+            BOOstmcDose = BOOdose[stmcMask]
+            clinicalstmcDose = clinicalDose[stmcMask]
+            stomachDmax[patientName] = (np.max(BOOstmcDose), np.max(clinicalstmcDose))
+            stomachD95[patientName] = \
+                (np.percentile(BOOstmcDose, thresh), np.percentile(clinicalstmcDose, thresh))
+        
+        Bwel_SmMask = None
+        for name in OARnames:
+            if 'bwel' in name.lower() and 'sm' in name.lower():
+                Bwel_SmMask = masks[name]
+                print(patientName, name)
+                break
+        if Bwel_SmMask is not None:
+            BOO_Bwel_Sm_dose = BOOdose[Bwel_SmMask]
+            clinical_Bwel_Sm_dose = clinicalDose[Bwel_SmMask]
+            Bwel_SmDmax[patientName] = \
+                (np.max(BOO_Bwel_Sm_dose), np.max(clinical_Bwel_Sm_dose))
+            Bwel_SmD95[patientName] = \
+                (np.percentile(BOO_Bwel_Sm_dose, thresh), np.percentile(clinical_Bwel_Sm_dose, thresh))
+
+        print('\n')
+    
+    print(duodDmax)
+    print(duodD95, '\n')
+    print(stomachDmax)
+    print(stomachD95, '\n')
+    print(Bwel_SmDmax)
+    print(Bwel_SmD95, '\n')
+
+
+def drawTable():
+    """
+    This funciton draws the table for latex supporting document
+    """
+    if False:
+        BOO_PTV_homogeneity = [0.8069704537975423, 0.831610374097704, 0.8141663893520457, 0.8477902369437897, \
+            0.8152625310994703, 0.7965236405731738, 0.829527639796673, 0.8188531728013859]
+        clinical_PTV_homogeneity = [0.8243131944603638, 0.6392917050717626, 0.6016216690477412, 0.7431962864940729, \
+            0.5875315261144793, 0.652439080350446, 0.842159916926272, 0.7484852896893811]
+        BOOPTVHomoLine = ''
+        clinicalPTVHomoLine = ''
+        for a, b in zip(BOO_PTV_homogeneity, clinical_PTV_homogeneity):
+            if a <= b:
+                BOOPTVHomoLine = BOOPTVHomoLine + '{:.2f}'.format(a) + ' & '
+                clinicalPTVHomoLine = clinicalPTVHomoLine + '\\textbf{' + '{:.2f}'.format(b) + '} & '
+            else:
+                BOOPTVHomoLine = BOOPTVHomoLine + '\\textbf{' + '{:.2f}'.format(a) + '} & '
+                clinicalPTVHomoLine = clinicalPTVHomoLine + '{:.2f}'.format(b) + ' & '
+        BOOPTVHomoLine = BOOPTVHomoLine[:-2] + '\\\\'
+        clinicalPTVHomoLine = clinicalPTVHomoLine[:-2] + '\\\\'
+        print(BOOPTVHomoLine)
+        print(clinicalPTVHomoLine)
+
+    if False:
+        # work on duodenum data
+        DmaxData = {'patient1': (4.434961, 9.542294145400604), 'patient3': (20.11872, 16.32372906512959), \
+            'patient4': (5.9481754, 7.462174300960876), 'patient5': (20.52946, 19.007588592070096), \
+            'patient6': (20.721945, 18.105720650842812), 'patient7': (8.374871, 9.737669512265825), \
+            'patient8': (20.050129, 15.89796739737968)}
+        D95Data = {'patient1': (0.007169494638219476, 0.36532869675322555), 
+            'patient3': (0.6078828811645508, 1.459492540149958), 
+            'patient4': (0.07187967896461486, 0.5483072557735594), 
+            'patient5': (0.5204100906848907, 1.092840708675186), 
+            'patient6': (0.08204947113990785, 0.5828413865801028), 
+            'patient7': (0.09270827397704125, 0.32978152364548996), 
+            'patient8': (0.14333276748657225, 1.4260327845618623)}
+    
+    if False:
+        # work on stomach data
+        DmaxData = {'patient1': (20.067997, 12.925583943839994), 
+            'patient2': (18.924007, 17.02968003032645), 
+            'patient3': (19.78814, 16.71740797398583), 
+            'patient4': (19.174734, 17.6213070551169), 
+            'patient5': (5.796191, 3.612891711912347), 
+            'patient6': (19.440487, 18.787120983234924), 
+            'patient7': (20.281845, 14.27970569320833), 
+            'patient8': (19.046717, 17.42650469676143)}
+        D95Data = {'patient1': (0.11163704693317414, 0.8952022220709066), 
+            'patient2': (0.3837432414293289, 0.7850860534687265), 
+            'patient3': (0.07628622315824034, 0.46957983669611747), 
+            'patient4': (1.2377982139587402, 0.531475283666129), 
+            'patient5': (0.04227860681712627, 0.5072216599469099), 
+            'patient6': (0.03479145020246506, 0.7260481190216057), 
+            'patient7': (0.11516406089067459, 0.4199328547324983), 
+            'patient8': (0.3579861521720886, 0.9727055541520212)}
+    
+    if True:
+        # work on small intestine
+        DmaxData = {'patient1': (16.483133, 13.289606729255407), 
+            'patient2': (19.426186, 16.56037855567829), 
+            'patient7': (11.974609, 14.225349743582342), 
+            'patient8': (0.43506527, 0.6505590386806811)}
+        D95Data = {'patient1': (0.007545600971207023, 0.23898177481980437), 
+            'patient2': (0.3293981209397316, 0.3452779726002546), 
+            'patient7': (0.059619066119194035, 0.3142039039356025), 
+            'patient8': (0.0756531871855259, 0.4031254507677399)}
+    
+    # work on Dmax first
+    fourPiDmax = ''
+    clinicalDmax = ''
+    for patient, data in DmaxData.items():
+        BOOdata = data[0]
+        clinicalData = data[1]
+        if BOOdata < clinicalData:
+            fourPiDmax = fourPiDmax + '\\textbf{' + '{:.2f}'.format(BOOdata) + '} & '
+            clinicalDmax = clinicalDmax + '{:.2f}'.format(clinicalData) + ' & '
+        else:
+            fourPiDmax = fourPiDmax + '{:.2f}'.format(BOOdata) + ' & '
+            clinicalDmax = clinicalDmax + '\\textbf{' + '{:.2f}'.format(clinicalData) + '} & '
+    
+    # then D95
+    fourPiD95 = ''
+    clinicalD95 = ''
+    for patient, data in D95Data.items():
+        BOOdata = data[0]
+        clinicalData = data[1]
+        if BOOdata < clinicalData:
+            fourPiD95 = fourPiD95 + '\\textbf{' + '{:.2f}'.format(BOOdata) + '} & '
+            clinicalD95 = clinicalD95 + '{:.2f}'.format(clinicalData) + ' & '
+        else:
+            fourPiD95 = fourPiD95 + '{:.2f}'.format(BOOdata) + ' & '
+            clinicalD95 = clinicalD95 + '\\textbf{' + '{:.2f}'.format(clinicalData) + '} & '
+    print(fourPiDmax)
+    print(clinicalDmax)
+    print(fourPiD95)
+    print(clinicalD95)
+
+
+def BOObeamFuse():
+    """
+    Last night, my Ph.D. supervisor asked me to add some plots of beams
+    of representative cases. I generated these plots using matlab. This
+    function is to fuse them into one image
+    """
+    numPatients = 8
+    patientList = [1, 2, 3, 4]
+    targetShape = (1380, 960)
+    croppedImages = []
+    for i in patientList:
+        patientName = 'patient{}'.format(i)
+        visPatFolder = os.path.join(visFolder, patientName)
+        imageFile = os.path.join(visPatFolder, 'BOObeams.png')
+        image = plt.imread(imageFile)
+        # print(patientName, image.shape)
+        
+        shape = image.shape
+        upperBound = 0
+        lowerBound = targetShape[0]
+        leftBound = int((shape[1] - targetShape[1])/2)
+        rightBound = leftBound + targetShape[1]
+        cropped = image[upperBound: lowerBound, leftBound: rightBound]
+        croppedImages.append(cropped)
+        print(patientName)
+    result = np.concatenate(croppedImages, axis=1)
+    outputPath = os.path.join(visFolder, 'AAPMSupBOOBeams.png')
+    plt.imsave(outputPath, result)
 
 
 if __name__ == '__main__':
@@ -555,4 +801,7 @@ if __name__ == '__main__':
     # prepareAAPMSuppDoc()
     # DVH_AUC_comp()
     # signTest()
-    PTVHomogeneity()
+    # PTVHomogeneity()
+    # OARDoseAnalysis()
+    # drawTable()
+    BOObeamFuse()
