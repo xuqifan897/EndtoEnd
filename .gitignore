@@ -47,12 +47,12 @@ include/divisible/*
 
 .idea/*.xml
 
-build/**/*
+build
 
 include/*
 lib/*
 bin/*
-.vscode/*
+.vscode
 
 kernelGen
 *.pptx
@@ -62,4 +62,5 @@ kernelGen
 *.log
 *.synctex.gz
 draft*
+figures
 __pycache__
