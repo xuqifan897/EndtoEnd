@@ -122,3 +122,23 @@ This note is to help me organize my understanding of the code.
     G4VisManager* visManager = new G4VisExecutive;
     ```
     `G4VisExecutive` is derived from `G4VisManager`. It has several member functions: 1) initializer `G4visExecutive (const G4String& verbosityString = "warnings")`. 2) `void RegisterGraphicsSystems();`, and 3) `void RegisterModelFactories();`. Its initializer only initializes its base class. The two register functions does a lot of registrations, which might not be of interest.
+
+
+* Debugging report
+    Below is the report for the debugging.
+    I set the number of threads to 1, waited until the UI interface popped up, set a breakpoint in the RunAction function, and entered the command `/run/beamOn 1` to the UI. I tracked the calling stacks until the first relevant stack showed up. `runManager->BeamOn(nev);` command was invoked. The major block of the `BeamOn` method are as follows:
+    ```
+    numberOfEventToBeProcessed = n_event;
+    numberOfEventProcessed = 0;
+    ConstructScoringWorlds();
+    RunInitialization();  % This is the function that subsequently calls BeginOfRunAction
+    DoEventLoop();
+    RunTermination();
+    ```
+    In this example, `G4RunManager::ConstructScoringWorlds()` does nearly nothing, as we didn't initialize the `G4ScoringManager` before hand.
+
+    Then I set a breakpoint in `EndOfEventAction`. Then I realized that the `G4Event` should be interesting. For this example, it loads the trajectory container, and prints some results relevant to this event.
+
+    I also realized that the processing of one event is in the member function `void G4EventManager::DoProcessing(G4Event* anEvent)`.
+
+    There are three get functions in the `G4Event` class: `GetHcofThisEvent`, `GetDCofThisEvent`, and `GetTrajectoryContainer`.

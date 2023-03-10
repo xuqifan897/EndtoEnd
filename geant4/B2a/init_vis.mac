@@ -7,7 +7,8 @@
 /run/verbose 2
 #
 # Change the default number of threads (in multi-threaded mode)
-#/run/numberOfThreads 4
+# the original value was 4. Here Qifan changed it to 1
+/run/numberOfThreads 1
 #
 # Initialize kernel
 /run/initialize
