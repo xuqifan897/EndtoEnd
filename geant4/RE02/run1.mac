@@ -36,5 +36,5 @@
 /gun/position 0 0 -100 cm
 /gun/direction 0 0 1
 #
-/run/beamOn 100000
+/run/beamOn 100
 
