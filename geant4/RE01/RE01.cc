@@ -23,100 +23,85 @@
 // * acceptance of all terms of the Geant4 Software license.          *
 // ********************************************************************
 //
-/// \file runAndEvent/RE02/RE02.cc
-/// \brief Main program of the runAndEvent/RE02 example
+/// \file runAndEvent/RE01/RE01.cc
+/// \brief Main program of the runAndEvent/RE01 example
 //
 //
 //
-// 
+//
+// --------------------------------------------------------------
+//      GEANT4 - RE01 exsample code
+//
+// --------------------------------------------------------------
+// Comments
+//
+//
+// --------------------------------------------------------------
 
-#include "RE02DetectorConstruction.hh"
-#include "QGS_BIC.hh"
-#include "RE02ActionInitialization.hh"
+#include "G4Types.hh"
 
 #include "G4RunManagerFactory.hh"
-
 #include "G4UImanager.hh"
-#include "G4SystemOfUnits.hh"    
 
-#include "G4UIExecutive.hh"
+#include "RE01DetectorConstruction.hh"
+#include "RE01CalorimeterROGeometry.hh"
+#include "QGSP_BERT.hh"
+#include "G4UnknownDecayPhysics.hh"
+#include "G4ParallelWorldPhysics.hh"
+#include "RE01ActionInitialization.hh"
+
 #include "G4VisExecutive.hh"
+#include "G4UIExecutive.hh"
 
-//
-int main(int argc,char** argv) {
-
+int main(int argc,char** argv)
+{
   // Instantiate G4UIExecutive if there are no arguments (interactive mode)
   G4UIExecutive* ui = nullptr;
   if ( argc == 1 ) {
-    ui = new G4UIExecutive(argc, argv);
+   ui = new G4UIExecutive(argc, argv);
   }
 
   auto* runManager = G4RunManagerFactory::CreateRunManager();
 
-  // UserInitialization classes (mandatory)
-  //---
-  //  Create Detector
-  RE02DetectorConstruction* detector = new RE02DetectorConstruction;
-  detector->SetPhantomSize(G4ThreeVector(200*mm,200*mm,400*mm)); //Default
-  detector->SetNumberOfSegmentsInPhantom(100,100,200); //Default
-  //  If your machine does not have enough memory,
-  //  please try to reduce Number of Segements in phantom.
-  //detector->SetNumberOfSegmentsInPhantom(1,1,100);  // For small memory size.
-  //
-  detector->SetLeadSegment(TRUE); // Default (Water and Lead)
-  // Water and Lead segments are placed alternately, by defult.,
-  //  If you want to simulation homogeneous water phantom, please set it FALSE.
-  //detector->SetLeadSegment(FALSE); // Homogeneous water phantom
-  //
-  runManager->SetUserInitialization(detector);
-  //
-  runManager->SetUserInitialization(new QGS_BIC());
-  
-  // Visualization, if you choose to have it!
+  // Visualization manager construction
   G4VisManager* visManager = new G4VisExecutive;
   visManager->Initialize();
 
-  // UserAction classes
-  runManager->SetUserInitialization(new RE02ActionInitialization);
+  G4String parallelWorldName = "ReadoutWorld";
+  G4VUserDetectorConstruction* detector
+     = new RE01DetectorConstruction();
+  detector->RegisterParallelWorld(
+       new RE01CalorimeterROGeometry(parallelWorldName));
+  runManager->SetUserInitialization(detector);
 
-  //Initialize G4 kernel
+  G4VModularPhysicsList* physicsList = new QGSP_BERT;
+  physicsList->RegisterPhysics(new G4UnknownDecayPhysics);
+  physicsList->RegisterPhysics(
+       new G4ParallelWorldPhysics(parallelWorldName));
+  runManager->SetUserInitialization(physicsList);
+
+  runManager->SetUserInitialization(
+       new RE01ActionInitialization);
+
   runManager->Initialize();
-      
-  //get the pointer to the User Interface manager 
-  G4UImanager * pUI = G4UImanager::GetUIpointer();  
 
   if(ui)
-  // Define (G)UI terminal for interactive mode  
-  { 
-     pUI->ApplyCommand("/control/execute vis.mac");
-     ui->SessionStart();
-     delete ui;
+  {
+    ui->SessionStart();
+    delete ui;
   }
   else
-  // Batch mode
-  { 
-    // G4String command = "/control/execute ";
-    // G4String fileName = argv[1];
-    // pUI->ApplyCommand(command+fileName);
-
-    // Qifan modifies the above code to the following:
-    std::vector<G4String> commands{
-      "/control/verbose 2",
-      "/run/verbose 2",
-      "/run/numberOfThreads 1",
-      "/run/beamOn 100"
-    };
-    for (int i=0; i<commands.size(); i++)
-    {
-      pUI->ApplyCommand(commands[i]);
-    }
+  {
+    G4UImanager* UImanager = G4UImanager::GetUIpointer();
+    G4String command = "/control/execute ";
+    G4String fileName = argv[1];
+    UImanager->ApplyCommand(command+fileName);
   }
 
   delete visManager;
+
   delete runManager;
 
   return 0;
 }
-
-//
 

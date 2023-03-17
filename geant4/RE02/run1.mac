@@ -7,6 +7,9 @@
 /control/verbose 2
 /run/verbose 2
 #
+# For the ease of debugging, Qifan sets the number of threads to 1
+/run/numberOfThreads 1
+#
 # create empty scene
 #
 #/vis/scene/create

@@ -59,3 +59,11 @@ This is the note studying the RE02 example, which does dose calculation.
     * `InitializePhysics()`
         As above, it firstly checks the current state. If the `currentState` is either `G4State_PreInit` or `G4State_Idle`, it is set to the new state `G4State_Init`. For now, we do not plan to dive too deep into the physics part.
 
+* Debug experiment\
+    I realize that the command `runManager->BeamOn(100)` does different things from `pUI->ApplyCommand("/run/beamOn 100")`. When we set the number of threads to be 1, seems that there is a master thread and a working thread. For now, I cannot find the place where new events are initialized and how they are processed. The process of physics simulation is handled by `void G4EventManager::DoProcessing(G4Event* anEvent)` function, which I plan to revisit later. For now, we study the key members (I believe) of an `event` object. They are `HC` of type `G4HCofThisEvent*`, `DC` of type `G4DCofThisEvent*`, and `trajectoryContainer` of type `G4TrajectoryContainer*`, respectively.
+
+    * `G4HCofThisEvent` \
+        The primary member value of this type is a vector of hits collections: `std::vector<G4VHitsCollection*> *HC;`. It is suggested that the user only calls the function to get `HC` or to count the valid pointers in `*HC`. The type `G4VHitsCollection` can somehow be converted to type `G4THitsMap<G4double>*`. `G4THitsMap<G4double>` has the `[]` operator, which I did not see in `G4VHitsCollection`.
+    
+    * `G4TrajectoryContainer` \
+        The primary member value of this type is a `std::vector<G4VTrajectory*>* vect = nullptr;`. But we could not find any member values in this class.

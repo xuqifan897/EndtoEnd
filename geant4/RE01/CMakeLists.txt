@@ -1,10 +1,7 @@
 #----------------------------------------------------------------------------
 # Setup the project
 cmake_minimum_required(VERSION 3.16...3.21)
-project(RE02)
-
-# Requires debug, added by Qifan
-set(CMAKE_BUILD_TYPE Debug)
+project(RE01)
 
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
@@ -34,19 +31,19 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #----------------------------------------------------------------------------
 # Add the executable, and link it to the Geant4 libraries
 #
-add_executable(RE02 RE02.cc ${sources} ${headers})
-target_link_libraries(RE02 ${Geant4_LIBRARIES} )
+add_executable(RE01 RE01.cc ${sources} ${headers})
+target_link_libraries(RE01 ${Geant4_LIBRARIES} )
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
-# build RE02. This is so that we can run the executable directly because it
+# build RE01. This is so that we can run the executable directly because it
 # relies on these scripts being in the current working directory.
 #
-set(RE02_SCRIPTS
-    run1.mac run2.mac run3.mac run4.mac run.mac vis.mac
+set(RE01_SCRIPTS
+    sample.in vis.mac pythia_event.data
   )
 
-foreach(_script ${RE02_SCRIPTS})
+foreach(_script ${RE01_SCRIPTS})
   configure_file(
     ${PROJECT_SOURCE_DIR}/${_script}
     ${PROJECT_BINARY_DIR}/${_script}
@@ -57,5 +54,5 @@ endforeach()
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
-install(TARGETS RE02 DESTINATION bin)
+install(TARGETS RE01 DESTINATION bin)
 
