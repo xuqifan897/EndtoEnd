@@ -131,6 +131,8 @@ void RE01EventAction::EndOfEventAction(const G4Event* evt)
     "--------------------------------------------------------------" 
          << G4endl;
   if(fpEventManager->GetVerboseLevel()>0)
+  // // for debug purposes
+  // if (true)
   {
     for(G4int i=0; i<n_trajectories; i++) 
     {
@@ -152,7 +154,9 @@ void RE01EventAction::EndOfEventAction(const G4Event* evt)
     G4cout << "Primary vertex "
            << G4ThreeVector(pv->GetX0(),pv->GetY0(),pv->GetZ0())
            << "   at t = " << (pv->GetT0())/ns << " [ns]" << G4endl;
-    if(fpEventManager->GetVerboseLevel()>0)
+    // if(fpEventManager->GetVerboseLevel()>0)
+    // for debug purposes
+    if (true)
     {
       G4PrimaryParticle* pp = pv->GetPrimary();
       while(pp)

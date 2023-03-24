@@ -3,6 +3,7 @@
 cmake_minimum_required(VERSION 3.16...3.21)
 project(RE01)
 
+set(CMAKE_BUILD_TYPE Debug)
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
 # You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui

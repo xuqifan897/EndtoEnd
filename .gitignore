@@ -65,3 +65,4 @@ draft*
 figures
 __pycache__
 totED.txt
+myOutput*.txt

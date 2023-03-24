@@ -85,18 +85,21 @@ int main(int argc,char** argv)
 
   runManager->Initialize();
 
-  if(ui)
-  {
-    ui->SessionStart();
-    delete ui;
-  }
-  else
-  {
-    G4UImanager* UImanager = G4UImanager::GetUIpointer();
-    G4String command = "/control/execute ";
-    G4String fileName = argv[1];
-    UImanager->ApplyCommand(command+fileName);
-  }
+  // if(ui)
+  // {
+  //   ui->SessionStart();
+  //   delete ui;
+  // }
+  // else
+  // {
+  //   G4UImanager* UImanager = G4UImanager::GetUIpointer();
+  //   G4String command = "/control/execute ";
+  //   G4String fileName = argv[1];
+  //   UImanager->ApplyCommand(command+fileName);
+  // }
+
+  // to see wheter runManager->BeamOn() works
+  runManager->BeamOn(1);
 
   delete visManager;
 
