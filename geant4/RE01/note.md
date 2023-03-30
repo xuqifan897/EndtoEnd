@@ -67,6 +67,8 @@ The `Initialize` and `EndOfEvent` methods. In this example, the hits collection 
 
 In `ProcessHits` method, a `newHit` object is initialized and added to `fTrackerCollection` by `fTrackerCollection->insert(newHits)`; In this example, `RE01TrackerHit` is derived from `G4Hit`. It has several member values: `fEdep`, `fPos`, `fTrackID`. its base class `G4VHit` is trivial. The user has the option define two member functions `GetAttDefs` and `CreateAttValues`.
 
+The input argument is `G4Step* aStep`.
+
 ## Run action
 In this example, the solid class `RE01RunAction` is trivial. However, in the comments of `G4Run`, The user can override the methods `RecordEvent`, `Merge`, which are responsible for recording events and merging local run into global run, respectively.
 
@@ -76,3 +78,15 @@ The initializer is trivial. In `BeginOfEventAction` method gets the collection I
 `G4Event` has several member values: `G4HCofThisEvent* HC = nullptr;`, `G4DCofThisEvent* D = nullpr;`, `G4TrajectoryContainer* trajectoryContainer = nullptr`. The user can initialize these containers.
 
 The `EndOfEventAction` prints out all hits, trajectory, and primary vertex.
+
+## Stacking action
+The virtual method `NewStage` is called when the urgentStack becomes empty and contents in the waitingStack are transferred to the urgentStack. In this example, it prints out the energy deposition in the calorimeter, and leave everything from `fUrgent` back to `fWaiting`, and leave only one stack to `fUrgent`.
+
+The virtual method `ClassifyNewTrack` is to determine the classification of the `G4Track`. In this example, if the track status of the track is `fSuspend`, then revise the `trackInfo`, and set `classification` to `fWaiting`. Else if the parent of this track is the primary particle, then create a new `trackInfo`, then set the user information to `theTrack`. Now the `classification` is `fUrgent`.
+
+## Tracking action
+There is little description has little description. The methods defined in this example are `PreUserTrackingAction` and `PostUserTrackingAction`. In the former method, depending on the `trackInfo` of the `aTrack`, it either sets the trajectory or not. In the latter method, it get the secondaries, and creates a copy of the particle information and assign to every secondary.
+
+Let's take a closer look at the `RE01Trajectory` class. It overrides the following base methods: `GetTrackID`, `GetParentID`, `GetParticleName`, `GetCharge`, `GetPDGEncoding`, `GetInitialMomentum`, `GetPointEntries`, `GetPoint`. It has the following member values: `fPositionRecord`, `fTrackID`, `fParentID`, `fTrackStatus`, `fParticleDefinition`, `fParticleName`, `fPDGCharge`, `fPDGEncoding`, `fMomentum`, `fVertexPosition`, `fGlobalTime`.
+
+In its initializer, it fills the member values `fParticleDefinition`, `fParticleName`, `fPDGCharge`, `fPDGEncoding` with the attributes of `aTrack`. `fPositionRecord` is initialized with `new std::vector<G4VTrajectoryPoint*>`, and push back a new point. However, `fPositionRecord` should contain multiple points. This is achieved by the method `AppendStep`

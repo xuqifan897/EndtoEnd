@@ -121,27 +121,6 @@ void RE01EventAction::EndOfEventAction(const G4Event* evt)
          << totE / GeV << " (GeV)" << G4endl;
   }
 
-  // get number of stored trajectories
-  G4TrajectoryContainer* trajectoryContainer = evt->GetTrajectoryContainer();
-  G4int n_trajectories = 0;
-  if (trajectoryContainer) n_trajectories = trajectoryContainer->entries();
-  // extract the trajectories and print them out
-  G4cout << G4endl;
-  G4cout << "Trajectories in tracker "<<
-    "--------------------------------------------------------------" 
-         << G4endl;
-  if(fpEventManager->GetVerboseLevel()>0)
-  // // for debug purposes
-  // if (true)
-  {
-    for(G4int i=0; i<n_trajectories; i++) 
-    {
-      RE01Trajectory* trj = 
-        (RE01Trajectory*)((*(evt->GetTrajectoryContainer()))[i]);
-      trj->ShowTrajectory();
-    }
-  }
-    
   G4cout << G4endl;
   G4cout << "Primary particles "<<
     "--------------------------------------------------------------" 
@@ -164,6 +143,27 @@ void RE01EventAction::EndOfEventAction(const G4Event* evt)
         PrintPrimary(pp,0);
         pp = pp->GetNext();
       }
+    }
+  }
+
+  // get number of stored trajectories
+  G4TrajectoryContainer* trajectoryContainer = evt->GetTrajectoryContainer();
+  G4int n_trajectories = 0;
+  if (trajectoryContainer) n_trajectories = trajectoryContainer->entries();
+  // extract the trajectories and print them out
+  G4cout << G4endl;
+  G4cout << "Trajectories in tracker "<<
+    "--------------------------------------------------------------" 
+         << G4endl;
+  // if(fpEventManager->GetVerboseLevel()>0)
+  // for debug purposes
+  if (true)
+  {
+    for(G4int i=0; i<n_trajectories; i++) 
+    {
+      RE01Trajectory* trj = 
+        (RE01Trajectory*)((*(evt->GetTrajectoryContainer()))[i]);
+      trj->ShowTrajectory();
     }
   }
 }

@@ -133,12 +133,12 @@ void RE01StackingAction::NewStage()
         if(edepByATrack>0.)
         {
           totE += edepByATrack;
-          if(n_hitByATrack==0)
-          { (*CHC)[i]->GetTrackInformation()->Print(); }
+          // if(n_hitByATrack==0)
+          // { (*CHC)[i]->GetTrackInformation()->Print(); }
           n_hitByATrack++;
-          G4cout << "Cell[" << (*CHC)[i]->GetZ() << "," 
-                 << (*CHC)[i]->GetPhi() << "]    " 
-                 << edepByATrack/GeV << " [GeV]" << G4endl;
+          // G4cout << "Cell[" << (*CHC)[i]->GetZ() << "," 
+          //        << (*CHC)[i]->GetPhi() << "]    " 
+          //        << edepByATrack/GeV << " [GeV]" << G4endl;
           (*CHC)[i]->ClearEdepByATrack();
         }
       }
