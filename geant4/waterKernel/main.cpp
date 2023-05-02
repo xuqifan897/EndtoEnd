@@ -4,6 +4,9 @@
 #include "G4RunManagerFactory.hh"
 #include "G4VisExecutive.hh"
 
+#include "DetectorConstruction.h"
+#include "QGSP_BERT.hh"
+
 int main(int argc, char** argv)
 {
     if (wk::argsInit(argc, argv)) return 0;
@@ -16,6 +19,12 @@ int main(int argc, char** argv)
 
     G4VisManager* visManager = new G4VisExecutive;
     visManager->Initialize();
+
+    auto* detector = new wk::DetectorConstruction();
+    runManager->SetUserInitialization(detector);
+
+    G4VModularPhysicsList* physicsList = new QGSP_BERT;
+    runManager->SetUserInitialization(physicsList);
 
     
 }

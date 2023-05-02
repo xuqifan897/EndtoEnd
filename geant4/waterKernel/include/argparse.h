@@ -11,8 +11,6 @@ namespace wk
     template<class T>
     T getArg(std::string key)
     {   
-        if (! vm)
-            throw std::runtime_error(std::string("parameters not initialized";
         if (vm.count(key))
             return vm[key].as<T>();
         else

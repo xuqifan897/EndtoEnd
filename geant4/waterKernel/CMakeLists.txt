@@ -6,6 +6,13 @@ set(CMAKE_BIULD_TYPE Debug)
 include(CTest)
 enable_testing()
 
+# Add phase information
+# Phase 0 is to obtain vanilla hits collection
+# Phase 1 is to obtain vanilla dose distribution
+# Phase 2 is to obtain the point dose kernel
+set(PHASE "0")
+configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
+
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.h)
 

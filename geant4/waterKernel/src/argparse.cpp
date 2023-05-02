@@ -23,6 +23,10 @@ int wk::argsInit(int argc, char** argv)
         ("sizeZ", po::value<float>()->default_value(10.0),
             "the phantom is a water box. This is the "
             "half length of the box along Z axis [cm]")
+        ("posZ", po::value<float>()->default_value(-10.0),
+            "the z component of the particle position. "
+            "The X and Y position are 0. The particle "
+            "shoots in the +z direction. [cm]")
         ;
     
     po::store(po::parse_command_line(argc, argv, desc), vm);
