@@ -7,3 +7,9 @@
 wk::TrackingAction::TrackingAction()
     :G4UserTrackingAction()
 {}
+
+void wk::TrackingAction::PreUserTrackingAction(const G4Track* aTrack)
+{
+    this->fpTrackingManager->SetStoreTrajectory(true);
+    this->fpTrackingManager->SetTrajectory(new Trajectory(aTrack));
+}

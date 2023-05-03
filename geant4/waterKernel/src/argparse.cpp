@@ -27,6 +27,9 @@ int wk::argsInit(int argc, char** argv)
             "the z component of the particle position. "
             "The X and Y position are 0. The particle "
             "shoots in the +z direction. [cm]")
+
+        ("nParticles", po::value<int>()->default_value(1),
+            "the number of particles to shoot. [int]")
         ;
     
     po::store(po::parse_command_line(argc, argv, desc), vm);

@@ -15,7 +15,7 @@
 #include "G4DynamicParticle.hh"
 #include "G4PrimaryParticle.hh"
 
-G4ThreadLocal G4Allocator<wk::Trajectory> * myTrajectoryAllocator = 0;
+G4ThreadLocal G4Allocator<wk::Trajectory> * wk::myTrajectoryAllocator = 0;
 
 wk::Trajectory::Trajectory(const G4Track* aTrack)
     :G4VTrajectory()

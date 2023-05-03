@@ -89,7 +89,7 @@ void wk::EventAction::EndOfEventAction(const G4Event* evt)
             while(pp)
             {
                 PrintPrimary(pp, 0);
-                pp->GetNext();
+                pp = pp->GetNext();
             }
         }
     }

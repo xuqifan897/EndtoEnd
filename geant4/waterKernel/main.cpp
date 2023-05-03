@@ -38,6 +38,10 @@ int main(int argc, char** argv)
     }
     else
     {
-        runManager->BeamOn(1);
+        int nParticles = wk::getArg<int>("nParticles");
+        runManager->BeamOn(nParticles);
     }
+
+    delete visManager;
+    delete runManager;
 }

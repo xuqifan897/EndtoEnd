@@ -10,6 +10,8 @@ namespace wk
     public:
         TrackingAction();
         virtual ~TrackingAction(){};
+
+        virtual void PreUserTrackingAction(const G4Track*);
     };
 }
 
