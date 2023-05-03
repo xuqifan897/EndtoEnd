@@ -43,16 +43,16 @@ G4VPhysicalVolume* wk::DetectorConstruction::Construct()
 
     G4Box* experimentalHall_box = 
         new G4Box("expHall_b", this->sizeX, this->sizeY, this->sizeZ);
-    experimentalHall_log = new G4LogicalVolume(
+    this->experimentalHall_log = new G4LogicalVolume(
         experimentalHall_box, water, "expHall_L", 0, 0, 0);
     G4VPhysicalVolume* experimentalHall_phys = new G4PVPlacement(
-        0, G4ThreeVector(), experimentalHall_log, "expHall_P", 0, false, 0);
+        0, G4ThreeVector(), this->experimentalHall_log, "expHall_P", 0, false, 0);
 
     // set some attributes
     G4VisAttributes* experimentalHallVisAtt = 
         new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
     experimentalHallVisAtt->SetForceWireframe(true);
-    experimentalHall_log->SetVisAttributes(experimentalHallVisAtt);
+    this->experimentalHall_log->SetVisAttributes(experimentalHallVisAtt);
     
     return experimentalHall_phys;
 }
