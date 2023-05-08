@@ -35,6 +35,7 @@ G4bool wk::TrackerSD::ProcessHits(G4Step* aStep, G4TouchableHistory*)
     newHit->SetPos(aStep->GetPreStepPoint()->GetPosition());
     newHit->SetTrackID(aStep->GetTrack()->GetTrackID());
     fTrackerCollection->insert(newHit);
+    return true;
 }
 
 void wk::TrackerSD::EndOfEvent(G4HCofThisEvent*) {}

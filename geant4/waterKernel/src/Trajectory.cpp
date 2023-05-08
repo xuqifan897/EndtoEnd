@@ -77,6 +77,16 @@ void wk::Trajectory::ShowTrajectory(std::ostream& os) const
     }
 }
 
+G4double wk::Trajectory::GetFirstInteractionPointZ() const
+{
+    return ((*(this->fPositionRecord))[1])->GetPosition()[2];
+}
+
+G4double wk::Trajectory::GetEntrancePointZ() const
+{
+    return ((*(this->fPositionRecord))[0])->GetPosition()[2];
+}
+
 void wk::Trajectory::DrawTrajectory() const
 {
     G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();

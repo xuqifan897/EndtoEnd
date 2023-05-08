@@ -1,9 +1,10 @@
 #!/bin/bash
 
-./build/waterKernel \
+(./build/waterKernel \
     --gui false \
     --sizeZ 20.0 \
     --posZ -20.0 \
-    --nParticles 8
+    --recordEventLog false \
+    --nParticles 32 ) 2>&1 | tee myOutput.txt
 
 rm *.rndm

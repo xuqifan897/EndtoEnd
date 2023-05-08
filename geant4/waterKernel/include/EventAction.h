@@ -3,6 +3,7 @@
 
 #include "G4UserEventAction.hh"
 #include "globals.hh"
+#include "config.h"
 
 class G4PrimaryParticle;
 
@@ -15,7 +16,9 @@ namespace wk
         virtual ~EventAction();
 
         virtual void BeginOfEventAction(const G4Event*);
+    #if PHASE == 0
         virtual void EndOfEventAction(const G4Event*);
+    #endif
 
     private:
         G4int fTrackerCollID;

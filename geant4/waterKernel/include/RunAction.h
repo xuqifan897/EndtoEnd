@@ -3,6 +3,7 @@
 
 #include "G4UserRunAction.hh"
 #include "globals.hh"
+#include "config.h"
 
 class G4Run;
 
@@ -14,6 +15,9 @@ namespace wk
         RunAction();
         virtual ~RunAction();
 
+    #if PHASE > 0
+        virtual G4Run* GenerateRun();
+    #endif
         virtual void BeginOfRunAction(const G4Run*);
         virtual void EndOfRunAction(const G4Run*);
     };

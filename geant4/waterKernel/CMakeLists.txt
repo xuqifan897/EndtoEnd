@@ -10,7 +10,7 @@ enable_testing()
 # Phase 0 is to obtain vanilla hits collection
 # Phase 1 is to obtain vanilla dose distribution
 # Phase 2 is to obtain the point dose kernel
-set(PHASE "0")
+set(PHASE "1")
 configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
 
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)

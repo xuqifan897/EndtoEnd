@@ -15,7 +15,6 @@ class G4AttValue;
 namespace wk
 {
 
-#if PHASE == 0
     class TrackerHit : public G4VHit
     {
     public:
@@ -39,6 +38,8 @@ namespace wk
         { return this->fEdep; }
         inline void SetPos(G4ThreeVector xyz)
         { this->fPos = xyz;}
+        inline G4ThreeVector& GetPos()
+        { return this->fPos;}
         inline void SetTrackID(G4int i)
         { this->fTrackID = i; }
         inline G4int GetTrackID() const
@@ -50,7 +51,6 @@ namespace wk
         G4int fTrackID;
 
     };
-#endif
 
 typedef G4THitsCollection<TrackerHit> TrackerHitsCollection;
 

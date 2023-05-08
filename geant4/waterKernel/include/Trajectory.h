@@ -48,6 +48,9 @@ namespace wk
         virtual int GetPointEntries() const { return this->fPositionRecord->size(); }
         virtual G4VTrajectoryPoint* GetPoint(G4int i) const 
         { return (*(this->fPositionRecord))[i]; }
+
+        G4double GetFirstInteractionPointZ() const;
+        G4double GetEntrancePointZ() const;
     
     private:
         TrajectoryPointContainer*    fPositionRecord;

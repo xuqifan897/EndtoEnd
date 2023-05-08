@@ -5,9 +5,9 @@ entries and number of tracks. We assume they are equal
 
 import os
 
-RE01path = '/home/qifan/projects/EndtoEnd4/geant4/RE01'
 
 def PartiTrajComp():
+    RE01path = '/home/qifan/projects/EndtoEnd4/geant4/RE01'
     myOutput = os.path.join(RE01path, 'myOutput.txt')
     with open(myOutput, 'r') as f:
         lines = f.readlines()
@@ -89,5 +89,31 @@ def PartiTrajComp():
     print(remaining)
 
 
+def waterKernelOutputProcessing():
+    """
+    This function processes the output by the PHASE 0 of the code.
+    The code runs 32 particles, which are distributed to several threads.
+    """
+    outputFolder = './output'
+    outputFile = os.path.join(outputFolder, 'myOutput.txt')
+    with open(outputFile, 'r') as f:
+        lines = f.readlines()
+    logStartLine = 947
+    logEndLine = 3373
+    logLines = lines[logStartLine:logEndLine]
+    groups = {}
+    for line in logLines:
+        parts = line.split(' ')
+        threadID = parts[0]
+        if threadID not in groups:
+            groups[threadID] = []
+        groups[threadID].append(line)
+    for key, item in groups.items():
+        threadFile = os.path.join(outputFolder, key+'.txt')
+        with open(threadFile, 'w') as f:
+            f.writelines(item)
+
+
 if __name__ == '__main__':
-    PartiTrajComp()
+    # PartiTrajComp()
+    waterKernelOutputProcessing()

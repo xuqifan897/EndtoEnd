@@ -33,6 +33,7 @@ void wk::EventAction::BeginOfEventAction(const G4Event*)
     }
 }
 
+#if PHASE == 0
 void wk::EventAction::EndOfEventAction(const G4Event* evt)
 {
     G4cout << ">>> Summary of Event " << evt->GetEventID() << G4endl;
@@ -50,8 +51,8 @@ void wk::EventAction::EndOfEventAction(const G4Event* evt)
     {
         THC = (TrackerHitsCollection*)(HCE->GetHC(this->fTrackerCollID));
     }
-
-    #if PHASE == 0  // print every hit
+    
+    // print every hit
     if (THC)
     {
         int n_hit = THC->entries();
@@ -67,9 +68,8 @@ void wk::EventAction::EndOfEventAction(const G4Event* evt)
             (*THC)[i]->Print();
         }
     }
-    #endif
 
-    #if PHASE == 0 // print primary particles
+    // print primary particles
     G4cout << G4endl;
     G4cout << "Primary particles " <<
         "--------------------------------------------------------------"
@@ -93,9 +93,7 @@ void wk::EventAction::EndOfEventAction(const G4Event* evt)
             }
         }
     }
-    #endif
 
-    #if PHASE == 0
     G4TrajectoryContainer* trajectoryContainer = evt->GetTrajectoryContainer();
     G4int n_trajectories = 0;
     if (trajectoryContainer) n_trajectories = trajectoryContainer->entries();
@@ -113,8 +111,8 @@ void wk::EventAction::EndOfEventAction(const G4Event* evt)
             trj->ShowTrajectory();
         }
     }
-    #endif
 }
+#endif
 
 void wk::EventAction::PrintPrimary(G4PrimaryParticle* pp, G4int ind)
 {

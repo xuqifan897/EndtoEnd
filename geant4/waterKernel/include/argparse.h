@@ -1,3 +1,6 @@
+#ifndef argparse_h
+#define argparse_h 1
+
 #include <string>
 #include <boost/program_options.hpp>
 
@@ -18,3 +21,5 @@ namespace wk
                 + key + std::string("\" not initialized"));
     }
 }
+
+#endif
