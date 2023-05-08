@@ -4,7 +4,9 @@
     --gui false \
     --sizeZ 20.0 \
     --posZ -20.0 \
-    --recordEventLog false \
-    --nParticles 32 ) 2>&1 | tee myOutput.txt
+    --recordEventLog true \
+    --nParticles 32 \
+    --resultFolder /home/qifan/projects/EndtoEnd4/IPB6MeV \
+    ) 2>&1 | tee myOutput.txt
 
 rm *.rndm

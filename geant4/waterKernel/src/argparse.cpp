@@ -69,6 +69,8 @@ int wk::argsInit(int argc, char** argv)
             "voxels would be calculated accordingly [cm]")
         ("kernelDimOdd", po::value<bool>()->default_value(true),
             "Whether the X and Y dimensions of the kernel to be odd")
+        ("resultFolder", po::value<std::string>(),
+            "The name of the folder to which we write results.")
         ;
     
     po::store(po::parse_command_line(argc, argv, desc), vm);

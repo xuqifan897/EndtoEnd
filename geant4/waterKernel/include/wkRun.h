@@ -24,16 +24,26 @@ namespace wk
         virtual void RecordEvent(const G4Event*);
         virtual void Merge(const G4Run*);
 
-        // float getSizeX() {return this->fSizeX;}
-        // float getSizeY() {return this->fSizeY;}
-        // float getSizeZ() {return this->fSizeZ;}
+        float getFullSizeX() const {return this->fFullSizeX;}
+        float getFullSizeY() const {return this->fFullSizeY;}
+        float getFullSizeZ() const {return this->fFullSizeZ;}
 
+        float getFullResX() const {return this->fFullResX;}
+        float getFullResY() const {return this->fFullResY;}
+        float getFullResZ() const {return this->fFullResZ;}
+
+        int getDimX() const {return this->fDimX;}
+        int getDimY() const {return this->fDimY;}
+        int getDimZ() const {return this->fDimZ;}
+
+        float getPosZ() const {return this->fPosZ;}
+        void writeHitsMap(G4String path) const;
     private:
         std::vector<G4double> fHitsMap;
 
         // for point kernel, that's the number of valid events, 
         // as some photons pass through the detector without interacting
-        long numberOfEvent;
+        // long numberOfEvent;
 
         // indicates whether it's a point kernel or a IPB kernel
         G4bool pointKernel;

@@ -18,7 +18,7 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.h)
 
 add_executable(waterKernel main.cpp ${sources} ${headers})
 
-find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(Boost REQUIRED COMPONENTS program_options filesystem)
 target_include_directories(waterKernel PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(waterKernel PRIVATE ${Boost_INCLUDE_DIR})
 target_link_libraries(waterKernel ${Boost_LIBRARIES})

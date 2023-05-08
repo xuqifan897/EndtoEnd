@@ -8,11 +8,14 @@
 #include "G4HCofThisEvent.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4SDManager.hh"
+#include "G4Threading.hh"
 #include <vector>
+#include <fstream>
 
 wk::Run::Run()
-    :G4Run(), numberOfEvent(0)
+    :G4Run()
 {
+    this->numberOfEvent = 0;
     G4String kernelType = getArg<std::string>("kernelType");
     if (kernelType == G4String("point"))
         this->pointKernel = true;
@@ -100,12 +103,29 @@ wk::Run::Run()
     }
 
     this->fHitsMap = std::vector<G4double>(this->fDimX * this->fDimY * this->fDimZ);
-    this->logGeom();
+
+    if (G4Threading::IsMasterThread())
+        this->logGeom();
 }
 
 
 wk::Run::~Run()
 {}
+
+
+void wk::Run::writeHitsMap(G4String path) const
+{
+    std::ofstream file(path);
+    if (file.is_open())
+    {
+        file.write((char*)(this->fHitsMap.data()), 
+            this->fHitsMap.size()*sizeof(G4double));
+        file.close();
+        G4cout << "Array data written successfully" << G4endl;
+    }
+    else
+        G4cout << "Unable to open file: " << path << G4endl;
+}
 
 
 size_t wk::Run::index(G4ThreeVector position, bool& validFlag, 
@@ -178,6 +198,7 @@ void wk::Run::RecordEvent(const G4Event* evt)
     }
     else
         firstInteractionPointZ = trj->GetEntrancePointZ();
+    this->numberOfEvent ++;
 
     G4HCofThisEvent * HCE = evt->GetHCofThisEvent();
     TrackerHitsCollection* THC = 0;
@@ -189,7 +210,6 @@ void wk::Run::RecordEvent(const G4Event* evt)
     {
         int n_hit = THC->entries();
         if (n_hit == 0) return;
-        this->numberOfEvent ++;
         // whether the interaction point is within the kernel range
         bool validFlag;
 

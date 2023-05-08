@@ -67,4 +67,4 @@ __pycache__
 totED.txt
 myOutput*.txt
 *.rndm
-./geant4/waterKernel/output/*
+results

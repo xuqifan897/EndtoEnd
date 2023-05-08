@@ -4,7 +4,8 @@ entries and number of tracks. We assume they are equal
 """
 
 import os
-
+import numpy as np
+import matplotlib.pyplot as plt
 
 def PartiTrajComp():
     RE01path = '/home/qifan/projects/EndtoEnd4/geant4/RE01'
@@ -114,6 +115,22 @@ def waterKernelOutputProcessing():
             f.writelines(item)
 
 
+def examineIPBdose():
+    """
+    This function examines the output file of the IPB dose.
+    """
+    binaryFile = '/home/qifan/projects/EndtoEnd4/IPB6MeV/array.bin'
+    shape = (199, 199, 400)
+    array = np.fromfile(binaryFile, dtype=np.double)
+    array = np.reshape(array, shape)
+
+    # get the depth dose profile
+    depthDose = np.sum(array, axis=(0, 1))
+    plt.plot(depthDose)
+    plt.show()
+
+
 if __name__ == '__main__':
     # PartiTrajComp()
-    waterKernelOutputProcessing()
+    # waterKernelOutputProcessing()
+    examineIPBdose()
