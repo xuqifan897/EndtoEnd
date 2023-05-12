@@ -40,6 +40,10 @@ int wk::argsInit(int argc, char** argv)
             "same size as the world geometry, while in case "
             "of point kernel, the size should be specified by "
             "the user.")
+        ("maxStep", po::value<float>()->default_value(-1.0), 
+            "The maximum step size used in simulation, to allow "
+            "for higher simulation accuracy. Does not apply if "
+            "negative. [cm]")
         ("recordEventLog", po::value<bool>()->default_value(true),
             "To log the coordinates of individual hits.")
         ("kernelSizeX", po::value<float>()->default_value(10.0),

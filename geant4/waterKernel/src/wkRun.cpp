@@ -49,7 +49,6 @@ wk::Run::Run()
         this->fSizeY = getArg<float>("sizeY") * cm;
         this->fSizeZ = getArg<float>("sizeZ") * cm;
 
-        // this->fPosZ = - this->fSizeZ;
     }
 
     this->fResX = getArg<float>("kernelResX") * cm;
@@ -63,18 +62,6 @@ wk::Run::Run()
     this->fDimX = int(this->fSizeX / this->fResX);
     this->fDimY = int(this->fSizeY / this->fResY);
     this->fDimZ = int(this->fSizeZ / this->fResZ);
-
-    // then, recalculate the size
-    this->fSizeX = this->fDimX * this->fResX;
-    this->fSizeY = this->fDimY * this->fResY;
-    this->fSizeZ = this->fDimZ * this->fResZ;
-
-    if (! this->pointKernel)
-        this->fPosZ = - this->fSizeZ;
-
-    this->fFullSizeX = this->fSizeX * 2;
-    this->fFullSizeY = this->fSizeY * 2;
-    this->fFullSizeZ = this->fSizeZ * 2;
 
     bool kernelDimOdd = getArg<bool>("kernelDimOdd");
     if (kernelDimOdd)
@@ -92,6 +79,18 @@ wk::Run::Run()
         if (this->fDimY % 2 == 1)
             this->fDimY -= 1;
     }
+
+    // then, recalculate the size
+    this->fSizeX = this->fDimX * this->fResX;
+    this->fSizeY = this->fDimY * this->fResY;
+    this->fSizeZ = this->fDimZ * this->fResZ;
+
+    if (! this->pointKernel)
+        this->fPosZ = - this->fSizeZ;
+
+    this->fFullSizeX = this->fSizeX * 2;
+    this->fFullSizeY = this->fSizeY * 2;
+    this->fFullSizeZ = this->fSizeZ * 2;
 
     if (this->pointKernel)
     {
@@ -128,8 +127,7 @@ void wk::Run::writeHitsMap(G4String path) const
 }
 
 
-size_t wk::Run::index(G4ThreeVector position, bool& validFlag, 
-    int& hitID, G4double& edep)
+size_t wk::Run::index(G4ThreeVector position, bool& validFlag)
 {
     // This function transforms the position to the index of HitsMap
     // Firstly, extract the interaction point w.r.t. the base (0,0,0)
@@ -163,8 +161,8 @@ size_t wk::Run::index(G4ThreeVector position, bool& validFlag,
 
     if (this->RecordEventLog)
     {
-        G4cout << "hit ID: " << hitID << G4endl;
-        G4cout << "Original coordinates: (" << position[0] / cm 
+        // G4cout << "hit ID: " << hitID << G4endl;
+        G4cout << "Hit point relative to first interaction point: (" << position[0] / cm 
             << ", " << position[1] / cm << ", " << position[2] / cm << ") [cm]." << G4endl;
         G4cout << "Position relative to base: (" << posX / cm 
             << ", " << posY / cm << ", " << posZ / cm << ") [cm]. "
@@ -172,7 +170,7 @@ size_t wk::Run::index(G4ThreeVector position, bool& validFlag,
         G4cout << "coordinate relative to base: ( " << idX << 
             ", " << idY << ", " << idZ << "). 1D coordinate: "
             << result << G4endl;
-        G4cout << "energy: " << edep / keV << "[keV].\n" << G4endl;
+        // G4cout << "energy: " << edep / keV << "[keV].\n" << G4endl;
     }
 
     return result;
@@ -214,7 +212,7 @@ void wk::Run::RecordEvent(const G4Event* evt)
         bool validFlag;
 
         if (this->RecordEventLog)
-            G4cout << "/n/n/nEvent ID: " << evt->GetEventID() << G4endl;
+            G4cout << "Event ID: " << evt->GetEventID() << G4endl;
         for (int i=0; i<n_hit; i++)
         {
             TrackerHit* aHit = (*THC)[i];
@@ -222,7 +220,16 @@ void wk::Run::RecordEvent(const G4Event* evt)
             // get the position relative to the first interaction point
             aHitPos[2] -= firstInteractionPointZ;
             G4double aHitEdep = aHit->GetEdep();
-            size_t idx = this->index(aHitPos, validFlag, i, aHitEdep);
+
+            if (this->RecordEventLog)
+            {
+                G4cout << "hit ID: " << i << G4endl;
+                G4cout << "edep: " << aHitEdep/keV << "[keV]" << G4endl;
+                G4cout << "Original hit point: " << aHit->GetPos()/cm << "[cm]" << G4endl;
+                G4cout << "First interaction point z: " << firstInteractionPointZ/cm << "[cm]" << G4endl;
+            }
+
+            size_t idx = this->index(aHitPos, validFlag);
             if (validFlag)
                 this->fHitsMap[idx] += aHitEdep;
         }

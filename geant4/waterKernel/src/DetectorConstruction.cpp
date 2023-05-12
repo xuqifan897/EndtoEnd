@@ -23,6 +23,7 @@
 #include "G4Region.hh"
 #include "G4RegionStore.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4UserLimits.hh"
 
 wk::DetectorConstruction::DetectorConstruction()
     :   G4VUserDetectorConstruction()
@@ -53,6 +54,17 @@ G4VPhysicalVolume* wk::DetectorConstruction::Construct()
         new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
     experimentalHallVisAtt->SetForceWireframe(true);
     this->experimentalHall_log->SetVisAttributes(experimentalHallVisAtt);
+
+    // try to set maxStep for higher-accuracy simulation
+    G4double maxStep = getArg<float>("maxStep") * cm;
+    if (maxStep < 0)
+        G4cout << "Do not set maxStep." << G4endl;
+    else
+    {
+        G4UserLimits* userLimits = new G4UserLimits();
+        userLimits->SetMaxAllowedStep(maxStep);
+        this->experimentalHall_log->SetUserLimits(userLimits);
+    }
     
     return experimentalHall_phys;
 }

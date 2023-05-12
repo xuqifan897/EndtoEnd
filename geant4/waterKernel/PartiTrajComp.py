@@ -4,6 +4,7 @@ entries and number of tracks. We assume they are equal
 """
 
 import os
+import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -95,12 +96,12 @@ def waterKernelOutputProcessing():
     This function processes the output by the PHASE 0 of the code.
     The code runs 32 particles, which are distributed to several threads.
     """
-    outputFolder = './output'
+    outputFolder = '/data/qifan/projects/EndtoEnd4/results/point6MeV32'
     outputFile = os.path.join(outputFolder, 'myOutput.txt')
     with open(outputFile, 'r') as f:
         lines = f.readlines()
-    logStartLine = 947
-    logEndLine = 3373
+    logStartLine = 974
+    logEndLine = 3371
     logLines = lines[logStartLine:logEndLine]
     groups = {}
     for line in logLines:
@@ -119,18 +120,157 @@ def examineIPBdose():
     """
     This function examines the output file of the IPB dose.
     """
-    binaryFile = '/home/qifan/projects/EndtoEnd4/IPB6MeV/array.bin'
-    shape = (199, 199, 400)
-    array = np.fromfile(binaryFile, dtype=np.double)
-    array = np.reshape(array, shape)
+    resultsFolder = '/data/qifan/projects/EndtoEnd4/results/figures'
+    if not os.path.isdir(resultsFolder):
+        os.mkdir(resultsFolder)
 
-    # get the depth dose profile
-    depthDose = np.sum(array, axis=(0, 1))
-    plt.plot(depthDose)
+    flag = 2
+    if flag == 0:
+        # process point dose kernel
+        binaryFile = '/data/qifan/projects/EndtoEnd4/results' \
+            '/point6MeV1e7Rand/array.bin'
+        shape = (199, 199, 400)
+        array = np.fromfile(binaryFile, dtype=np.double)
+        array = np.reshape(array, shape)
+
+        # get the depth dose profile
+        depthDose = np.sum(array, axis=(0, 1))
+        xAxis = np.arange(-50, 350) * 0.1  # cm
+        plt.plot(xAxis, depthDose)
+        plt.xlabel('depth w.r.t. the first interaction point [cm]')
+        plt.ylabel('energy deposition (a.u.)')
+        plt.title('point kernel plot')
+        outputFile = os.path.join(resultsFolder, 'pointKernel.png')
+        plt.savefig(outputFile)
+        plt.clf()
+    elif flag == 1:
+        # process IPB kernel
+        binaryFile = '/data/qifan/projects/EndtoEnd4/results' \
+            '/IPB6MeV1e7/array.bin'
+        shape = (199, 199, 400)
+        array = np.fromfile(binaryFile, dtype=np.double)
+        array = np.reshape(array, shape)
+
+        depthDose = np.sum(array, axis=(0, 1))
+        xAxis = np.arange(400) * 0.1  # cm
+        plt.plot(xAxis, depthDose)
+        plt.xlabel('depth w.r.t. water surface [cm]')
+        plt.ylabel('energy deposition (a.u.)')
+        plt.title('infinitesimal pencil beam kernel plot')
+        outputFile = os.path.join(resultsFolder, 'IPBKernel.png')
+        plt.savefig(outputFile)
+        plt.clf()
+    elif flag == 2:
+        pointKernelBinary = '/data/qifan/projects/EndtoEnd4/results' \
+            '/point6MeV1e7Rand/array.bin'
+        shape = (199, 199, 400)
+        array = np.fromfile(pointKernelBinary, dtype=np.double)
+        array = np.reshape(array, shape)
+        reducedPointKernel = np.sum(array, axis=(0, 1))
+
+        # according to Attix, the mass attenuation coefficient of
+        # 6 MeV photon in water is 0.0277 m^2/kg. We assume that 
+        # the density of water is 1 kg/m^3. The mass energy transfer
+        # coefficient of 6 MeV photon in water is 0.0185 m^2/kg
+
+        muOverRho = 0.0277  # cm^2/g
+        # muOverRho = 0.0185  # cm^2/g
+        mu = muOverRho * 0.1 * 1000
+        depth = np.arange(400) * 1e-3  # m
+        Terma = np.exp(-depth * mu)
+        # plt.plot(depth, Terma)
+        # plt.show()
+
+        # convolve point kernel with Terma
+        kernelSize = 400
+        kernelBase = 50
+        kernelMargin = kernelSize - kernelBase
+        doseSize = 400
+        kernelMargin = kernelSize - kernelBase
+        dose = np.zeros(kernelSize)
+        for i in range(doseSize):
+            kernelIdxBegin = np.max((0, kernelBase - i))
+            kernelIdxEnd = np.min((kernelSize, doseSize - i + kernelBase))
+            
+            doseIdxBegin = np.max((0, i-kernelBase))
+            doseIdxEnd = np.min((doseSize, i + kernelMargin))
+
+            assert kernelIdxEnd - kernelIdxBegin == doseIdxEnd - doseIdxBegin
+            dose[doseIdxBegin : doseIdxEnd] += Terma[i] * \
+                reducedPointKernel[kernelIdxBegin : kernelIdxEnd]
+        
+        # compare with the experimental results
+        IPBKernelBinary = '/data/qifan/projects/EndtoEnd4/results/' \
+            'IPB6MeV1e7/array.bin'
+        array = np.fromfile(IPBKernelBinary, dtype=np.double)
+        array = np.reshape(array, shape)
+        reducedIPBKernel = np.sum(array, axis=(0, 1))
+        # normalize
+        dose = dose / np.max(dose)
+        reducedIPBKernel = reducedIPBKernel / np.max(reducedIPBKernel)
+        plt.plot(depth, reducedIPBKernel)
+        plt.plot(depth, dose)
+        plt.xlabel('depth [cm]')
+        plt.ylabel('dose (a.u.)')
+        plt.legend(['direct simulation', 'Terma to dose'])
+        # plt.show()
+        outputFile = '/data/qifan/projects/EndtoEnd4/results/' \
+            'figures/compare.png'
+        plt.title('directly simulated dose v.s. point kernel convolution')
+        plt.savefig(outputFile)
+        plt.clf()
+
+        plt.plot(depth, Terma)
+        plt.xlabel('depth [cm]')
+        plt.ylabel('Terma (a.u.)')
+        plt.title('Terma v.s. depth')
+        outputFile = '/data/qifan/projects/EndtoEnd4/results/' \
+            'figures/Terma.png'
+        plt.savefig(outputFile)
+        plt.clf()
+
+
+def examinePointOnly():
+    filePath = '/data/qifan/projects/EndtoEnd4/' \
+        'results/point6MeV1e7Step/array.bin'
+    shape = (199, 199, 400)
+    array = np.fromfile(filePath, dtype=np.double)
+    array = np.reshape(array, shape)
+    reducedPointKernel = np.sum(array, axis=(0, 1))
+    depth = np.arange(-50, 350) * 0.1  # cm
+    plt.plot(depth, reducedPointKernel)
     plt.show()
+
+
+def countValidEvents():
+    """
+    This function processes the log files, and count the number 
+    of events and number of hits that are at the origin.
+    """
+    Folder = '/data/qifan/projects/EndtoEnd4/results/point6MeV32'
+    template = os.path.join(Folder, 'G4WT*.txt')
+    files = glob.glob(template)
+    files.sort()
+
+    totalEvents = 0
+    totalOrigins = 0
+    for file in files:
+        with open(file, 'r') as f:
+            lines = f.readlines()
+        context = ''.join(lines)
+        localEvents = context.count('Event ID')
+        localOrigins = context.count('(0, 0, 0)')
+        if (localEvents != localOrigins):
+            print('in file {}, the number of total events '
+                '!= total origins'.format(file))
+        totalEvents += localEvents
+        totalOrigins += localOrigins
+    # print('total events: {}, total origins: {}'.format(totalEvents, totalOrigins))
 
 
 if __name__ == '__main__':
     # PartiTrajComp()
     # waterKernelOutputProcessing()
-    examineIPBdose()
+    # examineIPBdose()
+    examinePointOnly()
+    # countValidEvents()

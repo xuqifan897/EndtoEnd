@@ -86,7 +86,7 @@ namespace wk
 
         // This function is to calculate the index of fHitsMap 
         // from the position
-        size_t index(G4ThreeVector position, bool& validFlag, int& hitID, G4double& edep);
+        size_t index(G4ThreeVector position, bool& validFlag);
         void logGeom();
     };
 }

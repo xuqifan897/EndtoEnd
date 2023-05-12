@@ -4,6 +4,8 @@
 #include "G4RunManagerFactory.hh"
 #include "G4VisExecutive.hh"
 #include "ActionInitialization.h"
+#include "Randomize.hh"
+#include <ctime>
 
 #include "DetectorConstruction.h"
 #include "QGSP_BERT.hh"
@@ -20,6 +22,9 @@ int main(int argc, char** argv)
 
     G4VisManager* visManager = new G4VisExecutive;
     visManager->Initialize();
+
+    // set random number seeds using time
+    G4Random::setTheSeed(std::time(nullptr));
 
     auto* detector = new wk::DetectorConstruction();
     runManager->SetUserInitialization(detector);
