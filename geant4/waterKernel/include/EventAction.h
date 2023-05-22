@@ -16,13 +16,15 @@ namespace wk
         virtual ~EventAction();
 
         virtual void BeginOfEventAction(const G4Event*);
-    #if PHASE == 0
         virtual void EndOfEventAction(const G4Event*);
-    #endif
 
     private:
         G4int fTrackerCollID;
         void PrintPrimary(G4PrimaryParticle* pp, G4int ind);
+        G4bool debugEventLog;
+        G4bool debugEventLogHits;
+        G4bool debugEventLogParticles;
+        G4bool debugEventLogTrajectory;
     };
 }
 

@@ -14,6 +14,7 @@
 #include "G4UnitsTable.hh"
 #include "G4DynamicParticle.hh"
 #include "G4PrimaryParticle.hh"
+#include "G4SystemOfUnits.hh"
 
 G4ThreadLocal G4Allocator<wk::Trajectory> * wk::myTrajectoryAllocator = 0;
 
@@ -58,7 +59,7 @@ wk::Trajectory::~Trajectory()
 
 void wk::Trajectory::ShowTrajectory(std::ostream& os) const
 {
-    os << G4endl << "TrackID =" << fTrackID 
+    os << G4endl << "TrackID=" << fTrackID 
         << " : ParentID=" << fParentID << " : TrackStatus=" << fTrackStatus << G4endl;
     os << "Particle name : " << fParticleName << "  PDG code : " << fPDGEncoding
         << "  Charge : " << fPDGCharge << G4endl;
@@ -73,7 +74,7 @@ void wk::Trajectory::ShowTrajectory(std::ostream& os) const
         G4TrajectoryPoint* aTrajectoryPoint = 
             (G4TrajectoryPoint*)((*fPositionRecord)[i]);
         os << "Point[" << i << "]" 
-            << " Position= " << aTrajectoryPoint->GetPosition() << G4endl;
+            << " Position= " << aTrajectoryPoint->GetPosition()/cm << " [cm]" << G4endl;
     }
 }
 

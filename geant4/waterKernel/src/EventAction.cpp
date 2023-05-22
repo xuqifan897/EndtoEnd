@@ -16,9 +16,17 @@
 #include "G4PrimaryParticle.hh"
 #include "G4SystemOfUnits.hh"
 
+#include "argparse.h"
+
 wk::EventAction::EventAction()
     :G4UserEventAction(), fTrackerCollID(-1)
-{}
+{
+    this->debugEventLogHits = getArg<bool>("debugEventLogTrajectory");
+    this->debugEventLogParticles = getArg<bool>("debugEventLogParticles");
+    this->debugEventLogTrajectory = getArg<bool>("debugEventLogTrajectory");
+    this->debugEventLog = this->debugEventLogHits || 
+        this->debugEventLogParticles || this->debugEventLogTrajectory;
+}
 
 wk::EventAction::~EventAction()
 {}
@@ -33,86 +41,94 @@ void wk::EventAction::BeginOfEventAction(const G4Event*)
     }
 }
 
-#if PHASE == 0
 void wk::EventAction::EndOfEventAction(const G4Event* evt)
 {
-    G4cout << ">>> Summary of Event " << evt->GetEventID() << G4endl;
-    if(evt->GetNumberOfPrimaryVertex()==0)
+    if (this->debugEventLog)
     {
-        G4cout << "Event is empty." << G4endl;
-        return;
-    }
-
-    if (this->fTrackerCollID < 0) return;
-
-    G4HCofThisEvent * HCE = evt->GetHCofThisEvent();
-    TrackerHitsCollection* THC = 0;
-    if (HCE)
-    {
-        THC = (TrackerHitsCollection*)(HCE->GetHC(this->fTrackerCollID));
-    }
-    
-    // print every hit
-    if (THC)
-    {
-        int n_hit = THC->entries();
-        G4cout << G4endl;
-        G4cout << "Tracker hits " << 
-            "--------------------------------------------------------------"
-            << G4endl;
-        G4cout << n_hit << " hits are stored in TrackerHitsCollection."
-            << G4endl;
-        G4cout << "List of hits in tracker" << G4endl;
-        for (int i=0; i<n_hit; i++)
+        G4cout << ">>> Summary of Event " << evt->GetEventID() << G4endl;
+        if(evt->GetNumberOfPrimaryVertex()==0)
         {
-            (*THC)[i]->Print();
+            G4cout << "Event is empty." << G4endl;
+            return;
         }
+        if (this->fTrackerCollID < 0) return;
     }
 
-    // print primary particles
-    G4cout << G4endl;
-    G4cout << "Primary particles " <<
-        "--------------------------------------------------------------"
-        << G4endl;
-    G4int n_vertex = evt->GetNumberOfPrimaryVertex();
-    for (G4int iv=0; iv<n_vertex;iv++)
+    if (this->debugEventLogHits)
     {
-        G4PrimaryVertex* pv = evt->GetPrimaryVertex(iv);
-        G4cout << G4endl;
-        G4cout << "Primary vertex "
-            << G4ThreeVector(pv->GetX0(), pv->GetY0(), pv->GetZ0())
-            << "   at t = " << (pv->GetT0())/ns << " [ns]" << G4endl;
-        
-        if (true)
+        G4HCofThisEvent * HCE = evt->GetHCofThisEvent();
+        TrackerHitsCollection* THC = 0;
+        if (HCE)
         {
-            G4PrimaryParticle* pp = pv->GetPrimary();
-            while(pp)
+            THC = (TrackerHitsCollection*)(HCE->GetHC(this->fTrackerCollID));
+        }
+        
+        // print every hit
+        if (THC)
+        {
+            int n_hit = THC->entries();
+            G4cout << G4endl;
+            G4cout << "Tracker hits " << 
+                "--------------------------------------------------------------"
+                << G4endl;
+            G4cout << n_hit << " hits are stored in TrackerHitsCollection."
+                << G4endl;
+            G4cout << "List of hits in tracker" << G4endl;
+            for (int i=0; i<n_hit; i++)
             {
-                PrintPrimary(pp, 0);
-                pp = pp->GetNext();
+                (*THC)[i]->Print();
             }
         }
     }
 
-    G4TrajectoryContainer* trajectoryContainer = evt->GetTrajectoryContainer();
-    G4int n_trajectories = 0;
-    if (trajectoryContainer) n_trajectories = trajectoryContainer->entries();
-    // extract the trajectories and print them
-    G4cout << G4endl;
-    G4cout << "Trajectories in tracker " <<
-        "--------------------------------------------------------------"
-        << G4endl;
-    if (true)
+    // print primary particles
+    if (this->debugEventLogParticles)
     {
-        for(G4int i=0; i<n_trajectories; i++)
+        G4cout << "Primary particles " <<
+            "--------------------------------------------------------------"
+            << G4endl;
+        G4int n_vertex = evt->GetNumberOfPrimaryVertex();
+        for (G4int iv=0; iv<n_vertex;iv++)
         {
-            Trajectory* trj = 
-                (Trajectory*)((*(evt->GetTrajectoryContainer()))[i]);
-            trj->ShowTrajectory();
+            G4PrimaryVertex* pv = evt->GetPrimaryVertex(iv);
+            G4cout << G4endl;
+            G4cout << "Primary vertex "
+                << G4ThreeVector(pv->GetX0(), pv->GetY0(), pv->GetZ0())
+                << "   at t = " << (pv->GetT0())/ns << " [ns]" << G4endl;
+            
+            if (true)
+            {
+                G4PrimaryParticle* pp = pv->GetPrimary();
+                while(pp)
+                {
+                    PrintPrimary(pp, 0);
+                    pp = pp->GetNext();
+                }
+            }
+        }
+    }
+
+    if (this->debugEventLogTrajectory)
+    {
+        G4TrajectoryContainer* trajectoryContainer = evt->GetTrajectoryContainer();
+        G4int n_trajectories = 0;
+        if (trajectoryContainer) n_trajectories = trajectoryContainer->entries();
+        // extract the trajectories and print them
+        G4cout << G4endl;
+        G4cout << "Trajectories in tracker " <<
+            "--------------------------------------------------------------"
+            << G4endl;
+        if (true)
+        {
+            for(G4int i=0; i<n_trajectories; i++)
+            {
+                Trajectory* trj = 
+                    (Trajectory*)((*(evt->GetTrajectoryContainer()))[i]);
+                trj->ShowTrajectory();
+            }
         }
     }
 }
-#endif
 
 void wk::EventAction::PrintPrimary(G4PrimaryParticle* pp, G4int ind)
 {

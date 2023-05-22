@@ -14,6 +14,12 @@ namespace wk
     public:
         StackingAction();
         virtual ~StackingAction();
+
+        virtual G4ClassificationOfNewTrack 
+            ClassifyNewTrack(const G4Track* aTrack);
+    
+    private:
+        G4bool debugTrackingStacking;
     };
 }
 

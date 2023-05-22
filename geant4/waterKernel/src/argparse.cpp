@@ -44,7 +44,7 @@ int wk::argsInit(int argc, char** argv)
             "The maximum step size used in simulation, to allow "
             "for higher simulation accuracy. Does not apply if "
             "negative. [cm]")
-        ("recordEventLog", po::value<bool>()->default_value(true),
+        ("recordEventLog", po::value<bool>()->default_value(false),
             "To log the coordinates of individual hits.")
         ("kernelSizeX", po::value<float>()->default_value(10.0),
             "Only used in point kernel calculation. "
@@ -75,6 +75,16 @@ int wk::argsInit(int argc, char** argv)
             "Whether the X and Y dimensions of the kernel to be odd")
         ("resultFolder", po::value<std::string>(),
             "The name of the folder to which we write results.")
+        ("debugTrackingStacking", po::value<bool>()->default_value(false),
+            "This flag is set to test which happens first, "
+            "G4UserStackingAction::ClassifyNewTrack or "
+            "G4UserTrackingAction::PostUserTrackingAction")
+        ("debugEventLogHits", po::value<bool>()->default_value(false),
+            "whether to log hits information at the end of event.")
+        ("debugEventLogParticles", po::value<bool>()->default_value(false),
+            "whether to log particle information at the end of event.")
+        ("debugEventLogTrajectory", po::value<bool>()->default_value(false),
+            "whether to log trajectory information at the end of event.")
         ;
     
     po::store(po::parse_command_line(argc, argv, desc), vm);
