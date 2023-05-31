@@ -1,0 +1,16 @@
+// This file is included in DetectorConstruction.cpp.
+// Users are supposed to revise it for their own phantom customization
+// The thickness specified here is half thickness
+
+this->materials = std::vector<std::pair<G4String, G4float>>(11);
+this->materials[0] = std::make_pair("adipose", 0.8*cm);
+this->materials[1] = std::make_pair("muscle", 0.8*cm);
+this->materials[2] = std::make_pair("bone", 0.8*cm);
+this->materials[3] = std::make_pair("muscle", 0.8*cm);
+this->materials[4] = std::make_pair("lung", 4.8*cm);
+this->materials[5] = std::make_pair("muscle", 0.8*cm);
+this->materials[6] = std::make_pair("bone", 0.8*cm);
+this->materials[7] = std::make_pair("adipose", 0.8*cm);
+this->materials[8] = std::make_pair("bone", 0.8*cm);
+this->materials[9] = std::make_pair("muscle", 0.8*cm);
+this->materials[10] = std::make_pair("adipose", 0.8*cm);
