@@ -75,7 +75,8 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
         "world_physical",
         0,
         false,
-        0);
+        0,
+        true);
     
     // construct child geometries
     G4int layerID = 1;
@@ -99,7 +100,8 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
             physicalName,
             worldLogical,
             false,
-            0);
+            0,
+            true);
         
         this->logicals.push_back(std::make_pair(
             std::to_string(layerID)+material, logical));

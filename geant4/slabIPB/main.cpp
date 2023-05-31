@@ -1,5 +1,8 @@
 #include "G4RunManagerFactory.hh"
 #include "QGSP_BERT.hh"
+#include "G4VisExecutive.hh"
+#include "G4UImanager.hh"
+#include "G4UIExecutive.hh"
 
 #include "argparse.h"
 #include "PhantomDef.h"
@@ -13,7 +16,19 @@ int main(int argc, char** argv)
     
     // geometry initialization
     si::GD = new si::GeomDef();
-    
+
+    G4UIExecutive* ui = nullptr;
+    G4VisManager* visManager = nullptr;
+    G4UImanager* UImanager = nullptr;
+    G4bool gui = si::getArg<bool>("gui");
+    if (gui)
+    {
+        ui = new G4UIExecutive(1, argv);
+        visManager = new G4VisExecutive;
+        visManager->Initialize();
+        UImanager = G4UImanager::GetUIpointer();
+    }
+
     auto* runManager = G4RunManagerFactory::CreateRunManager();
 
     // set random number seeds using time
@@ -29,8 +44,18 @@ int main(int argc, char** argv)
 
     runManager->Initialize();
 
-    G4int nParticles = si::getArg<G4int>("nParticles");
-    runManager->BeamOn(nParticles);
+    if (gui)
+    {
+        UImanager->ApplyCommand("/control/execute init_vis.mac");
+        ui->SessionStart();
+        delete ui;
+    }
+    else
+    {
+        G4int nParticles = si::getArg<G4int>("nParticles");
+        runManager->BeamOn(nParticles);
+    }
 
+    delete visManager;
     delete runManager;
 }

@@ -21,7 +21,7 @@ si::PrimaryGeneratorAction::PrimaryGeneratorAction()
     // particle momentum along +z direction
     ParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
 
-    G4float energy = getArg<float>("energy") * MeV;
+    G4float energy = getArg<float>("Energy") * MeV;
     ParticleGun->SetParticleEnergy(energy);
 
     // the origin of particle is at the bottom of phantom in z direction

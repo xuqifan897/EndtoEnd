@@ -70,6 +70,11 @@ void si::Run::RecordEvent(const G4Event* evt)
         if (!THC)
             continue;
         int n_hit = THC->entries();
+        if (this->recordEventLog)
+        {
+            G4cout << "Event ID: " << evt->GetEventID() << ". Collection ID:" 
+            << i+1 << ". Number of hits: " << n_hit << G4endl;
+        }
         if (n_hit == 0)
             continue;
         for (int j=0; j<n_hit; j++)

@@ -17,7 +17,9 @@ int si::argsInit(int argc, char** argv)
             "geometry parameters, the user should change the parameters in "
             "\"./src/PhantomDef.cpp.\" All dimensions, including resolution, "
             "are in half size, in accordance with the settings of Geant4.")
-        ("energy", po::value<G4float>()->default_value(6.0),
+        ("gui", po::value<bool>()->default_value(false),
+            "Whether to use graphical user interface ")
+        ("Energy", po::value<G4float>()->default_value(6.0),
             "the value of primary photon energy [MeV]")
         ("nParticles", po::value<G4int>()->default_value(1),
             "The number of particles to simulate.")

@@ -9,4 +9,5 @@ fi
 (time ./build/slabIPB \
     --nParticles 32 \
     --resultFolder ${resultFolder} \
-    --recordEventLog true) 2>&1 | tee "${resultFolder}/myOutput.txt"
+    --recordEventLog true \
+    ) 2>&1 | tee "${resultFolder}/myOutput.txt"
