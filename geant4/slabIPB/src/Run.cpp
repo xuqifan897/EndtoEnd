@@ -2,11 +2,13 @@
 #include "G4Event.hh"
 #include "G4SDManager.hh"
 #include "G4Threading.hh"
+#include "G4SystemOfUnits.hh"
 
 #include "Run.h"
 #include "PhantomDef.h"
 #include "argparse.h"
 #include "SDHit.h"
+#include "config.h"
 
 si::Run::Run():
     G4Run(),
@@ -28,17 +30,27 @@ si::Run::Run():
 
     this->HitsCollectionIDs = std::vector<G4int>();
     this->Names = std::vector<G4String>();
-    G4int layerID = 1;
-    for (auto it = GD->layers.begin(); it != GD->layers.end(); it++)
+#if SENSDET == SLABS
+    for (int i=0; i<GD->layers.size(); i++)
     {
-        G4String& material = std::get<0>(*it);
-        G4String collectionName = std::to_string(layerID) 
-            + material + G4String("Collection");
-        layerID ++;
+        G4String collectionName = G4String("Shape") + std::to_string(i+1) 
+            + G4String("Collection");
         this->HitsCollectionIDs.push_back(
             SDman->GetCollectionID(collectionName));
         this->Names.push_back(collectionName);
     }
+#elif SENSDET == WORLD
+    G4String collectionName("worldCollection");
+    this->HitsCollectionIDs.push_back(
+        SDman->GetCollectionID(collectionName));
+    this->Names.push_back(collectionName);
+
+#elif SENSDET == SHARED
+    G4String collectionName("sharedCollection");
+    this->HitsCollectionIDs.push_back(
+        SDman->GetCollectionID(collectionName));
+    this->Names.push_back(collectionName);
+#endif
 
     // initialize fHitsMap. The scoring region is 
     // assumed to be the same as the phanotm
@@ -46,13 +58,11 @@ si::Run::Run():
 
     if (G4Threading::IsMasterThread())
     {
-        for (G4int i=0; i<GD->layers.size(); i++)
+        for (G4int i=0; i<this->Names.size(); i++)
             G4cout << "Layer " << this->Names[i] << ", collection ID: " 
                 << this->HitsCollectionIDs[i] << G4endl;
     }
 }
-
-si::Run::~Run() {}
 
 void si::Run::RecordEvent(const G4Event* evt)
 {
@@ -70,11 +80,11 @@ void si::Run::RecordEvent(const G4Event* evt)
         if (!THC)
             continue;
         int n_hit = THC->entries();
-        if (this->recordEventLog)
-        {
-            G4cout << "Event ID: " << evt->GetEventID() << ". Collection ID:" 
-            << i+1 << ". Number of hits: " << n_hit << G4endl;
-        }
+        // if (this->recordEventLog)
+        // {
+        //     G4cout << "Event ID: " << evt->GetEventID() << ". Layer name:" 
+        //     << this->Names[i] << ". Number of hits: " << n_hit << G4endl;
+        // }
         if (n_hit == 0)
             continue;
         for (int j=0; j<n_hit; j++)
@@ -86,7 +96,7 @@ void si::Run::RecordEvent(const G4Event* evt)
             if (this->recordEventLog)
             {
                 G4cout << "(TrackID, HitID): (" << aHit->getTrackID() << ", " 
-                    << j << "). Hit Position: (" << aHitPos << "). Index: " 
+                    << j << "). Hit Position: " << aHitPos/cm << "[cm]. Index: " 
                     << idx << ". Detector: " << this->Names[i] << G4endl;;
             }
         }

@@ -10,15 +10,15 @@ namespace si
     {
     public:
         Run();
-        ~Run();
+        ~Run() = default;
 
         virtual void RecordEvent(const G4Event*);
         virtual void Merge(const G4Run*);
         void writeHitsMap(G4String path) const;
 
-        G4float getFullResX() const {return this->resX*2;}
-        G4float getFullResY() const {return this->resY*2;}
-        G4float getFullResZ() const {return this->resZ*2;}
+        G4float getFullResX() const {return this->fullResX;}
+        G4float getFullResY() const {return this->fullResY;}
+        G4float getFullResZ() const {return this->fullResZ;}
 
         G4int getDimX() const {return this->dimX;}
         G4int getDimY() const {return this->dimY;}

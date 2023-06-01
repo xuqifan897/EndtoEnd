@@ -10,8 +10,8 @@ namespace si
     class RunAction : public G4UserRunAction
     {
     public:
-        RunAction();
-        virtual ~RunAction();
+        RunAction() = default;
+        ~RunAction() = default;
 
         virtual G4Run* GenerateRun();
         virtual void BeginOfRunAction(const G4Run*);

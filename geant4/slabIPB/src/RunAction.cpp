@@ -2,19 +2,13 @@
 #include "G4Run.hh"
 #include "G4Threading.hh"
 #include "G4RunManager.hh"
+#include "G4SystemOfUnits.hh"
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
 
 #include "argparse.h"
 #include "RunAction.h"
 #include "Run.h"
-
-si::RunAction::RunAction()
-    :G4UserRunAction()
-{}
-
-si::RunAction::~RunAction()
-{}
 
 G4Run* si::RunAction::GenerateRun()
 {
@@ -43,9 +37,9 @@ void si::RunAction::EndOfRunAction(const G4Run* aRun)
         metadataSS << "Number of events: " << masterRun->GetNumberOfEvent() << G4endl;
         metadataSS << "Hits map dimension: (" << masterRun->getDimX() << ", "
             << masterRun->getDimY() << ", " << masterRun->getDimZ() << ")" << G4endl;
-        metadataSS << "Hits map resolution: (" << masterRun->getFullResX() << ", "
-            << masterRun->getFullResY() << ", " << masterRun->getFullResZ() 
-            << ")" << G4endl;
+        metadataSS << "Hits map resolution: (" << masterRun->getFullResX()/cm << ", "
+            << masterRun->getFullResY()/cm << ", " << masterRun->getFullResZ()/cm 
+            << ")[cm]" << G4endl;
         metadataSS << "Data type: double" << G4endl;
         std::string metadata = metadataSS.str();
 

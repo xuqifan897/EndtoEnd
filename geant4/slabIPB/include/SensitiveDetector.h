@@ -12,21 +12,21 @@ namespace si
     class SensitiveDetector : public G4VSensitiveDetector
     {
     public:
-        SensitiveDetector(G4String name);
+        SensitiveDetector(G4String name, G4int index);
         SensitiveDetector(SensitiveDetector& old) = delete;
         SensitiveDetector(SensitiveDetector&& old) = delete;
         SensitiveDetector& operator=(const SensitiveDetector old) = delete;
 
-        virtual ~SensitiveDetector();
+        ~SensitiveDetector() = default;
 
         virtual void Initialize(G4HCofThisEvent* HCE);
-        virtual void EndOfEvent(G4HCofThisEvent* HCE);
     
     protected:
         virtual G4bool ProcessHits(G4Step* aStep, G4TouchableHistory* ROhist);
     
     private:
         SDHitsCollection* fSDHitsCollection;
+        G4int idx;
     };
 }
 

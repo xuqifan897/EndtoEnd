@@ -2,9 +2,8 @@
 #define siPrimaryGeneratorAction_h 1
 
 #include "G4VUserPrimaryGeneratorAction.hh"
-
-class G4VPrimaryGenerator;
-class G4Event;
+#include "G4ParticleGun.hh"
+#include "globals.hh"
 
 namespace si
 {
@@ -12,12 +11,12 @@ namespace si
     {
     public:
         PrimaryGeneratorAction();
-        virtual ~PrimaryGeneratorAction();
+        ~PrimaryGeneratorAction() override;
 
-        virtual void GeneratePrimaries(G4Event* anEvent);
+        void GeneratePrimaries(G4Event*) override;
     
     private:
-        G4VPrimaryGenerator* fParticleGun;
+        G4ParticleGun* fParticleGun;
     };
 }
 

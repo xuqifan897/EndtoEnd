@@ -19,10 +19,14 @@ int si::argsInit(int argc, char** argv)
             "are in half size, in accordance with the settings of Geant4.")
         ("gui", po::value<bool>()->default_value(false),
             "Whether to use graphical user interface ")
-        ("Energy", po::value<G4float>()->default_value(6.0),
+        ("Energy", po::value<float>()->default_value(6.0),
             "the value of primary photon energy [MeV]")
         ("nParticles", po::value<G4int>()->default_value(1),
             "The number of particles to simulate.")
+        ("sourceZ", po::value<float>()->default_value(-15.0),
+            "The Z position of the source. [cm]. This entry was only used in "
+            "the test phase. In real applications, it is determined by the "
+            "geometry setting")
         ("resultFolder", po::value<std::string>(),
             "The name of the folder to which we write results.")
         ("recordEventLog", po::value<bool>()->default_value(false),

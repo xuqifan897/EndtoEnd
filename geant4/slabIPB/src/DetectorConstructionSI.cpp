@@ -24,6 +24,7 @@
 #include "DetectorConstructionSI.h"
 #include "PhantomDef.h"
 #include "SensitiveDetector.h"
+#include "config.h"
 
 G4VPhysicalVolume* si::DetectorConstruction::Construct()
 {
@@ -58,7 +59,7 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
     G4bool checkOverlaps = true;
 
     auto solidWorld = new G4Box("World", GD->sizeX, GD->sizeY, GD->sizeZ);
-    auto logicWorld = new G4LogicalVolume(solidWorld, air, "World");
+    this->logicWorld = new G4LogicalVolume(solidWorld, air, "World");
     auto physWorld = new G4PVPlacement(nullptr,
         G4ThreeVector(),
         logicWorld,
@@ -96,6 +97,8 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
 
 void si::DetectorConstruction::ConstructSDandField()
 {
+
+#if SENSDET == SLABS
     G4int index = 0;
     for (auto it=this->logicals.begin(); it!=this->logicals.end(); it++)
     {
@@ -106,4 +109,20 @@ void si::DetectorConstruction::ConstructSDandField()
         G4SDManager::GetSDMpointer()->AddNewDetector(aSD);
         SetSensitiveDetector(logical, aSD);
     }
+#elif SENSDET == WORLD
+    G4String name("world");
+    si::SensitiveDetector* aSD = new SensitiveDetector(name, 0);
+    G4SDManager::GetSDMpointer()->AddNewDetector(aSD);
+    SetSensitiveDetector(this->logicWorld, aSD);
+
+#elif SENSDET == SHARED
+    G4String name("shared");
+    si::SensitiveDetector* aSD = new SensitiveDetector(name, 0);
+    G4SDManager::GetSDMpointer()->AddNewDetector(aSD);
+    for (auto it=this->logicals.begin(); it!=this->logicals.end(); it++)
+    {
+        G4LogicalVolume* logical = std::get<1>(*it);
+        SetSensitiveDetector(logical, aSD);
+    }
+#endif
 }

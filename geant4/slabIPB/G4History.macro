@@ -1,5 +1,5 @@
 /run/verbose 2
-/control/execute vis.mac
+/control/execute visSI.mac
 /vis/open OGL 600x600-0+0
 /vis/sceneHandler/create OGL
 /vis/viewer/create ! ! 600x600-0+0
@@ -48,9 +48,29 @@
 /vis/scene/notifyHandlers
 /vis/set/colour
 /vis/set/lineWidth
-/vis/geometry/set/visibility world_logical 0 false
+/vis/geometry/set/visibility World 0 false
 /vis/scene/notifyHandlers
-/vis/geometry/set/visibility 1water_logical 1 true
+/vis/geometry/set/colour Shape1 0 1 0 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape2 0 0 1 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape3 0 0 0 1 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape4 0 0 1 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape5 0 1 0 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape6 0 0 1 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape7 0 0 0 1 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape8 0 0 1 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape9 0 1 0 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape10 0 0 1 0 0.5
+/vis/scene/notifyHandlers
+/vis/geometry/set/colour Shape11 0 0 0 1 0.5
 /vis/scene/notifyHandlers
 /vis/viewer/set/style surface
 /vis/viewer/set/hiddenMarker true
@@ -58,4 +78,4 @@
 /vis/viewer/set/autoRefresh true
 /vis/viewer/refresh
 /vis/verbose warnings
-/run/beamOn 100
+/run/beamOn 32

@@ -1,61 +1,60 @@
 #include "G4RunManagerFactory.hh"
-#include "QGSP_BERT.hh"
-#include "G4VisExecutive.hh"
 #include "G4UImanager.hh"
+#include "QBBC.hh"
+#include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 
 #include "argparse.h"
-#include "PhantomDef.h"
-#include "DetectorConstruction.h"
+#include "DetectorConstructionB1.h"
+#include "DetectorConstructionSI.h"
 #include "ActionInitialization.h"
+#include "PhantomDef.h"
 
 int main(int argc, char** argv)
 {
-    if(si::argsInit(argc, argv))
+    if (si::argsInit(argc, argv))
         return 0;
     
-    // geometry initialization
-    si::GD = new si::GeomDef();
+    si::GD = new si::GeomDef;
 
     G4UIExecutive* ui = nullptr;
-    G4VisManager* visManager = nullptr;
-    G4UImanager* UImanager = nullptr;
-    G4bool gui = si::getArg<bool>("gui");
-    if (gui)
-    {
+    if (si::getArg<bool>("gui"))
         ui = new G4UIExecutive(1, argv);
-        visManager = new G4VisExecutive;
-        visManager->Initialize();
-        UImanager = G4UImanager::GetUIpointer();
-    }
 
-    auto* runManager = G4RunManagerFactory::CreateRunManager();
-
+    auto* runManager = G4RunManagerFactory::CreateRunManager(
+        G4RunManagerType::Default);
+    
     // set random number seeds using time
     G4Random::setTheSeed(std::time(nullptr));
+    
+    // runManager->SetUserInitialization(new si::DetectorConstructionB1());
+    runManager->SetUserInitialization(new si::DetectorConstruction);
 
-    auto* detector = new si::DetectorConstruction();
-    runManager->SetUserInitialization(detector);
-
-    G4VModularPhysicsList* physicsList = new QGSP_BERT;
+    G4VModularPhysicsList* physicsList = new QBBC;
     runManager->SetUserInitialization(physicsList);
 
     runManager->SetUserInitialization(new si::ActionInitialization);
-
     runManager->Initialize();
 
-    if (gui)
+    G4VisManager* visManager = nullptr;
+    G4UImanager* UImanager = nullptr;
+    if (si::getArg<bool>("gui"))
     {
+        visManager = new G4VisExecutive;
+        visManager->Initialize();
+
+        UImanager = G4UImanager::GetUIpointer();
+
         UImanager->ApplyCommand("/control/execute init_vis.mac");
         ui->SessionStart();
         delete ui;
+        delete visManager;
     }
     else
     {
         G4int nParticles = si::getArg<G4int>("nParticles");
         runManager->BeamOn(nParticles);
     }
-
-    delete visManager;
+    
     delete runManager;
 }

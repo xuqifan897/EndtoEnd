@@ -19,8 +19,8 @@ then
 fi
 
 (time ./build/slabIPB \
-    --gui true \
+    --gui false \
     --nParticles 32 \
     --resultFolder ${resultFolder} \
-    --recordEventLog true \
+    --recordEventLog false \
     ) 2>&1 | tee "${resultFolder}/myOutput.txt"

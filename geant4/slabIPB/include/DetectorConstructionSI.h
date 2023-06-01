@@ -20,6 +20,7 @@ namespace si
     
     private:
         std::vector<std::pair<G4String, G4LogicalVolume*>> logicals;
+        G4LogicalVolume* logicWorld;
     };
 }
 

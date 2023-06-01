@@ -3,21 +3,24 @@
 
 #include "G4VUserActionInitialization.hh"
 
+/// Action initialization class.
+
 namespace si
 {
-    class ActionInitialization : public G4VUserActionInitialization
-    {
-    public:
-        ActionInitialization();
-        ActionInitialization(ActionInitialization& old) = delete;
-        ActionInitialization(ActionInitialization&& old) = delete;
-        ActionInitialization& operator=(const ActionInitialization& old) = delete;
 
-        ~ActionInitialization();
+class ActionInitialization : public G4VUserActionInitialization
+{
+  public:
+    ActionInitialization() = default;
+    ~ActionInitialization() override = default;
 
-        virtual void Build() const;
-        virtual void BuildForMaster() const;
-    };
+    // void BuildForMaster() const override;
+    void Build() const override;
+    void BuildForMaster() const override;
+};
+
 }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif

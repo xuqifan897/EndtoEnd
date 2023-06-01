@@ -6,24 +6,23 @@
 #include "SensitiveDetector.h"
 #include "SDHit.h"
 
-si::SensitiveDetector::SensitiveDetector(G4String name)
-    :G4VSensitiveDetector(name), fSDHitsCollection(0)
+si::SensitiveDetector::SensitiveDetector(G4String name, G4int index)
+    :G4VSensitiveDetector(name), fSDHitsCollection(0), idx(index)
 {
     // the parameter name is in the format "${layerID}${material}"
     G4String HCname(name + G4String("Collection"));
     collectionName.insert(HCname);
 }
 
-si::SensitiveDetector::~SensitiveDetector()
-{}
-
 void si::SensitiveDetector::Initialize(G4HCofThisEvent* HCE)
 {
-    static int HCID = -1;
     this->fSDHitsCollection = new SDHitsCollection(
         this->SensitiveDetectorName, collectionName[0]);
+    static int HCID = -1;
     if (HCID < 0)
         HCID = GetCollectionID(0);
+    // for debug purposes
+    // G4cout << "HCID = " << HCID << G4endl;
     HCE->AddHitsCollection(HCID, this->fSDHitsCollection);
 }
 
@@ -39,5 +38,3 @@ G4bool si::SensitiveDetector::ProcessHits(G4Step* aStep, G4TouchableHistory*)
     this->fSDHitsCollection->insert(newHit);
     return true;
 }
-
-void si::SensitiveDetector::EndOfEvent(G4HCofThisEvent*) {}
