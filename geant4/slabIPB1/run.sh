@@ -19,7 +19,7 @@ then
 fi
 
 (time ./build/slabIPB \
-    --gui true \
+    --gui false \
     --nParticles 32 \
     --resultFolder ${resultFolder} \
     --recordEventLog true \
