@@ -68,4 +68,4 @@ totED.txt
 myOutput*.txt
 *.rndm
 results
-*.macro
+./geant4/slabIPB/*.macro
