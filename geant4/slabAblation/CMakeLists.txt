@@ -7,8 +7,9 @@ include(CTest)
 enable_testing()
 
 # which phantom to use, water or slab
-set(PHANTOM "SLAB")
+# set(PHANTOM "SLAB")
 # set(PHANTOM "WATER")
+set(PHANTOM "BINARY")
 
 # set(SENSDET "WORLD")
 # set(SENSDET "SLABS")

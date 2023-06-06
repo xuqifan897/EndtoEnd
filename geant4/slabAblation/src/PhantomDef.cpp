@@ -24,10 +24,11 @@ si::GeomDef::GeomDef()
     this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
-#endif
-
-# if PHANTOM == WATER
+#elif PHANTOM == WATER
     this->layers.push_back(std::make_tuple("water", 12.8*cm, 0.));
+#elif PHANTOM == BINARY
+    this->layers.push_back(std::make_tuple("adipose", 12.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("muscle", 12.8*cm, 0.));
 #endif
 
     // Half size

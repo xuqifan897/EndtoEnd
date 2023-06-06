@@ -20,11 +20,13 @@
 #include "G4RegionStore.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4UserLimits.hh"
+#include "G4Threading.hh"
 
 #include "DetectorConstructionSI.h"
 #include "PhantomDef.h"
 #include "SensitiveDetector.h"
 #include "config.h"
+#include "argparse.h"
 
 G4VPhysicalVolume* si::DetectorConstruction::Construct()
 {
@@ -69,6 +71,27 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
         0,
         checkOverlaps);
     
+    // prepare user limits parameters
+    G4double maxStep = si::getArg<float>("maxStep") * cm;
+    G4double maxTrack = si::getArg<float>("maxTrack") * cm;
+    G4double maxTime = si::getArg<float>("maxTime") * ns;
+    G4double minEkine = si::getArg<float>("minEkine") * MeV;
+    G4double minRange = si::getArg<float>("minRange") * cm;
+    if (maxStep < 0)
+        maxStep = DBL_MAX;
+    if (maxTrack < 0)
+        maxTrack = DBL_MAX;
+    if (maxTime < 0)
+        maxTime = DBL_MAX;
+    bool setLimitFlag = (minEkine > 0) || (minRange > 0);
+    if (G4Threading::IsMasterThread())
+    {
+        if (setLimitFlag)
+            G4cout << "setLimitFlag = true" << G4endl;
+        else
+            G4cout << "setLimitFlag = false" << G4endl;
+    }
+
     this->logicals = std::vector<std::pair<G4String, G4LogicalVolume*>>();
     // prepare child slabs
     for (int i=0; i<GD->layers.size(); i++)
@@ -91,6 +114,14 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
             0,
             checkOverlaps);
         this->logicals.push_back(std::make_pair(layerName, logic));
+
+        //  set UserLimits
+        if (setLimitFlag)
+        {
+            G4UserLimits* limit = new G4UserLimits(
+                maxStep, maxTrack, maxTime, minEkine, minRange);
+            logic->SetUserLimits(limit);
+        }
     }
     return physWorld;
 }

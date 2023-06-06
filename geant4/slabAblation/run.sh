@@ -12,14 +12,14 @@
 #     --recordEventLog true \
 #     ) 2>&1 | tee "${resultFolder}/myOutput.txt"
 
-resultFolder="/data/qifan/projects/EndtoEnd4/results/slab6MeVBERT1e7"
+resultFolder="/data/qifan/projects/EndtoEnd4/results/slab6MeVAblationVanilla"
 if [ ! -d ${resultFolder} ]
 then
     mkdir ${resultFolder}
 fi
 
 (time ./build/slabIPB \
-    --gui false \
+    --gui true \
     --nParticles 10000000 \
     --resultFolder ${resultFolder} \
     --recordEventLog false \

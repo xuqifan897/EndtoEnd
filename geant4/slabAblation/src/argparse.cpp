@@ -27,6 +27,24 @@ int si::argsInit(int argc, char** argv)
             "The Z position of the source. [cm]. This entry was only used in "
             "the test phase. In real applications, it is determined by the "
             "geometry setting")
+        
+        // The following block is for UserLimits
+        ("maxStep", po::value<float>()->default_value(-1),
+            "The maximum step size allowed in the simulation. "
+            "The lower the step size, the higher the simulation "
+            "accuracy. When it's negative, it's not enforced. [cm]")
+        ("maxTrack", po::value<float>()->default_value(-1),
+            "The maximum allowed track length. When negative, not enforced. [cm]")
+        ("maxTime", po::value<float>()->default_value(-1),
+            "Maximum allowed time per step. When negative, not enforced [ns]")
+        ("minEkine", po::value<float>()->default_value(0),
+            "The minimum energy cut for stacking secondaries. [MeV]")
+        ("minRange", po::value<float>()->default_value(0),
+            "The minimum range cut for stacking secondaries. "
+            "The same function as above, but translates to different "
+            "energies in different materials. [cm]")
+
+        // The following block is for logging
         ("resultFolder", po::value<std::string>(),
             "The name of the folder to which we write results.")
         ("recordEventLog", po::value<bool>()->default_value(false),

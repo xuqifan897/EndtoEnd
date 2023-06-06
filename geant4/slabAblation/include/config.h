@@ -1,7 +1,8 @@
 #ifndef PHANTOM
 #define WATER 0
 #define SLAB 1
-#define PHANTOM SLAB
+#define BINARY 2  // a phantom composed of only two materials
+#define PHANTOM BINARY
 
 // WORLD means that the sensitive detector is only associated to the WORLD logical volume
     // It turns out that the sensitive detector does not produce hits
