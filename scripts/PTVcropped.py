@@ -285,7 +285,7 @@ def prepareAAPMSuppDoc():
     Here we prepare the figures for the supporting documents.
     """
     numPatients = 8
-    rowSize = 2
+    rowSize = 4
     colSize = int(numPatients / rowSize)
     fig, axs = plt.subplots(colSize, rowSize)
     fontSize = 16
@@ -367,7 +367,7 @@ def prepareAAPMSuppDoc():
     plt.margins(y=0.3)
     # plt.rcParams.update({'font.size': 40})
     # plt.show()
-    outFile = os.path.join(visFolder, 'DVH_AAPM.pdf')
+    outFile = os.path.join(visFolder, 'DVH_AAPM_poster.png')
     plt.savefig(outFile)
 
 
@@ -798,10 +798,10 @@ if __name__ == '__main__':
     # createCTanatomy()
     # doseResizeCropped()
     # visDVH_PTVcropped()
-    # prepareAAPMSuppDoc()
+    prepareAAPMSuppDoc()
     # DVH_AUC_comp()
     # signTest()
     # PTVHomogeneity()
     # OARDoseAnalysis()
     # drawTable()
-    BOObeamFuse()
+    # BOObeamFuse()

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -23,15 +24,12 @@ def muTableInit():
     """
     This function initializes the muTable
     """
-    # part function shows the dose from the proposed analytical method
-    showAnalytical = False
-    if showAnalytical:
-        # firstly, check the unity of the material decomposition
-        for key, item in materials.items():
-            elementTable = item[1]
-            fractions = list(elementTable.values())
-            unity = np.sum(fractions)
-            assert np.abs(unity - 1) < 1e-3, "the fractions do not add to unity"
+    # firstly, check the unity of the material decomposition
+    for key, item in materials.items():
+        elementTable = item[1]
+        fractions = list(elementTable.values())
+        unity = np.sum(fractions)
+        assert np.abs(unity - 1) < 1e-3, "the fractions do not add to unity"
 
     global muTable
     muTable = {}
@@ -48,23 +46,6 @@ def muTableInit():
     # print(muTable)
 
 muTableInit()
-
-
-def showDose():
-    """
-    This function shows the dose distribution from Monte Carlo simulation
-    """
-    doseFile = '/data/qifan/projects/EndtoEnd4/results/slab6MeV1e7/array.bin'
-    shape = (199, 199, 256)
-    array = np.fromfile(doseFile, dtype=np.float64)
-    array = np.reshape(array, shape)
-    reducedArray = np.sum(array, axis=(0, 1))
-    depth = np.arange(256) * 0.1
-    plt.plot(depth, reducedArray)
-    plt.xlabel('depth (cm)')
-    plt.ylabel('dose (a.u.)')
-    plt.title('dose distribution for inhomogeneous phantoms')
-    plt.show()
 
 def showAnalytical():
     """
@@ -90,10 +71,26 @@ def showAnalytical():
         densityMap[cumuThickness: cumuThickness + thickness] = density
         cumuThickness += thickness
     
+    # # for debug purposes, to show the ratio between mu and density
+    # ratio = muMap / densityMap
+    # plt.plot(depth, ratio)
+    # figureFile = '/data/qifan/projects/EndtoEnd4/results/' \
+    #     'slab6MeVAccu/muOverDens.png'
+    # plt.savefig(figureFile)
+    # plt.clf()
+    # exit()
+    
     muMapIntegral = np.cumsum(muMap) * 0.1  # thickness: 0.1cm
-    TermaMu = np.exp(-muMapIntegral) * muMap
+    Terma = np.exp(-muMapIntegral)
+    TermaMu = Terma * muMap
     # which reflects the equivalent radiology path lengh in water, in mm
     densityMapIntegral = np.cumsum(densityMap)
+
+    # # for debug purposes, show termaMu
+    # plt.plot(depth, Terma)
+    # plt.savefig('/data/qifan/projects/EndtoEnd4/results/slab6MeVAccu/Terma.png')
+    # plt.clf()
+    # exit()
 
     # load Terma to dose kernel
     kernelPath = '/data/qifan/projects/EndtoEnd4/results/point6MeV1e7Step/array.bin'
@@ -134,9 +131,9 @@ def showAnalytical():
     for i in range(millimeters):
         DoseContri[i, :] = weights[i, :] * TermaMu[i]
     AnalyticalDose = np.sum(DoseContri, axis=0)
-    AnalyticalDose *= muMap / densityMap
+    # AnalyticalDose *= muMap / densityMap
     
-    doseFile = '/data/qifan/projects/EndtoEnd4/results/slab6MeV1e7/array.bin'
+    doseFile = '/data/qifan/projects/EndtoEnd4/results/slab6MeVAccu/array.bin'
     shape = (199, 199, 256)
     array = np.fromfile(doseFile, dtype=np.float64)
     array = np.reshape(array, shape)
@@ -153,23 +150,115 @@ def showAnalytical():
     plt.xlabel('depth (cm)')
     plt.ylabel('dose (a.u.)')
     # plt.show()
-    graphPath = '/data/qifan/projects/EndtoEnd4/results/point6MeV1e7Step/doseComp.png'
+    graphPath = '/data/qifan/projects/EndtoEnd4/results/slab6MeVAccu/doseComp.png'
     plt.savefig(graphPath)
     plt.clf()
 
 
 def examineDose():
-    doseFile = '/data/qifan/projects/EndtoEnd4/results/slab6MeVBERT1e7/array.bin'
+    # first step, phantom construction. The thickness unit is in mm
+    layers = [('adipose', 16), ('muscle', 16), ('bone', 16), ('muscle', 16),
+        ('lung', 96), ('muscle', 16), ('bone', 16), ('adipose', 16),
+        ('bone', 16), ('muscle', 16), ('adipose', 16)]
+    millimeters = 0
+    for a in layers:
+        millimeters += a[1]
+    depth = np.arange(millimeters) * 0.1
+
+    densityMap = np.zeros(millimeters)
+    muMap = np.zeros(millimeters)
+    cumuThickness = 0
+    for material, thickness in layers:
+        mu = muTable[material]
+        muMap[cumuThickness: cumuThickness + thickness] = mu
+
+        density = materials[material][0]
+        densityMap[cumuThickness: cumuThickness + thickness] = density
+        cumuThickness += thickness
+    
+    Folder = '/data/qifan/projects/EndtoEnd4/results/slab6MeVAccu'
+    doseFile = os.path.join(Folder, 'array.bin')
     shape = (199, 199, 256)
     array = np.fromfile(doseFile, dtype=np.float64)
     array = np.reshape(array, shape)
-    array = np.sum(array, axis=(0, 1))
+
+    # process = 'marginal'
+    process = 'central'
+
+    if process == 'marginal':
+        array = np.sum(array, axis=(0, 1))
+        figurePath = os.path.join(Folder, 'doseMarginal.png')
+    elif process == 'central':
+        array = array[99, 99, :]
+        figurePath = os.path.join(Folder, 'doseCentral.png')
+    array /= densityMap
     depth = np.arange(256) * 0.1
     plt.plot(depth, array)
-    plt.show()
+    plt.savefig(figurePath)
+    plt.clf()
+
+
+def doseExamine():
+    """
+    After the first trail, we found that the analytical dose does not 
+    match the Monte Carlo dose in the bone regions, where there are bumps 
+    in the analytical dose, but not in the Monte Carlo dose. Here we are 
+    going to examine the reason or problem behind this.
+    """
+    # first step, phantom construction. The thickness unit is in mm
+    layers = [('adipose', 16), ('muscle', 16), ('bone', 16), ('muscle', 16),
+        ('lung', 96), ('muscle', 16), ('bone', 16), ('adipose', 16),
+        ('bone', 16), ('muscle', 16), ('adipose', 16)]
+    millimeters = 0
+    for a in layers:
+        millimeters += a[1]
+    depth = np.arange(millimeters) * 0.1
+
+    densityMap = np.zeros(millimeters)
+    muMap = np.zeros(millimeters)
+    cumuThickness = 0
+    for material, thickness in layers:
+        mu = muTable[material]
+        muMap[cumuThickness: cumuThickness + thickness] = mu
+
+        density = materials[material][0]
+        densityMap[cumuThickness: cumuThickness + thickness] = density
+        cumuThickness += thickness
+    muMapIntegral = np.cumsum(muMap) * 0.1  # thickness: 0.1cm
+    Terma = np.exp(-muMapIntegral)
+    
+    resultFolder = '/data/qifan/projects/EndtoEnd4/results/slab6MeVAccu'
+
+    phase = 3
+    if phase == 1:
+        TermaFigPath = os.path.join(resultFolder, 'Terma.png')
+        plt.plot(depth, Terma)
+        plt.savefig(TermaFigPath)
+        plt.clf()
+    elif phase == 2:
+        TermaDiff = np.zeros_like(Terma)
+        TermaDiff[:-1] = - np.diff(Terma)
+        TermaDiff[-1] = TermaDiff[-2]
+        TermaDiff /= np.max(TermaDiff)
+
+        TermaMu = Terma * muMap
+        TermaMu /= np.max(TermaMu)
+        plt.plot(depth, TermaDiff)
+        plt.plot(depth, TermaMu)
+        plt.legend(['TermaDiff', 'TermaMu'])
+        figurePath = os.path.join(resultFolder, 'TermaDiff.png')
+        plt.savefig(figurePath)
+        plt.clf()
+    elif phase == 3:
+        TermaMuRho = Terma * muMap / densityMap
+        TermaMuRhoPath = os.path.join(resultFolder, 'TermaMuRho.png')
+        plt.plot(depth, TermaMuRho)
+        plt.savefig(TermaMuRhoPath)
+        plt.clf()
+
 
 
 if __name__ == '__main__':
-    # showDose()
     # showAnalytical()
     examineDose()
+    # doseExamine()

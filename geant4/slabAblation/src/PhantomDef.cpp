@@ -12,7 +12,7 @@ si::GeomDef::GeomDef()
     // It is noted that, all numbers are half thicknesses
     // In the format of (material, thickness, offset)
     this->layers = std::vector<std::tuple<G4String, G4double, G4double>>();
-#if PHANTOM == SLAB
+#if PHANTOM == 0
     this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
@@ -24,11 +24,6 @@ si::GeomDef::GeomDef()
     this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
-#elif PHANTOM == WATER
-    this->layers.push_back(std::make_tuple("water", 12.8*cm, 0.));
-#elif PHANTOM == BINARY
-    this->layers.push_back(std::make_tuple("adipose", 12.8*cm, 0.));
-    this->layers.push_back(std::make_tuple("muscle", 12.8*cm, 0.));
 #endif
 
     // Half size

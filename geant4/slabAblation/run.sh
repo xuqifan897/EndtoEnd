@@ -12,15 +12,37 @@
 #     --recordEventLog true \
 #     ) 2>&1 | tee "${resultFolder}/myOutput.txt"
 
-resultFolder="/data/qifan/projects/EndtoEnd4/results/slab6MeVAblationVanilla"
+# resultFolder="/data/qifan/projects/EndtoEnd4/results/slab6MeVAblationVanilla"
+# if [ ! -d ${resultFolder} ]
+# then
+#     mkdir ${resultFolder}
+# fi
+
+# (time ./build/slabIPB \
+#     --gui false \
+#     --nParticles 10000000 \
+#     --resultFolder ${resultFolder} \
+#     --recordEventLog false \
+#     ) 2>&1 | tee "${resultFolder}/myOutput.txt"
+
+
+resultFolder="/data/qifan/projects/EndtoEnd4/results/InhomoJuly6"
 if [ ! -d ${resultFolder} ]
 then
     mkdir ${resultFolder}
 fi
 
+experimentFolder="${resultFolder}/waterDose"
+if [ ! -d ${experimentFolder} ]
+then
+    mkdir ${experimentFolder}
+fi
+
 (time ./build/slabIPB \
-    --gui true \
+    --gui false \
     --nParticles 10000000 \
-    --resultFolder ${resultFolder} \
+    --minRange 0.01 \
+    --maxStep 0.01 \
+    --resultFolder ${experimentFolder} \
     --recordEventLog false \
-    ) 2>&1 | tee "${resultFolder}/myOutput.txt"
+    ) 2>&1 | tee "${experimentFolder}/myOutput.txt"
