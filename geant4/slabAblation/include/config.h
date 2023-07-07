@@ -1,5 +1,5 @@
 #ifndef PHANTOM
-#define PHANTOM 0
+#define PHANTOM 2
 
 // WORLD means that the sensitive detector is only associated to the WORLD logical volume
     // It turns out that the sensitive detector does not produce hits
