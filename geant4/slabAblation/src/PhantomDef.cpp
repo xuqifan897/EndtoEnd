@@ -30,6 +30,9 @@ si::GeomDef::GeomDef()
 
 #elif PHANTOM == 2
     this->layers.push_back(std::make_tuple("bone", 12.8*cm, 0.));
+
+#elif PHANTOM == 3
+    this->layers.push_back(std::make_tuple("bone", 12.8/1.85*cm, 0.));
 #endif
 
     // Half size
@@ -40,6 +43,17 @@ si::GeomDef::GeomDef()
     this->resX = 0.05 * cm;
     this->resY = 0.05 * cm;
     this->resZ = 0.05 * cm;
+
+#if PHANTOM == 3
+    // To scale the phantom
+    float density = 1.85;
+    this->sizeX /= density;
+    this->sizeY /= density;
+    
+    this->resX /= density;
+    this->resY /= density;
+    this->resZ /= density;
+#endif
 
     // whether to use odd dimensions along X and Y dimension
     this->oddXY = true;

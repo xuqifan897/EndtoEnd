@@ -7,10 +7,7 @@ include(CTest)
 enable_testing()
 
 # which phantom to use, water or slab
-set(PHANTOM 2)
-
-# set(SENSDET "WORLD")
-# set(SENSDET "SLABS")
+set(PHANTOM 3)
 set(SENSDET "SHARED")
 configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
 

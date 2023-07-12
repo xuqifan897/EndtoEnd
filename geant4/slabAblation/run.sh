@@ -32,7 +32,7 @@ then
     mkdir ${resultFolder}
 fi
 
-experimentFolder="${resultFolder}/boneDose"
+experimentFolder="${resultFolder}/boneScale"
 if [ ! -d ${experimentFolder} ]
 then
     mkdir ${experimentFolder}

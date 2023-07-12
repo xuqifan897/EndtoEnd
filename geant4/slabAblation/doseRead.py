@@ -357,7 +357,174 @@ def slice2Tranverse(slice, binScale=10000):
     return distance, dose
 
 
+def longitudinalDoseRatio():
+    """
+    This function calculates the ratio between 
+    the central line doses in bone and water
+    """
+    waterDoseFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/waterDose'
+    boneDoseFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/boneDose'
+    resultFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/phantomDose'
+
+    shape = (199, 199, 256)
+    res = 0.1  # cm
+    waterDensity = 1.
+    waterDoseFile = os.path.join(waterDoseFolder, 'array.bin')
+    waterDose = np.fromfile(waterDoseFile, dtype=np.float64)
+    waterDose /= waterDensity
+    waterDose = np.reshape(waterDose, shape)
+    waterCentralDose = waterDose[99, 99, :]
+
+    boneDensity = 1.85
+    boneDoseFile = os.path.join(boneDoseFolder, 'array.bin')
+    boneDose = np.fromfile(boneDoseFile, dtype=np.float64)
+    boneDose /= boneDensity
+    boneDose = np.reshape(boneDose, shape)
+    boneCentralDose = boneDose[99, 99, :]
+
+    waterDepth = np.arange(shape[2]) * waterDensity * res
+    boneDepth = np.arange(shape[2]) * boneDensity * res
+
+    # to compare the common interval of the dose
+    term = 0
+    for i in range(len(boneDepth)):
+        if boneDepth[i] > waterDepth[-1]:
+            term = i
+            break
+    boneDepth = boneDepth[:term]
+    boneCentralDose = boneCentralDose[:term]
+
+    # interpolate one for ratio calculation
+    waterCentralDoseInterp = np.zeros(boneDepth.shape)
+    for i in range(len(boneDepth)):
+        value = boneDepth[i] / res
+        lower = int(np.floor(value))
+        upper = lower + 1
+        lower_coeff = upper - value
+        upper_coeff = value - lower
+        waterCentralDoseInterp[i] = lower_coeff * waterCentralDose[lower] \
+            + upper_coeff * waterCentralDose[upper]
+    
+    ratio = boneCentralDose / waterCentralDoseInterp
+    # normalize the dose
+    waterRoof = np.max(waterCentralDoseInterp)
+    waterCentralDoseInterp /= waterRoof
+    boneCentralDose /= waterRoof
+
+    plt.plot(boneDepth, waterCentralDoseInterp)
+    plt.plot(boneDepth, boneCentralDose)
+    plt.plot(boneDepth, ratio)
+    plt.legend(['water', 'bone', 'ratio'])
+    plt.xlabel('depth / cm')
+    plt.ylabel('dose (a.u.) or ratio')
+    plt.title("The depth dose curve for water and bone")
+    file = os.path.join(resultFolder, 'longiRatio.png')
+    plt.savefig(file)
+    plt.clf()
+
+
+def boneUnscaleScale():
+    """
+    This function compares the dose profile of the 
+    scaled bone dose and unscaled bone dose
+    """
+    boneFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/boneDose'
+    boneScaleFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/boneScale'
+    resultFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/phantomDose'
+
+    boneDoseFile = os.path.join(boneFolder, 'array.bin')
+    boneShape = (199, 199, 256)
+    boneDensity = 1.85
+    boneRes = 0.1
+    boneDose = np.fromfile(boneDoseFile, dtype=np.float64)
+    boneDose = np.reshape(boneDose, boneShape)
+
+    scaleFile = os.path.join(boneScaleFolder, 'array.bin')
+    # boneShape = (199, 199, 256)
+    scaleDensity = 1.85
+    scaleRes = 0.1 / boneDensity
+    scale = np.fromfile(scaleFile, dtype=np.float64)
+    scale = np.reshape(scale, boneShape)
+
+    boneCutout = int(boneShape[2] * scaleRes / boneRes)
+    boneDose = boneDose[:, :, :boneCutout]
+    if False:
+        # verify the conservation of energy
+        boneEnergy = np.sum(boneDose)
+        scaleEnergy = np.sum(scale)
+        print(boneEnergy)
+        print(scaleEnergy)
+    
+    if False:
+        # then plot the partial dose
+        bonePartial = np.sum(boneDose, axis=(0, 1))
+        layerMass = boneRes * boneDensity
+        bonePartial /= layerMass
+        boneDepth = np.arange(boneCutout) * boneRes
+
+        scalePartial = np.sum(scale, axis=(0, 1))
+        scaleMass = scaleRes * boneDensity
+        scalePartial /= scaleMass
+        partialDepth = np.arange(boneShape[2]) * scaleRes
+
+        plt.plot(boneDepth, bonePartial)
+        plt.plot(partialDepth, scalePartial)
+        plt.xlabel('depth (cm)')
+        plt.ylabel('dose (a.u.)')
+        plt.legend(['res 0.1 cm', 'res 0.054 cm'])
+        plt.title('partial dose comparison between different voxel sizes')
+        file = os.path.join(resultFolder, 'scalePartial.png')
+        plt.savefig(file)
+        plt.clf()
+    
+    if False:
+        # then plot the central axis dose
+        boneEdep = boneDose[99, 99, :] / (boneRes ** 3 * boneDensity)
+        boneDepth = np.arange(boneCutout) * boneRes
+        scaleEdep = scale[99, 99, :] / (scaleRes ** 3 * scaleDensity)
+        scaleDepth = np.arange(boneShape[2]) * scaleRes
+        plt.plot(boneDepth, boneEdep)
+        plt.plot(scaleDepth, scaleEdep)
+        plt.xlabel('depth (cm)')
+        plt.ylabel('dose (a.u.)')
+        plt.legend(['res 0.1 cm', 'res 0.054 cm'])
+        plt.title('central dose comparison between different voxel sizes')
+        file = os.path.join(resultFolder, 'scaleCentral.png')
+        plt.savefig(file)
+        plt.clf()
+    
+    if  True:
+        # here we plot the h profile
+        depth = 100  # the depth idx for the 0.1cm resolution
+        binScale = 10000
+        boneSlice = boneDose[:, :, depth]
+        boneSlice = boneSlice / (boneRes ** 3 * boneDensity)
+        boneX, boneY = slice2Tranverse(boneSlice, binScale)
+        boneX = np.array(boneX) / binScale * boneRes
+        boneY = np.array(boneY)
+        boneH = boneX * boneY
+
+        depthScale = int(depth * boneRes / scaleRes)
+        scaleSlice = scale[:, :, depthScale]
+        scaleSlice = scaleSlice / (scaleRes ** 3 * scaleDensity)
+        scaleX, scaleY = slice2Tranverse(scaleSlice, binScale)
+        scaleX = np.array(scaleX) / binScale * scaleRes
+        scaleY = np.array(scaleY)
+        scaleH = scaleX * scaleY
+
+        plt.plot(boneX, boneH)
+        plt.plot(scaleX, scaleH)
+        plt.xlabel('lateral distance (cm)')
+        plt.ylabel('hprofile (a.u.)')
+        plt.title('lateral dose comparison between different voxel sizes')
+        file = os.path.join(resultFolder, 'scaleLateral.png')
+        plt.savefig(file)
+        plt.clf()
+
+
 if __name__ == '__main__':
-    doseRead()
+    # doseRead()
     # waterBoneComp()
     # transverseProfile()
+    # longitudinalDoseRatio()
+    boneUnscaleScale()
