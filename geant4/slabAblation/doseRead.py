@@ -522,9 +522,95 @@ def boneUnscaleScale():
         plt.clf()
 
 
+def boneWaterComp():
+    """
+    This function compares the water dose profile with the bone dose profile
+    """
+    waterFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/waterDose'
+    scaleFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/boneScale'
+    resultFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/phantomDose'
+
+    waterDensity = 1
+    waterRes = 0.1  # cm
+    boneDensity = 1.85
+    boneRes = 0.1 / boneDensity
+    shape = (199, 199, 256)
+
+    waterFile = os.path.join(waterFolder, 'array.bin')
+    water = np.fromfile(waterFile, dtype=np.float64)
+    water = np.reshape(water, shape)
+
+    scaleFile = os.path.join(scaleFolder, 'array.bin')
+    scale = np.fromfile(scaleFile, dtype=np.float64)
+    scale = np.reshape(scale, shape)
+
+    depth = np.arange(shape[2]) * waterRes * waterDensity
+
+    if False:
+        # firstly, we compare partial dose
+        waterPartial = np.sum(water, axis=(0, 1))
+        # waterPartial /= (waterRes * waterDensity)
+        scalePartial = np.sum(scale, axis=(0, 1))
+        plt.plot(depth, waterPartial)
+        plt.plot(depth, scalePartial)
+        plt.xlabel('depth (g/cm^2)')
+        plt.ylabel('dose (a.u.)')
+        plt.legend(['water', 'bone'])
+        plt.title('partial dose comparison between water and bone')
+        file = os.path.join(resultFolder, 'scaleWaterPartial.png')
+        plt.savefig(file)
+    
+    if False:
+        # then we compare the central dose, which I do not hope to agree
+        waterCentral = water[99, 99, :]
+        waterCentral = waterCentral / (waterDensity * waterRes ** 3)
+        waterCentral /= waterDensity ** 2
+        scaleCentral = scale[99, 99, :]
+        scaleCentral = scaleCentral / (boneDensity * boneRes ** 3)
+        scaleCentral /= boneDensity ** 2
+        plt.plot(depth, waterCentral)
+        plt.plot(depth, scaleCentral)
+        plt.xlabel('depth (g/cm^2)')
+        plt.ylabel('dose (a.u.)')
+        plt.legend(['water', 'bone'])
+        plt.title('centerline dose comparison between water and bone')
+        file = os.path.join(resultFolder, 'scaleWaterCentral.png')
+        plt.savefig(file)
+        plt.clf()
+    
+    if True:
+        # here we compare the h profile
+        depth = 100
+        binScale = 10000
+        waterSlice = water[:, :, depth]
+        waterSlice = waterSlice / (waterDensity * waterRes ** 3)
+        waterX, waterY = slice2Tranverse(waterSlice, binScale)
+        waterX = np.array(waterX) / binScale #  * waterRes * waterDensity
+        waterY = np.array(waterY)
+        waterH = waterX * waterY / waterDensity ** 2
+
+        scaleSlice = scale[:, :, depth]  # the same depth number
+        scaleSlice = scaleSlice / (boneDensity * boneRes ** 3)
+        scaleX, scaleY = slice2Tranverse(scaleSlice, binScale)
+        scaleX = np.array(scaleX) / binScale #  * boneRes * boneDensity
+        scaleY = np.array(scaleY)
+        scaleH = scaleX * scaleY / boneDensity ** 2
+
+        plt.plot(waterX, waterH)
+        plt.plot(scaleX, scaleH)
+        plt.xlabel('radiological distance (g/cm^2)')
+        plt.ylabel('h profile (a.u.)')
+        plt.legend(['water', 'bone'])
+        plt.title('lateral dose comparison between water and bone')
+        file = os.path.join(resultFolder, 'scaleWaterLateral.png')
+        plt.savefig(file)
+        plt.clf()
+
+
 if __name__ == '__main__':
     # doseRead()
     # waterBoneComp()
     # transverseProfile()
     # longitudinalDoseRatio()
-    boneUnscaleScale()
+    # boneUnscaleScale()
+    boneWaterComp()
