@@ -32,11 +32,45 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
 {
     G4NistManager* nist = G4NistManager::Instance();
     G4Material* air = nist->FindOrBuildMaterial("G4_AIR");
+
+#if PHANTOM == 4
+    G4Element* elH = new G4Element(
+        G4String("Hydrogen"), G4String("H"), 1., 1.01*g/mole);
+    G4Element* elO = new G4Element(
+        G4String("Ocygen"), G4String("O"), 8., 16.00*g/mole);
+
+    G4double density = 1.000*g/cm3;
+    G4Material* water = new G4Material(G4String("water"), density, 2);
+    water->AddElement(elH, 2);
+    water->AddElement(elO, 1);
+
+    density = 0.92*g/cm3;
+    G4Material* adipose = new G4Material(G4String("adipose"), density, 2);
+    adipose->AddElement(elH, 2);
+    adipose->AddElement(elO, 1);
+
+    density = 1.04*g/cm3;
+    G4Material* muscle = new G4Material(G4String("muscle"), density, 2);
+    muscle->AddElement(elH, 2);
+    muscle->AddElement(elO, 1);
+
+    density = 1.85*g/cm3;
+    G4Material* bone = new G4Material(G4String("bone"), density, 2);
+    bone->AddElement(elH, 2);
+    bone->AddElement(elO, 1);
+
+    density = 0.25*g/cm3;
+    G4Material* lung = new G4Material(G4String("lung"), density, 2);
+    lung->AddElement(elH, 2);
+    lung->AddElement(elO, 1);
+
+#else
     G4Material* water = nist->FindOrBuildMaterial("G4_WATER");
     G4Material* adipose = nist->FindOrBuildMaterial("G4_ADIPOSE_TISSUE_ICRP");
     G4Material* muscle = nist->FindOrBuildMaterial("G4_MUSCLE_SKELETAL_ICRP");
     G4Material* bone = nist->FindOrBuildMaterial("G4_BONE_COMPACT_ICRU");
     G4Material* lung = nist->FindOrBuildMaterial("G4_LUNG_ICRP");
+#endif
     std::map<G4String, G4Material*> LUTmat = {
         {"air", air},
         {"water", water},
@@ -129,7 +163,7 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
 void si::DetectorConstruction::ConstructSDandField()
 {
 
-#if SENSDET == SLABS
+#if SENSDET == 0
     G4int index = 0;
     for (auto it=this->logicals.begin(); it!=this->logicals.end(); it++)
     {
@@ -140,13 +174,13 @@ void si::DetectorConstruction::ConstructSDandField()
         G4SDManager::GetSDMpointer()->AddNewDetector(aSD);
         SetSensitiveDetector(logical, aSD);
     }
-#elif SENSDET == WORLD
+#elif SENSDET == 1
     G4String name("world");
     si::SensitiveDetector* aSD = new SensitiveDetector(name, 0);
     G4SDManager::GetSDMpointer()->AddNewDetector(aSD);
     SetSensitiveDetector(this->logicWorld, aSD);
 
-#elif SENSDET == SHARED
+#elif SENSDET == 2
     G4String name("shared");
     si::SensitiveDetector* aSD = new SensitiveDetector(name, 0);
     G4SDManager::GetSDMpointer()->AddNewDetector(aSD);

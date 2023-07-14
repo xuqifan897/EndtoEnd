@@ -7,8 +7,8 @@ include(CTest)
 enable_testing()
 
 # which phantom to use, water or slab
-set(PHANTOM 3)
-set(SENSDET "SHARED")
+set(PHANTOM 4)
+set(SENSDET 2)
 configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
 
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)

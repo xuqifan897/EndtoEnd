@@ -30,7 +30,7 @@ si::Run::Run():
 
     this->HitsCollectionIDs = std::vector<G4int>();
     this->Names = std::vector<G4String>();
-#if SENSDET == SLABS
+#if SENSDET == 0
     for (int i=0; i<GD->layers.size(); i++)
     {
         G4String collectionName = G4String("Shape") + std::to_string(i+1) 
@@ -39,13 +39,13 @@ si::Run::Run():
             SDman->GetCollectionID(collectionName));
         this->Names.push_back(collectionName);
     }
-#elif SENSDET == WORLD
+#elif SENSDET == 1
     G4String collectionName("worldCollection");
     this->HitsCollectionIDs.push_back(
         SDman->GetCollectionID(collectionName));
     this->Names.push_back(collectionName);
 
-#elif SENSDET == SHARED
+#elif SENSDET == 2
     G4String collectionName("sharedCollection");
     this->HitsCollectionIDs.push_back(
         SDman->GetCollectionID(collectionName));

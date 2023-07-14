@@ -607,10 +607,44 @@ def boneWaterComp():
         plt.clf()
 
 
+def phantomCorrect():
+    """
+    This function processes the dose in the correct phantom, 
+    i.e., the density of the lung is corrected to 0.25g/cm^3
+    """
+    waterFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/waterDose'
+    phantomFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/phantomCorrect'
+    res = 0.1
+    shape = (199, 199, 256)
+
+    waterFile = os.path.join(waterFolder, 'array.bin')
+    water = np.fromfile(waterFile, dtype=np.float64)
+    water = np.reshape(water, shape)
+
+    phantomFile = os.path.join(phantomFolder, 'array.bin')
+    phantom = np.fromfile(phantomFile, dtype=np.float64)
+    phantom = np.reshape(phantom, shape)
+
+    if False:
+        # to show the difference between water centerline dose and 
+        # water partial dose. It shows that the difference between
+        # the centerline dose and partial dose is significant
+        waterCenter = water[99, 99, :]
+        waterCenter = waterCenter / np.max(waterCenter)
+        waterPartial = np.sum(water, axis=(0, 1))
+        waterPartial = waterPartial / np.max(waterPartial)
+        depth = np.arange(shape[2]) * res
+        plt.plot(depth, waterCenter)
+        plt.plot(depth, waterPartial)
+        plt.legend(['center', 'partial'])
+        plt.show()
+
+
 if __name__ == '__main__':
     # doseRead()
     # waterBoneComp()
     # transverseProfile()
     # longitudinalDoseRatio()
     # boneUnscaleScale()
-    boneWaterComp()
+    # boneWaterComp()
+    phantomCorrect()

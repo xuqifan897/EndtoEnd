@@ -12,7 +12,7 @@ si::GeomDef::GeomDef()
     // It is noted that, all numbers are half thicknesses
     // In the format of (material, thickness, offset)
     this->layers = std::vector<std::tuple<G4String, G4double, G4double>>();
-#if PHANTOM == 0
+#if PHANTOM == 0 or PHANTOM == 4
     this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
     this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
