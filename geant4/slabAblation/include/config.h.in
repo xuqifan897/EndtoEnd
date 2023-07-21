@@ -9,6 +9,13 @@
 #define WORLD 0
 #define SENSDET @SENSDET@
 
+// whether to deposit energy in the pre-step or the post step
+// 0 means pre-step, 1 means post-step, 2 means middle point
+#define STEP_ORDER @STEP_ORDER@
+
+// to sparsify the material density and enlarge voxel size
+#define SPARSE @SPARSE@
+
 #define RES @RES@
 
 #endif

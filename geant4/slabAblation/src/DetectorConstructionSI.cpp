@@ -39,27 +39,27 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
     G4Element* elO = new G4Element(
         G4String("Ocygen"), G4String("O"), 8., 16.00*g/mole);
 
-    G4double density = 1.000*g/cm3;
+    G4double density = 1.000*g/cm3 * SPARSE;
     G4Material* water = new G4Material(G4String("water"), density, 2);
     water->AddElement(elH, 2);
     water->AddElement(elO, 1);
 
-    density = 0.92*g/cm3;
+    density = 0.92*g/cm3 * SPARSE;
     G4Material* adipose = new G4Material(G4String("adipose"), density, 2);
     adipose->AddElement(elH, 2);
     adipose->AddElement(elO, 1);
 
-    density = 1.04*g/cm3;
+    density = 1.04*g/cm3 * SPARSE;
     G4Material* muscle = new G4Material(G4String("muscle"), density, 2);
     muscle->AddElement(elH, 2);
     muscle->AddElement(elO, 1);
 
-    density = 1.85*g/cm3;
+    density = 1.85*g/cm3 * SPARSE;
     G4Material* bone = new G4Material(G4String("bone"), density, 2);
     bone->AddElement(elH, 2);
     bone->AddElement(elO, 1);
 
-    density = 0.25*g/cm3;
+    density = 0.25*g/cm3 * SPARSE;
     G4Material* lung = new G4Material(G4String("lung"), density, 2);
     lung->AddElement(elH, 2);
     lung->AddElement(elO, 1);
@@ -107,24 +107,6 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
     
     // prepare user limits parameters
     G4double maxStep = si::getArg<float>("maxStep") * cm;
-    G4double maxTrack = si::getArg<float>("maxTrack") * cm;
-    G4double maxTime = si::getArg<float>("maxTime") * ns;
-    G4double minEkine = si::getArg<float>("minEkine") * MeV;
-    G4double minRange = si::getArg<float>("minRange") * cm;
-    if (maxStep < 0)
-        maxStep = DBL_MAX;
-    if (maxTrack < 0)
-        maxTrack = DBL_MAX;
-    if (maxTime < 0)
-        maxTime = DBL_MAX;
-    bool setLimitFlag = (minEkine > 0) || (minRange > 0);
-    if (G4Threading::IsMasterThread())
-    {
-        if (setLimitFlag)
-            G4cout << "setLimitFlag = true" << G4endl;
-        else
-            G4cout << "setLimitFlag = false" << G4endl;
-    }
 
     this->logicals = std::vector<std::pair<G4String, G4LogicalVolume*>>();
     // prepare child slabs
@@ -150,10 +132,9 @@ G4VPhysicalVolume* si::DetectorConstruction::Construct()
         this->logicals.push_back(std::make_pair(layerName, logic));
 
         //  set UserLimits
-        if (setLimitFlag)
+        if (maxStep > 0)
         {
-            G4UserLimits* limit = new G4UserLimits(
-                maxStep, maxTrack, maxTime, minEkine, minRange);
+            G4UserLimits* limit = new G4UserLimits(maxStep);
             logic->SetUserLimits(limit);
         }
     }

@@ -1,7 +1,6 @@
 #include "G4RunManagerFactory.hh"
 #include "G4UImanager.hh"
-#include "QBBC.hh"
-#include "QGSP_BERT.hh"
+#include "PhysicsList.h"
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 #include "G4StepLimiterPhysics.hh"
@@ -33,8 +32,7 @@ int main(int argc, char** argv)
     runManager->SetUserInitialization(new si::DetectorConstruction);
 
     // G4VModularPhysicsList* physicsList = new QBBC;
-    G4VModularPhysicsList* physicsList = new QGSP_BERT;
-    physicsList->RegisterPhysics(new G4StepLimiterPhysics());
+    G4VModularPhysicsList* physicsList = new PhysicsList;
     runManager->SetUserInitialization(physicsList);
 
     runManager->SetUserInitialization(new si::ActionInitialization);

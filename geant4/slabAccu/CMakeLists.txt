@@ -1,27 +1,21 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(slabIPB VERSION 0.1.0)
+project(slabAccu VERSION 0.1.0)
 
-set(CMAKE_BIULD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
-include(CTest)
-enable_testing()
-
-# which phantom to use, water or slab
-set(PHANTOM 4)
-set(SENSDET 2)
-set(STEP_ORDER 0)
-set(SPARSE 100)
+# which phantom setting to use
+set(PHANTOM 1)
 configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
 
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.h)
 
-add_executable(slabIPB main.cpp ${sources} ${headers})
+add_executable(slabAccu main.cpp ${sources} ${headers})
 
 find_package(Boost REQUIRED COMPONENTS program_options filesystem)
-target_include_directories(slabIPB PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_include_directories(slabIPB PRIVATE ${Boost_INCLUDE_DIR})
-target_link_libraries(slabIPB ${Boost_LIBRARIES})
+target_include_directories(slabAccu PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(slabAccu PRIVATE ${Boost_INCLUDE_DIR})
+target_link_libraries(slabAccu ${Boost_LIBRARIES})
 
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
@@ -43,9 +37,5 @@ include(${Geant4_USE_FILE})
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
 #
-target_include_directories(slabIPB PRIVATE ${Geant4_INCLUDE_DIR})
-target_link_libraries(slabIPB ${Geant4_LIBRARIES})
-
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
+target_include_directories(slabAccu PRIVATE ${Geant4_INCLUDE_DIR})
+target_link_libraries(slabAccu ${Geant4_LIBRARIES})

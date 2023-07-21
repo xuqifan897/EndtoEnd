@@ -26,13 +26,13 @@
 #     ) 2>&1 | tee "${resultFolder}/myOutput.txt"
 
 
-resultFolder="/data/qifan/projects/EndtoEnd4/results/InhomoJuly6"
+resultFolder="/data/qifan/projects/EndtoEnd4/results/InhomoJuly18"
 if [ ! -d ${resultFolder} ]
 then
     mkdir ${resultFolder}
 fi
 
-experimentFolder="${resultFolder}/phantomCorrect"
+experimentFolder="${resultFolder}/sparse"
 if [ ! -d ${experimentFolder} ]
 then
     mkdir ${experimentFolder}
@@ -41,8 +41,7 @@ fi
 (time ./build/slabIPB \
     --gui false \
     --nParticles 10000000 \
-    --minRange 0.01 \
-    --maxStep 0.01 \
+    --maxStep 0.0001 \
     --resultFolder ${experimentFolder} \
     --recordEventLog false \
     ) 2>&1 | tee "${experimentFolder}/myOutput.txt"

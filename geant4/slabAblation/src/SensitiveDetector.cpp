@@ -5,6 +5,7 @@
 
 #include "SensitiveDetector.h"
 #include "SDHit.h"
+#include "config.h"
 
 si::SensitiveDetector::SensitiveDetector(G4String name, G4int index)
     :G4VSensitiveDetector(name), fSDHitsCollection(0), idx(index)
@@ -33,7 +34,15 @@ G4bool si::SensitiveDetector::ProcessHits(G4Step* aStep, G4TouchableHistory*)
 
     SDHit* newHit = new SDHit();
     newHit->SetEdep(edep);
+
+#if STEP_ORDER == 0
     newHit->SetPos(aStep->GetPreStepPoint()->GetPosition());
+#elif STEP_ORDER == 1
+    newHit->SetPos(aStep->GetPostStepPoint()->GetPosition());
+#elif STEP_ORDER == 2
+    newHit->SetPos((aStep->GetPreStepPoint()->GetPosition() + 
+        aStep->GetPostStepPoint()->GetPosition()) / 2);
+#endif
     newHit->SetTrackID(aStep->GetTrack()->GetTrackID());
     this->fSDHitsCollection->insert(newHit);
     return true;

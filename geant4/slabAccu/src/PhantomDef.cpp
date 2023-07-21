@@ -1,59 +1,45 @@
+#include "globals.hh"
 #include "G4SystemOfUnits.hh"
 #include <vector>
+#include <string>
 #include "PhantomDef.h"
 #include "config.h"
 
-si::GeomDef* si::GD = nullptr;
+sa::GeomDef* sa::GD = nullptr;
 
-si::GeomDef::GeomDef()
+sa::GeomDef::GeomDef()
 {
     // please specify the parameters below
 // 000000000000000000000000000000000000000000000000000000000000000000000000000
-    // It is noted that, all numbers are half thicknesses
+    // It is noted that, all sizes are in half values
     // In the format of (material, thickness, offset)
-    this->layers = std::vector<std::tuple<G4String, G4double, G4double>>();
-#if PHANTOM == 0 or PHANTOM == 4
-    this->layers.push_back(std::make_tuple("adipose", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("muscle", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("bone", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("muscle", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("lung", 4.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("muscle", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("bone", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("adipose", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("bone", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("muscle", 0.8*cm * SPARSE, 0.));
-    this->layers.push_back(std::make_tuple("adipose", 0.8*cm * SPARSE, 0.));
+    this->layers = std::vector<std::tuple<std::string, double, double>>();
+#if PHANTOM == 0
+    this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("lung", 4.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("bone", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("muscle", 0.8*cm, 0.));
+    this->layers.push_back(std::make_tuple("adipose", 0.8*cm, 0.));
 
 #elif PHANTOM == 1
-    this->layers.push_back(std::make_tuple("water", 12.8*cm, 0.));
-
-#elif PHANTOM == 2
-    this->layers.push_back(std::make_tuple("bone", 12.8*cm, 0.));
-
-#elif PHANTOM == 3
-    this->layers.push_back(std::make_tuple("bone", 12.8/1.85*cm, 0.));
+    this->layers.push_back(std::make_tuple("water", 6.4*cm, 0.));
+    this->layers.push_back(std::make_tuple("bone", 6.4*cm, 0.));
 #endif
 
     // Half size
-    this->sizeX = 10.0 * cm * SPARSE;
-    this->sizeY = 10.0 * cm * SPARSE;
+    this->sizeX = 10.0 * cm;
+    this->sizeY = 10.0 * cm;
 
     // Half resolution
-    this->resX = 0.05 * cm * SPARSE;
-    this->resY = 0.05 * cm * SPARSE;
-    this->resZ = 0.05 * cm * SPARSE;
-
-#if PHANTOM == 3
-    // To scale the phantom
-    float density = 1.85;
-    this->sizeX /= density;
-    this->sizeY /= density;
-    
-    this->resX /= density;
-    this->resY /= density;
-    this->resZ /= density;
-#endif
+    this->resX = 0.05 * cm;
+    this->resY = 0.05 * cm;
+    this->resZ = 0.05 * cm;
 
     // whether to use odd dimensions along X and Y dimension
     this->oddXY = true;
@@ -97,7 +83,7 @@ si::GeomDef::GeomDef()
     display();
 }
 
-void si::GeomDef::display()
+void sa::GeomDef::display()
 {
     G4cout << "Phantom geometry:" << G4endl;
     G4cout << "Size: (" << std::setprecision(4) << this->sizeX / cm << ", " 

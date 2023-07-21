@@ -126,6 +126,37 @@ def phantomTheoryInit():
             
             centerLine_pre[i] = lowerWeight * KernelPartial[lower] + \
                 higherWeight * KernelPartial[higher]
+    
+    if True:
+        # compare the partial dose
+        phantomFolder = '/data/qifan/projects/EndtoEnd4/results/' \
+            'InhomoJuly18/sparse'
+        phantomFile = os.path.join(phantomFolder, 'array.bin')
+        phantom = np.fromfile(phantomFile, dtype=np.float64)
+        shape = (199, 199, 256)
+        phantom = np.reshape(phantom, shape)
+        phantomPartial = np.sum(phantom, axis=(0, 1))
+        # get the density map
+        densityMap = np.zeros(shape[2])
+        current = 0
+        for thickness, density in layers:
+            densityMap[current: current+thickness] = density
+            current += thickness
+        phantomPartial /= densityMap
+        phantomPartial /= phantomPartial[100]
+
+        depth = np.arange(sizeZ) * res
+        plt.plot(depth, phantomPartial)
+        plt.plot(depth, centerLine_pre)
+        plt.xlabel('depth (cm)')
+        plt.ylabel('partial dose (a.u.)')
+        plt.title('partial dose comparison')
+        plt.legend(['Monte Carlo', 'theory'])
+        resultFolder = '/data/qifan/projects/EndtoEnd4/results/' \
+            'InhomoJuly18/phantomCorrect'
+        file = os.path.join(resultFolder, 'sparse100.png')
+        plt.savefig(file)
+        plt.clf()
 
     # then we obtain the full phantom dose by applying the transverse kernel
     shape = (199, 199, 256)
@@ -202,7 +233,53 @@ def theoryExpComp():
         plt.clf()
 
 
+def centerlineComp():
+    """
+    This function compares the centerline dose
+    """
+    resultFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/phantomDose'
+    phantomFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly18/midPoint'
+    phantomFile = os.path.join(phantomFolder, 'array.bin')
+    shape = (199, 199, 256)
+    res = 0.1  # cm
+    phantom = np.fromfile(phantomFile, dtype=np.float64)
+    phantom = np.reshape(phantom, shape)
+
+    # get the density
+    densityMap = np.zeros(shape[2])
+    current = 0
+    for thickness, density in layers:
+        densityMap[current: current+thickness] = density
+        current += thickness
+    
+    # calculate the dose to phantoms
+    for i in range(shape[2]):
+        phantom[:, :, i] /= densityMap[i]
+    
+    waterFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly6/waterDose'
+    waterFile = os.path.join(waterFolder, 'array.bin')
+    water = np.fromfile(waterFile, dtype=np.float64)
+    water = np.reshape(water, shape)
+    # as the water density is 1, no need to normalize
+
+    CenterlinePhantom = phantom[99, 99, :]
+    CenterlineWater = water[99, 99, :]
+    depth = np.arange(shape[2]) * res
+
+    plt.plot(depth, CenterlinePhantom)
+    plt.plot(depth, CenterlineWater)
+    plt.legend(['phantom', 'water'])
+    plt.xlabel('depth (cm)')
+    plt.ylabel('dose (a.u.)')
+    plt.title('centerline dose comparison')
+    file = os.path.join(resultFolder, 'midPointCenter.png')
+    plt.savefig(file)
+    plt.clf()
+
+
 if __name__ == '__main__':
-    kernelInit()
-    phantomTheoryInit()
-    theoryExpComp()
+    # kernelInit()
+    # phantomTheoryInit()
+    # theoryExpComp()
+
+    centerlineComp()
