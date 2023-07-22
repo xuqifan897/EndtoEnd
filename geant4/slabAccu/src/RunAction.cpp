@@ -41,7 +41,7 @@ void sa::RunAction::EndOfRunAction(const G4Run* aRun)
         for (auto it=HitsMaps.begin(); it!=HitsMaps.end(); it++)
         {
             metadataSS << std::get<0>(*it) << "   dimension: " 
-                << std::get<2>(*it).GetSize() << std::endl;
+                << (*std::get<2>(*it)).GetSize() << std::endl;
         }
         metadataSS << "Data type: double" << std::endl;
         std::string metadata = metadataSS.str();
@@ -59,7 +59,7 @@ void sa::RunAction::EndOfRunAction(const G4Run* aRun)
         
         for (int i=0; i<HitsMaps.size(); i++)
         {
-            auto& hitsmap = std::get<2>(HitsMaps[i]);
+            auto& hitsmap = *std::get<2>(HitsMaps[i]);
             std::vector<double> HitsArray(hitsmap.GetSize());
             // copy HitsMap to vector
             for (auto it : *(hitsmap.GetMap()))

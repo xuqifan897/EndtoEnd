@@ -12,17 +12,17 @@ namespace sa
     {
     public:
         Run();
-        ~Run() = default;
+        ~Run();
 
         virtual void RecordEvent(const G4Event*);
         virtual void Merge(const G4Run*);
-        const std::vector<std::tuple<std::string, int, G4THitsMap<G4double>>>&
+        const std::vector<std::tuple<std::string, int, G4THitsMap<G4double>*>>&
             getHitsMaps() const
             {return this->HitsMaps;}
     
     private:
         // hit collection id
-        std::vector<std::tuple<std::string, int, G4THitsMap<G4double>>> HitsMaps;
+        std::vector<std::tuple<std::string, int, G4THitsMap<G4double>*>> HitsMaps;
     };
 }
 

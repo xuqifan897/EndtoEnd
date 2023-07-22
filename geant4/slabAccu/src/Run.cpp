@@ -17,7 +17,7 @@ sa::Run::Run()
         std::string name = std::string("SD") + std::to_string(i+1) + 
             std::string("/Edep");
         int id = G4SDManager::GetSDMpointer()->GetCollectionID(name);
-        this->HitsMaps.push_back(std::make_tuple(name, id, G4THitsMap<G4double>()));
+        this->HitsMaps.push_back(std::make_tuple(name, id, new G4THitsMap<G4double>()));
     }
 
     // log
@@ -29,6 +29,12 @@ sa::Run::Run()
     }
 }
 
+sa::Run::~Run()
+{
+    for (auto it=this->HitsMaps.begin(); it!=this->HitsMaps.end(); it++)
+        delete std::get<2>(*it);
+}
+
 void sa::Run::RecordEvent(const G4Event* anEvent)
 {
     for (auto it=this->HitsMaps.begin(); it!=this->HitsMaps.end(); it++)
@@ -37,7 +43,7 @@ void sa::Run::RecordEvent(const G4Event* anEvent)
         auto hitsCollection
             = static_cast<G4THitsMap<G4double>*>(
                 anEvent->GetHCofThisEvent()->GetHC(HCID));
-        std::get<2>(*it) += *hitsCollection;
+        *std::get<2>(*it) += *hitsCollection;
     }
 }
 
@@ -46,6 +52,6 @@ void sa::Run::Merge(const G4Run* aRun)
     Run* bRun = (Run*)aRun;
     for (int i=0; i<this->HitsMaps.size(); i++)
     {
-        std::get<2>(this->HitsMaps[i]) += std::get<2>(bRun->HitsMaps[i]);
+        *std::get<2>(this->HitsMaps[i]) += *std::get<2>(bRun->HitsMaps[i]);
     }
 }

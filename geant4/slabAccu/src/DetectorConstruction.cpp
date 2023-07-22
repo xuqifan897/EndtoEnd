@@ -148,7 +148,7 @@ G4VPhysicalVolume* sa::DetectorConstruction::Construct()
             layerLV,  // its mother volume
             kZAxis,  // axis of replication
             nReplicas,  // number of replica
-            sa::GD->sizeZ * 2);  // with of replica
+            sa::GD->resZ * 2);  // with of replica
 
         this->logicals.push_back(std::make_pair(name, layerRepLV));
     }
