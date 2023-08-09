@@ -70,3 +70,4 @@ myOutput*.txt
 results
 **/*.macro
 electronScattering2
+*/**/.git

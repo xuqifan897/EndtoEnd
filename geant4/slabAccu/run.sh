@@ -1,6 +1,6 @@
 #!/bin/bash
 
-resultFolder="/data/qifan/projects/EndtoEnd4/results/InhomoJuly20"
+resultFolder="/data/qifan/projects/EndtoEnd/results/InhomoJuly20"
 if [ ! -d ${resultFolder} ]
 then
     mkdir ${resultFolder}

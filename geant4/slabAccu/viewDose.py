@@ -7,7 +7,7 @@ def readDose():
     """
     This function reads the dose from the Monte Carlo simulation
     """
-    resultFolder = '/data/qifan/projects/EndtoEnd4/results/InhomoJuly20/slab2'
+    resultFolder = '/data/qifan/projects/EndtoEnd/results/InhomoJuly20/slab2'
     file1 = os.path.join(resultFolder, 'SD1.bin')
     file2 = os.path.join(resultFolder, 'SD2.bin')
     dim1 = 128
