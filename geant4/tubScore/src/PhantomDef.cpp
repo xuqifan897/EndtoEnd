@@ -54,8 +54,8 @@ ts::GeomDef::GeomDef()
         std::string, double, double>>(this->dimZ);
     
     int i=0;
-    for (auto it=this->layers_physical.begin(); 
-        it!=this->layers_physical.end(); it++)
+    for (auto it=this->layers_nominal.begin(); 
+        it!=this->layers_nominal.end(); it++)
     {
         double slabThickness = std::get<1>(*it);
         std::string& slabMaterial = std::get<0>(*it);
@@ -81,6 +81,21 @@ void ts::GeomDef::display()
     for (auto it=this->layers_nominal.begin(); 
         it!=this->layers_nominal.end(); it++)
     {
-        std::cout << "layer: " << count << ", material: " << std::get<0>(*it);
+        std::cout << "layer: " << count << ", material: " << 
+            std::get<0>(*it) << ", thickness: " << 
+            std::get<1>(*it)/cm << " cm" << std::endl;
+        count ++;
+    }
+
+    std::cout << std::endl;
+    count = 1;
+    std::cout << "Physical layers: " << std::endl;
+    for (auto it=this->layers_physical.begin(); 
+        it!=this->layers_physical.end(); it++)
+    {
+        std:: cout << "layer: " << count << ", material: " << 
+            std::get<0>(*it) << ", thickness: " << std::get<1>(*it)/cm << " cm" << 
+            ", displacement: " << std::get<2>(*it)/cm << " cm" << std::endl;
+        count ++;
     }
 }

@@ -53,6 +53,7 @@ int ts::argsInit(int argc, char** argv)
         else
             G4cout << "(unknown type)" << G4endl;
     }
+    G4cout << G4endl;
 
     return 0;
 }

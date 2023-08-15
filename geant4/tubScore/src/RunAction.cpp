@@ -9,39 +9,39 @@ namespace fs = boost::filesystem;
 #include "argparse.h"
 #include "PhantomDef.h"
 
-G4Run* sa::RunAction::GenerateRun()
+G4Run* ts::RunAction::GenerateRun()
 {
     return new Run();
 }
 
-void sa::RunAction::BeginOfRunAction(const G4Run* aRun)
+void ts::RunAction::BeginOfRunAction(const G4Run* aRun)
 {
     if (this->isMaster)
         G4cout << "### Run: " << aRun->GetRunID() << "starts." << G4endl;
     G4RunManager::GetRunManager()->SetRandomNumberStore(false);
 }
 
-void sa::RunAction::EndOfRunAction(const G4Run* aRun)
+void ts::RunAction::EndOfRunAction(const G4Run* aRun)
 {
     if (this->isMaster)
     {
         const Run* masterRun = static_cast<const Run*>(aRun);
 
-        std::string resultFolder = (*sa::vm)["resultFolder"].as<std::string>();
+        std::string resultFolder = (*ts::vm)["resultFolder"].as<std::string>();
         fs::path ResFd(resultFolder);
         if (! fs::exists(ResFd))
             fs::create_directory(ResFd);
-        
+
         const auto & HitsMaps = masterRun->getHitsMaps();
-        
+
         std::stringstream metadataSS;
         metadataSS << "Number of events: " << masterRun->GetNumberOfEvent() 
             << std::endl;
-        metadataSS << "HitsMaps:" << std::endl;
+        metadataSS << "HitsMaps: " << std::endl;
         for (auto it=HitsMaps.begin(); it!=HitsMaps.end(); it++)
         {
-            metadataSS << std::get<0>(*it) << "   dimension: " 
-                << (*std::get<2>(*it)).GetSize() << std::endl;
+            metadataSS << std::get<0>(*it) << "   dimension: "
+                << std::get<2>(*it)->GetSize() << std::endl;
         }
         metadataSS << "Data type: double" << std::endl;
         std::string metadata = metadataSS.str();
@@ -57,25 +57,26 @@ void sa::RunAction::EndOfRunAction(const G4Run* aRun)
         else
             std::cout << "Unable to open file: " << metaFile << std::endl;
         
+        // prepare output data
+        std::vector<double> output(GD->dimR * GD->dimZ);
         for (int i=0; i<HitsMaps.size(); i++)
         {
-            auto& hitsmap = *std::get<2>(HitsMaps[i]);
-            std::vector<double> HitsArray(hitsmap.GetSize());
-            // copy HitsMap to vector
+            const auto & hitsmap = *std::get<2>(HitsMaps[i]);
+            int offset = i * GD->dimR;
             for (auto it : *(hitsmap.GetMap()))
-                HitsArray[it.first] = *(it.second);
-
-            std::string name = std::string("SD") + std::to_string(i+1) + ".bin";
-            fs::path filePath = ResFd / fs::path(name);
-            std::ofstream file(filePath.string());
-            if (file.is_open())
-            {
-                file.write((char*)(HitsArray.data()), 
-                    HitsArray.size()*sizeof(double));
-                file.close();
-            }
-            else
-                std::cout << "Unable to open file: " << filePath.string() << std::endl;
+                output[offset + it.first] = *(it.second);
         }
+
+        std::string name = std::string("SD.bin");
+        fs::path filePath = ResFd / fs::path(name);
+        file = std::ofstream(filePath.string());
+        if (file.is_open())
+        {
+            file.write((char*)(output.data()),
+                output.size()*sizeof(double));
+            file.close();
+        }
+        else
+            std::cout << "Unable to open file: " << filePath.string() << std::endl;
     }
 }
