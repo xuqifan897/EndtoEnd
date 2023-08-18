@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import signal
 
 phantom1 = [("adipose", 0.8),
             ("muscle", 0.8),
@@ -300,7 +301,8 @@ def count2Energy(count, energy):
 
 
 def viewPoly():
-    outputFile = '/data/qifan/projects/EndtoEnd/results/spec6MV/polyIPB.npy'
+    resultFolder = '/data/qifan/projects/EndtoEnd/results/spec6MV'
+    outputFile = os.path.join(resultFolder, 'polyIPB.npy')
     polyDose = np.load(outputFile)
 
     # to take a look
@@ -311,16 +313,76 @@ def viewPoly():
         plt.plot(depth, centerLine)
         plt.show()
     
+    if False:
+        # try to colvolve the kernel with native python code
+        # however, too slow
+        nSlices = 256
+        dimOrg = 400
+        # window size: 0.5cm, 1cm, 2cm, corresponding to 10, 20, 40 pixels
+        pixels = [10, 20, 40]
+        for p in pixels:
+            dimPad = dimOrg + p - 1
+            outputShape = (nSlices, dimPad, dimPad)
+            kernel = np.ones((p, p), dtype=polyDose.dtype)
+            output = np.zeros(outputShape, dtype=polyDose.dtype)
+            for i in range(nSlices):
+                output[i, :, :] = signal.convolve2d(kernel, polyDose[i, :, :])
+                print('progress: {}/{}'.format(i+1, nSlices))
+            file = os.path.join(resultFolder, 'kernel{}.npy'.format(p))
+            np.save(file, output)
+    
+    if False:
+        # export it to binary file to be used by C++ code
+        outputFile = os.path.join(resultFolder, 'polyIPB.bin')
+        polyDose.tofile(outputFile)
+        print('shape: {}'.format(polyDose.shape))
+    
     nSlices = 256
     dimOrg = 400
     # window size: 0.5cm, 1cm, 2cm, corresponding to 10, 20, 40 pixels
     pixels = [10, 20, 40]
     for p in pixels:
-        dimPad = dimOrg + p - 1
-        outputShape = (nSlices, dimPad, dimPad)
-        output = np.zeros(outputShape, dtype=np.float64)
+        # firstly, convolve along axis 1
+        result1 = np.zeros((nSlices, dimOrg+p-1, dimOrg), dtype=np.float64)
+        convKernel1d = np.ones((p, 1), dtype=np.float64)
         for i in range(nSlices):
-            # output[i, :, :] = 
+            result1[i, :, :] = signal.convolve2d(polyDose[i, :, :], convKernel1d)
+            print('progress 1: {}/{}'.format(i+1, nSlices))
+        
+        # secondly, convolve along axis 2
+        result2 = np.zeros((nSlices, dimOrg+p-1, dimOrg+p-1), dtype=np.float64)
+        convKernel1d = np.ones((1, p), dtype=np.float64)
+        for i in range(nSlices):
+            result2[i, :, :] = signal.convolve2d(result1[i, :, :], convKernel1d)
+            print('progress 2: {}/{}'.format(i+1, nSlices))
+        
+        file = os.path.join(resultFolder, 'window{}.npy'.format(p))
+        np.save(file, result2)
+
+
+def viewCenterline():
+    """
+    This function views the centerline dose
+    """
+    resultFolder = '/data/qifan/projects/EndtoEnd/results/spec6MV'
+    windowSizes = [10, 20, 40]
+    windowRes = 0.05
+    nSlices = 256
+    resZ = 0.1
+    depth = np.arange(nSlices) * resZ
+    for w in windowSizes:
+        file = os.path.join(resultFolder, 'window{}.npy'.format(w))
+        data = np.load(file)
+        dimNow = data.shape[1]
+        centerLine = round((dimNow-1)/2)
+        line = data[:, centerLine, centerLine]
+        plt.plot(depth, line)
+        plt.xlabel('depth/cm')
+        plt.ylabel('centerline dose (a.u.)')
+        plt.title('6MV, window size {}'.format(w*windowRes))
+        file = os.path.join(resultFolder, 'window{}.png'.format(w*windowRes))
+        plt.savefig(file)
+        plt.clf()
 
 
 if __name__ == '__main__':
@@ -328,4 +390,5 @@ if __name__ == '__main__':
     # testCylindricalToCartisian()
     # TakeALook6MeV()
     # polyChromatic()
-    viewPoly()
+    # viewPoly()
+    viewCenterline()
