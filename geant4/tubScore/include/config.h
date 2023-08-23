@@ -1,3 +1,3 @@
 #ifndef PHANTOM
-#define PHANTOM 0
+#define PHANTOM 2
 #endif

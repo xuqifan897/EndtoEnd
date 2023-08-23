@@ -27,6 +27,12 @@ ts::GeomDef::GeomDef()
     this->layers_nominal.push_back(std::make_tuple("bone", 0.8*cm));
     this->layers_nominal.push_back(std::make_tuple("muscle", 0.8*cm));
     this->layers_nominal.push_back(std::make_tuple("adipose", 0.8*cm));
+#elif PHANTOM == 1
+    // Here, we calculate the dose in water
+    this->layers_nominal.push_back(std::make_tuple("water", 12.8*cm));
+#elif PHANTOM == 2
+    // Here, we calculate the dose in bone phanotm
+    this->layers_nominal.push_back(std::make_pair("bone", 12.8*cm));
 #endif
 
     this->radius = 10. * cm;

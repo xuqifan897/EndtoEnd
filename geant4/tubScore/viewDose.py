@@ -373,15 +373,148 @@ def viewCenterline():
     for w in windowSizes:
         file = os.path.join(resultFolder, 'window{}.npy'.format(w))
         data = np.load(file)
+        dmax = np.max(data)
+        data /= dmax
         dimNow = data.shape[1]
         centerLine = round((dimNow-1)/2)
         line = data[:, centerLine, centerLine]
         plt.plot(depth, line)
-        plt.xlabel('depth/cm')
+        plt.xlabel('depth / cm')
         plt.ylabel('centerline dose (a.u.)')
         plt.title('6MV, window size {}'.format(w*windowRes))
         file = os.path.join(resultFolder, 'window{}.png'.format(w*windowRes))
         plt.savefig(file)
+        plt.clf()
+
+        if False:
+            # in the figure below, we show the whole range
+            idxZ = 100
+            lateral = data[idxZ, centerLine, :]
+            xAxis = (np.arange(dimNow, dtype=np.float64)) - centerLine
+            xAxis *= windowRes
+            plt.plot(xAxis, lateral)
+            plt.xlabel('off-axis distance / cm')
+            plt.ylabel('lateral dose (a.u.)')
+            plt.title('6MV, window size {}'.format(w*windowRes))
+            file = os.path.join(resultFolder, 'window{}lateral.png'.format(w*windowRes))
+            plt.savefig(file)
+            plt.clf()
+        
+        # now, we only show a window size of 2.5 cm
+        validWindow = round(5.0 / 0.05) + 1
+        margin = round((dimNow - validWindow) / 2)
+        idxZ = 100
+        lateral = data[idxZ, centerLine, margin:margin+validWindow]
+        lateral = lateral.copy()
+        # normalize
+        dmax = np.max(data)
+        xAxis = (np.arange(validWindow) - int((validWindow-1)/2)) * windowRes
+        plt.plot(xAxis, lateral)
+        plt.xlabel('off-axis distance / cm')
+        plt.ylabel('dose (a.u.)')
+        # plt.ylim(0.55)
+        file = os.path.join(resultFolder, 'window{}lateral.png'.format(w*windowRes))
+        plt.savefig(file)
+        plt.clf()
+
+
+def homoDose():
+    """
+    We got the dose distribution in homogeneous phantoms.
+    Here, we are going to test our hypothesis that the dose 
+    at the same radiological coordinate is proportional to 
+    density square
+    """
+    figureFolder = './figures'
+    if not os.path.isdir(figureFolder):
+        os.mkdir(figureFolder)
+    waterDensity = 1.0
+    boneDensity = 1.85
+    resR = 0.05
+    resZ = 0.1
+    waterResult='/data/qifan/projects/EndtoEnd/results/waterIPB/mono6MeV'
+    boneResult='/data/qifan/projects/EndtoEnd/results/waterIPB/bone6MeV'
+    shape = (256, 200)
+    
+    waterEdep = np.fromfile(os.path.join(waterResult, 'SD.bin'))
+    boneEdep = np.fromfile(os.path.join(boneResult, 'SD.bin'))
+    waterEdep = np.reshape(waterEdep, shape)
+    boneEdep = np.reshape(boneEdep, shape)
+    # we then normalize the dose with the maximum dose in water
+    EdepMax = np.max(waterEdep)
+    waterEdep /= EdepMax
+    boneEdep /= EdepMax
+
+    if False:
+        # examine the centerline dose
+        depth = np.arange(shape[0]) * resZ
+        plt.plot(depth, waterEdep[:, 0])
+        plt.plot(depth, boneEdep[:, 0])
+        plt.xlabel('depth / cm')
+        plt.ylabel('dose (a.u.)')
+        plt.title('centerline dose (normalized by D_{max} in water)')
+        figureFile = os.path.join(figureFolder, 'centerLine.png')
+        plt.savefig(figureFile)
+        plt.clf()
+    
+    if False:
+        # Then we compare the lateral dose profile at different depths
+        indices = [10, 20, 50, 100, 150, 250]  # the z index in water phantom
+        rangeR = 25
+        for idx in indices:
+            # compute the z index in bone phantom
+            idxBone = (idx + 0.5) * waterDensity / boneDensity
+            idxBone = int(idxBone)
+
+            sliceWater = waterEdep[idx, :rangeR]
+            sliceBone = boneEdep[idxBone, :rangeR]
+            sliceWater = sliceWater.copy()
+            sliceBone = sliceBone.copy()
+            sliceWater /= waterDensity ** 2
+            sliceBone /= boneDensity ** 2
+
+            radiusWater = (np.arange(rangeR) + 0.5) * resR * waterDensity
+            radiusBone = (np.arange(rangeR) + 0.5) * resR * boneDensity
+            plt.plot(radiusWater, sliceWater)
+            plt.plot(radiusBone, sliceBone)
+            plt.legend(['water', 'bone'])
+            plt.xlabel('radius (g/cm^2)')
+            plt.ylabel('energy deposition / density^2')
+            plt.legend("water depth {} cm".format(idx*resZ))
+            figureFile = os.path.join(figureFolder, 'depth{}.png'.format(idx))
+            plt.savefig(figureFile)
+            plt.clf()
+    
+    if True:
+        # Then we compare the lateral dose profile at different depths
+        indices = [10, 20, 50, 100, 150, 250]  # the z index in water phantom
+        figIndices = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
+        rangeR = 25
+        fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+        for idx, figIdx in zip(indices, figIndices):
+            # compute the z index in bone phantom
+            idxBone = (idx + 0.5) * waterDensity / boneDensity
+            idxBone = int(idxBone)
+
+            sliceWater = waterEdep[idx, :rangeR]
+            sliceBone = boneEdep[idxBone, :rangeR]
+            sliceWater = sliceWater.copy()
+            sliceBone = sliceBone.copy()
+            sliceWater /= waterDensity ** 2
+            sliceBone /= boneDensity ** 2
+
+            radiusWater = (np.arange(rangeR) + 0.5) * resR * waterDensity
+            radiusBone = (np.arange(rangeR) + 0.5) * resR * boneDensity
+            axs[*figIdx].plot(radiusWater, sliceWater, color='g')
+            axs[*figIdx].plot(radiusBone, sliceBone, color='b', linestyle='--')
+            axs[*figIdx].legend(['water', 'bone'])
+            axs[*figIdx].set_xlabel('radius (g/cm^3)')
+            axs[*figIdx].set_ylabel('Edep / density^2')
+            axs[*figIdx].set_title('depth {} g/cm^2'.format(idx * resZ))
+        
+        plt.tight_layout()
+        figureFile = os.path.join(figureFolder, 'lateral.png')
+        plt.savefig(figureFile)
         plt.clf()
 
 
@@ -391,4 +524,5 @@ if __name__ == '__main__':
     # TakeALook6MeV()
     # polyChromatic()
     # viewPoly()
-    viewCenterline()
+    # viewCenterline()
+    homoDose()

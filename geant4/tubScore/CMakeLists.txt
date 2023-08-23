@@ -5,7 +5,9 @@ project(tubScore VERSION 0.1.0)
 set(CMAKE_BUILD_TYPE Release)
 
 # which phantom setting to use
-set(PHANTOM 0)
+# set(PHANTOM 0)  # For slab phantom
+# set(PHANTOM 1)  # For water phantom
+set(PHANTOM 2)  # For bone phantom
 configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
 
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -23,7 +25,7 @@ target_link_libraries(tubScore ${Boost_LIBRARIES})
 # You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui
 # to build a batch mode only executable
 #
-option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" ON)
+option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" OFF)
 if(WITH_GEANT4_UIVIS)
   find_package(Geant4 REQUIRED ui_all vis_all)
 else()
