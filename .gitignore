@@ -47,14 +47,13 @@ include/divisible/*
 
 .idea/*.xml
 
-build/**/*
+build
 
 include/*
 lib/*
 bin/*
-.vscode/*
+.vscode
 
-data
 kernelGen
 *.pptx
 *.aux
@@ -62,3 +61,13 @@ kernelGen
 *.fls
 *.log
 *.synctex.gz
+draft*
+figures
+__pycache__
+totED.txt
+myOutput*.txt
+*.rndm
+results
+**/*.macro
+electronScattering2
+*/**/.git

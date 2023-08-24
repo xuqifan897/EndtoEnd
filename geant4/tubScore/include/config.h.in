@@ -1,0 +1,3 @@
+#ifndef PHANTOM
+#define PHANTOM @PHANTOM@
+#endif

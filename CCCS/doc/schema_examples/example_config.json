@@ -1,0 +1,22 @@
+{
+  "voxsize":       0.25,
+  "convlat":       0.25,
+  "convstep":      0.25,
+  "beamlet-size":  [0.5, 0.5],
+  "fmap-dims":     [40, 40],
+  "penum":         2.0,
+  "kernel-extent": 2.0,
+  "ntheta":        8,
+  "nphi":          8,
+  "max-rev-size":  [400, 400, 400],
+  "verbose":       false,
+  "timing":        false,
+  "nbeams":        1162,
+  "noreduce":      false,
+  "spec":          "spec_6mv",
+  "target":        "PTV [for partial matching]",
+  "target-exact":  "PTV [for exact matching]",
+  "bbox-roi":      "Body [follows partial match semantics]",
+  "beamlist":      "doc/example_beamlist.txt",
+  "structures":    "doc/example_structures.json"
+}

@@ -1,0 +1,5 @@
+{
+   "prescription": 42.0,
+   "ptv": "P_RLL_54",
+   "oar": ["O_Cord", "O_Livr", "O_Hrt", "O_Lung_Lt", "O_Lung_Rt", "O_Lung_Tt"]
+}

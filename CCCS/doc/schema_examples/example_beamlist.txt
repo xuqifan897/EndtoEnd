@@ -1,0 +1,42 @@
+# Example beam specfications
+0.0   -90.0                              # Auto PTV Centroid as isocenter and defaults for optionals
+0.0   -90.0  45.0                        # Auto PTV Centroid as isocenter, collimator rotation, and defaults for optionals
+0.0   -84.0 iso: 1.0 2.0 3.0             # Manual isocenter (x, y, z) [units: cm]
+57.0  -84.0 0.0 0.0 0.0                  # Manual isocenter - Legacy format (triggers warnings but falls back to PTV Centroid mode; values are ignored
+0.0   -90.0 sad: 100.0                   # Manual SAD (source-axis-distance) [unit: cm]
+0.0   -90.0 iso: 1.0 2.0 3.0 sad: 100.0  # use of two "optional" modules (order of optionals is exchangeable)
+
+0.0 0.0 45.0  dir: 1.0 0.0 0.0  iso: 0.0 0.0 0.0  sad: 100 # Beam direction, manual isocenter, manual SAD, and collimator rotation
+
+
+##############################################################################################################
+#     <MODULE>           <DESCRIPTION OF SPECIFIED VALUES>                           <FORMAT SPECIFIER>
+#     Mandatory:           gantry  couch [units: deg]                                as "%f %f"
+#
+# Optional Modules (order significant):
+#     Collimator Rotation: coll [units: deg]                                         as "[...] %f"
+#
+# Optional Modules (order insignificant):                                            
+#     Manual Direction:    direction.x direction.y direction.z [unitless]            as "[...] dir: %f %f %f"
+#     Manual Isocenter:    isocenter.x isocenter.y isocenter.z [units: cm]           as "[...] iso: %f %f %f"
+#     Manual SAD:          SAD [units: cm]                                           as "[...] sad: %f"
+#-------------------------------------------------------------------------------------------------------------
+# note: spaces delimit fields, and any number of spaces may be used between fields
+# note: all angle specifications wrap safely outside of [0, 360]
+# note: couch rotation is NOT limited to [-90, 90] as it is on some C-arm linac hardware
+#
+# Uses VarianIEC motion scale:
+#   gantry - Gantry/Z-axis rotation      - (0 defined as entering patient anterior, gantry above)
+#   couch  - Couch/non-coplanar rotation - (0 defined as coplanar beam, couch perp. to linac body)
+#   coll    - collimator rotation         - (0 defined as aligned with patient X,Z axes)
+#
+# EXAMPLES FOR PATIENT ORIENTATION HFS:
+#   gantry = 0           : entering from patient anterior
+#   gantry = 90          : entering from patient left
+#   gantry = 180         : entering from patient posterior
+#   gantry = 270         : entering from patient right
+#
+#   0    < couch  < 180  : CW couch-kick (top view)
+#   -180 < couch  <   0  : CCW couch-kick (top view)
+#   
+#   0    < coll   < 180  : CW looking up into collimator

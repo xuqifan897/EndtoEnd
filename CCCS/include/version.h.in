@@ -1,0 +1,25 @@
+#ifndef __VERSION_H__
+#define __VERSION_H__
+
+#include <string>
+#include <sstream>
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+// Mutable Versioning for Dosecalc Package
+// #define VERSION_MAJOR 0
+// #define VERSION_MINOR 8
+// #define VERSION_PATCH 0
+// #define VERSION_STRING STR(VERSION_MAJOR) "." STR(VERSION_MINOR) "." STR(VERSION_PATCH)
+
+#define VERSION_STRING "@dosecalc_BUILD_VERSION@"
+
+// std::string get_version() {
+//     std::ostringstream v;
+//     v << VERSION_MAJOR << "." << VERSION_MINOR;
+//     if (VERSION_PATCH > 0) { v << "." << VERSION_PATCH; }
+//     return v.str();
+// }
+
+#endif // __VERSION_H__

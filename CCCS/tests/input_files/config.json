@@ -1,0 +1,19 @@
+{
+  "voxsize":       0.2,
+  "convlat":       0.2,
+  "convstep":      0.2,
+  "penum":         4.0,
+  "beamlet-size":  [0.5, 0.5],
+  "fmap-dims":     [40, 40],
+  "kernel-extent": 1.0,
+  "ntheta":        12,
+  "nphi":          12,
+  "max-rev-size":  [800,800,800],
+  "verbose":       true,
+  "timing":        true,
+  "noreduce":      true,
+  "spec":          "spec_6mv",
+  "target-exact":  "P_Prst",
+  "bbox-roi":      "Body",
+  "beamlist":      "tests/input_files/beamlist_test.txt"
+}
