@@ -126,7 +126,7 @@ def cylindricalToCartesian(array_cylindrical):
     return result.copy()
 
 
-def testCylindricalToCartisian():
+def testCylindricalToCartesian():
     """
     This function tests the functionality of the function above
     """
@@ -518,11 +518,80 @@ def homoDose():
         plt.clf()
 
 
+def waterLateralDepth():
+    """
+    This function studies the dependency of lateral dose profile on depth
+    """
+    arrayPath = '/data/qifan/projects/EndtoEnd/results/waterIPB/mono6MeV/SD.bin'
+    shape = (256, 200)
+    array = np.fromfile(arrayPath)
+    array = np.reshape(array, shape)
+    figureFolder = './figures'
+
+    resR = 0.05
+    resZ = 0.1
+    if False:
+        # Firstly, we study the relationship between the centerline 
+        # dose and the partial dose
+        centerLine = array[:, 0].copy()
+        centerLine /= np.max(centerLine)
+
+        partial = np.sum(array, axis=1)
+        partial /= np.max(partial)
+
+        ratio = centerLine / partial
+
+        depth = np.arange(shape[0]) * resZ
+
+        fig, ax1 = plt.subplots()
+        ax1.plot(depth, centerLine)
+        ax1.plot(depth, partial)
+        ax1.set_ylabel('Edep (a.u.)')
+        ax1.legend(['centerline Edep', 'partialEdep'])
+
+        ax2 = ax1.twinx()
+
+        ax2.plot(depth, ratio, color='g')
+        ax2.set_ylim([0, 1])
+        ax2.set_ylabel('ratio')
+        ax2.legend(['ratio'])
+        plt.title('Centerline Edep vs partial Edep')
+        figureFile = os.path.join(figureFolder, 'cenPar.png')
+        plt.savefig(figureFile)
+        plt.clf()
+
+    if True:
+        depths = [1, 5, 10, 20, 50, 100, 150, 200]
+        rangeR = 25
+        radius = (np.arange(rangeR) + 0.5) * resZ
+        for d in depths:
+            slice = array[d, :rangeR]
+            # normalize the slice against its maximum value
+            slice /= np.max(slice)
+            plt.plot(radius, slice)
+        legend = ['depth {} cm'.format(d*resZ) for d in depths]
+        plt.legend(legend)
+        plt.xlabel('radius (cm)')
+        plt.ylabel('lateral Edep (a.u.)')
+        plt.title('lateral water dose profile at different depths')
+        figureFile = os.path.join(figureFolder, 'latWater.png')
+        plt.savefig(figureFile)
+        plt.clf()
+
+
+def inhomoExamine():
+    """
+    This function demonstrates the effect of inhomogeneity to lateral dose profile
+    """
+    arrayFile = '/data/qifan/projects/EndtoEnd/results/InhomoJuly20/slabAug14/SD.bin'
+
+
 if __name__ == '__main__':
     # readDose()
-    # testCylindricalToCartisian()
+    # testCylindricalToCartesian()
     # TakeALook6MeV()
     # polyChromatic()
     # viewPoly()
     # viewCenterline()
-    homoDose()
+    # homoDose()
+    waterLateralDepth()

@@ -61,4 +61,12 @@ It means that at the same radiological coordinate $(\eta r, \eta z)$ and geometr
 ![Lateral dose profile of water and bone at different depths](./figures/lateral.png)
 
 # Lateral profile v.s. depth
-It is shown in the figure above that the lateral dose profile depends on the depth. Here we study the dependency.
+It is shown in the figure above that the lateral dose profile depends on the depth. Here we study the dependency. Firstly, we look at the comparison between the centerline dose and the partial dose, as shown in the figure below. In this figure, both the centerline and the partial doses are normalized by their individual maximum value. This figure is related to the topic "lateral profile v.s. depth", because if the lateral dose profile is constant for all depths, the ratio between the centerline dose and the partial dose should be constant.
+
+![Centerline energy deposition vs partial energy deposition](./figures/cenPar.png)
+
+We can observe a significant deviation between the centerline and partial energy depositions. As indicated by the green curve, the ratio did not reach a constant at depth 25 cm.
+
+We then take a look at the lateral dose profiles at different depths, as shown in the figure below. It manifests that the dose lateral dose profile reaches an equilibrium state beyond 5 cm depth.
+
+![lateral infinitesimal pencil beam (IPB) water dose profile at different depths](./figures/latWater.png)
