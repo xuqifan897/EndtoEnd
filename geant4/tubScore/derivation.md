@@ -70,3 +70,7 @@ We can observe a significant deviation between the centerline and partial energy
 We then take a look at the lateral dose profiles at different depths, as shown in the figure below. It manifests that the dose lateral dose profile reaches an equilibrium state beyond 5 cm depth.
 
 ![lateral infinitesimal pencil beam (IPB) water dose profile at different depths](./figures/latWater.png)
+
+We also take a look at the lateral dose profiles near the boundary of different materials, i.e., the muscle-bone and bone-muscle interfaces, as shown in the figure below. The upper row shows the dose profile near the muscle-bone interface, and the lower row shows the dose profile near the bone-muscle interface. The right column shows the dose profile beyond the interfaces. We can observe that the lateral dose profile before the interface is in large unaffected, as if the interface does not exist. Beyond the interface, however, the dose is significantly affected. We believe this is due to that back-scattering is much less than forward scattering. This figure indicates the necessity to address the dose profile near the interface.
+
+![lateral dose profiles near muscle-bone and bone-muscle interfaces](./figures/lungMuscle.png)

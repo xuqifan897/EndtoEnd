@@ -563,7 +563,7 @@ def waterLateralDepth():
     if True:
         depths = [1, 5, 10, 20, 50, 100, 150, 200]
         rangeR = 25
-        radius = (np.arange(rangeR) + 0.5) * resZ
+        radius = (np.arange(rangeR) + 0.5) * resR
         for d in depths:
             slice = array[d, :rangeR]
             # normalize the slice against its maximum value
@@ -583,7 +583,87 @@ def inhomoExamine():
     """
     This function demonstrates the effect of inhomogeneity to lateral dose profile
     """
+    figureFolder = './figures'
     arrayFile = '/data/qifan/projects/EndtoEnd/results/InhomoJuly20/slabAug14/SD.bin'
+    shape = (256, 200)
+    array = np.fromfile(arrayFile, dtype=np.float64)
+    array = np.reshape(array, shape)
+
+    # Here we study the interface between the muscle and lung
+    critical = 64
+    Range = 6
+    rangeR = 50
+    resR = 0.05
+    resZ = 0.1
+    radius = (np.arange(rangeR) + 0.5) * resR
+
+    if False:
+        # the left figure, show the lateral dose profile at two sides of the interface
+        for i in range(-Range+1, Range+1):
+            layer = array[critical+i, :rangeR]
+            plt.plot(radius, layer)
+        legend = ['depth {:.1f} cm'.format((critical+i)*resZ) 
+            for i in range(-Range+1, Range+1)]
+        plt.legend(legend)
+        plt.xlabel('radius (cm)')
+        plt.ylabel('Edep')
+        plt.title('dose around the muscle-lung interface')
+        figureFile = os.path.join(figureFolder, 'muscleLung.png')
+        plt.savefig(figureFile)
+
+    if True:
+        # muscle to lung
+        fig, axs = plt.subplots(2, 2, figsize=(11, 8))
+        Range = 6
+        for i in range(-Range, Range):
+            layer = array[critical + i, :rangeR]
+            axs[0, 0].plot(radius, layer)
+        legend = ['depth {:.1f} cm'.format((critical+i)*resZ) 
+                  for i in range(-Range, Range)]
+        axs[0, 0].legend(legend)
+        axs[0, 0].set_xlabel('radius (cm)')
+        axs[0, 0].set_ylabel('Edep (a.u.)')
+        axs[0, 0].set_title('Edep near the muscle-lung interface')
+        Range = 16
+        for i in range(Range):
+            layer = array[critical + i, :rangeR]
+            axs[0, 1].plot(radius, layer)
+        legend = ['depth {:.1f} cm'.format((critical+i)*resZ) 
+                  for i in range(Range)]
+        axs[0, 1].legend(legend)
+        axs[0, 1].set_xlabel('radius (cm)')
+        axs[0, 1].set_ylabel('Edep (a.u.)')
+        axs[0, 1].set_title('Edep in the lung side of the muscle-lung interface')
+        # plt.tight_layout()
+        # figureFile = os.path.join(figureFolder, 'muscleLung.png')
+        # plt.savefig(figureFile)
+
+        # lung to muscle
+        critical = 160
+        Range = 6
+        for i in range(-Range, Range):
+            layer = array[critical + i, :rangeR]
+            axs[1, 0].plot(radius, layer)
+        legend = ['depth {:.1f} cm'.format((critical+i)*resZ) 
+                  for i in range(-Range, Range)]
+        axs[1, 0].legend(legend)
+        axs[1, 0].set_xlabel('radius (cm)')
+        axs[1, 0].set_ylabel('Edep (a.u.)')
+        axs[1, 0].set_title('Edep near the lung-muscle interface')
+        Range = 16
+        for i in range(Range):
+            layer = array[critical + i, :rangeR]
+            axs[1, 1].plot(radius, layer)
+        legend = ['depth {:.1f} cm'.format((critical+i)*resZ) 
+                  for i in range(Range)]
+        axs[1, 1].legend(legend)
+        axs[1, 1].set_xlabel('radius (cm)')
+        axs[1, 1].set_ylabel('Edep (a.u.)')
+        axs[1, 1].set_title('Edep in the muscle side of the lung-muscle interface')
+        plt.tight_layout()
+        figureFile = os.path.join(figureFolder, 'lungMuscle.png')
+        plt.savefig(figureFile)
+        
 
 
 if __name__ == '__main__':
@@ -594,4 +674,5 @@ if __name__ == '__main__':
     # viewPoly()
     # viewCenterline()
     # homoDose()
-    waterLateralDepth()
+    # waterLateralDepth()
+    inhomoExamine()
