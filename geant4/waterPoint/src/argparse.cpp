@@ -16,8 +16,10 @@ int wp::argsInit(int argc, char** argv)
             "The value of primary photon energy [MeV].")
         ("nParticles", po::value<int>()->default_value(1),
             "The number of particles to simulate")
-        ("logFrequency", po::value<int>()->default_value(1000),
+        ("logFrequency", po::value<int>()->default_value(10000),
             "The frequency for logging events.")
+        ("PrintTrajectory", po::value<bool>()->default_value(false),
+            "Whether to print trajectory at the end of an event.")
         
         // phantom definition
         ("phantom", po::value<std::string>()->default_value("cube"),

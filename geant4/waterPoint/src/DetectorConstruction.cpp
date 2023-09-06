@@ -41,7 +41,7 @@ G4VPhysicalVolume* wp::DetectorConstruction::Construct()
     int PhantomDimXY = (*vm)["PhantomDimXY"].as<int>();
     int PhantomDimZ = (*vm)["PhantomDimZ"].as<int>();
     float resolution = (*vm)["resolution"].as<float>() * cm;
-    bool checkOverlaps = true;
+    bool checkOverlaps = false;
 
     G4VPhysicalVolume* worldPV = nullptr;
 

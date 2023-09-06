@@ -1,5 +1,6 @@
 #include "G4Run.hh"
 #include "G4RunManager.hh"
+#include "G4SystemOfUnits.hh"
 #include "boost/filesystem.hpp"
 
 namespace fs = boost::filesystem;
@@ -33,13 +34,17 @@ void wp::RunAction::EndOfRunAction(const G4Run* aRun)
 
         int PhantomDimXY = (*vm)["PhantomDimXY"].as<int>();
         int PhantomDimZ = (*vm)["PhantomDimZ"].as<int>();
+        int PhantomSZ = (*vm)["PhantomSZ"].as<int>();
+        float Resolution = (*vm)["resolution"].as<float>() * cm;
 
         std::stringstream metadataSS;
         metadataSS << "Number of events: " << masterRun->GetNumberOfEvent() << std::endl;
         metadataSS << "Data type: double " << std::endl;
         metadataSS << "Dimension: (" << PhantomDimXY << ", " << PhantomDimXY << ", " 
             << PhantomDimZ << ") " << std::endl;
-        metadataSS << "data order: z, y, x." << std::endl;
+        metadataSS << "Source displacement: " << PhantomSZ << std::endl;
+        metadataSS << "Resolution: " << Resolution / cm << " cm" << std::endl;
+        metadataSS << "data order: z, y, x" << std::endl;
 
         std::string metadata = metadataSS.str();
         fs::path filePath = ResFd / fs::path("metadata.txt");
