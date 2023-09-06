@@ -21,7 +21,7 @@ $$h(\vec{x})=H(\eta\vec{x})\frac{1}{||\vec{x}||^2}.$$
 
 Then we consider the dose distribution of an infinitesimal pencil beam (IPB) in a homogeneous phantom. In this case, the inverse square factor is omitted, and we let the fluence map value to be 1. The Terma distribution is:
 
-$$T(\vec{x})=T(x_1,x_2,x_3)=\eta\exp{(-\eta x_3)}\delta(x_1)\delta(y_2).$$
+$$T(\vec{x})=T(x_1,x_2,x_3)=\eta\exp{(-\eta x_3)}\delta(x_1)\delta(x_2).$$
 Here we assume $x_3$ is along the depth of the homogeneous phantom. The leading $\eta$ ensures the normalization. Then we obtain the dose distribution:
 
 $$
