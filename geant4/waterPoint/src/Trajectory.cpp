@@ -1,4 +1,5 @@
 #include "Trajectory.h"
+#include "TrajectoryPoint.h"
 #include "G4ParticleTable.hh"
 #include "G4ParticleTypes.hh"
 #include "G4Polyline.hh"
@@ -13,11 +14,12 @@
 #include "G4UnitsTable.hh"
 #include "G4DynamicParticle.hh"
 #include "G4PrimaryParticle.hh"
+#include "G4SystemOfUnits.hh"
 
 G4ThreadLocal G4Allocator<wp::Trajectory> * wp::myTrajectoryAllocator = 0;
 
 wp::Trajectory::Trajectory(const G4Track* aTrack)
-:G4VTrajectory()
+:G4VTrajectory(), fFlag(false), fInterIdx(0)
 {
     this->fParticleDefinition = aTrack->GetDefinition();
     this->fParticleName = this->fParticleDefinition->GetParticleName();
@@ -40,7 +42,10 @@ wp::Trajectory::Trajectory(const G4Track* aTrack)
     this->fTrackID = aTrack->GetTrackID();
     this->fParentID = aTrack->GetParentID();
     this->fPositionRecord = new TrajectoryPointContainer();
-    this->fPositionRecord->push_back(new G4TrajectoryPoint(aTrack->GetPosition()));
+
+    this->fPositionRecord->push_back(
+        new TrajectoryPoint(aTrack->GetPosition(), aTrack->GetMomentum()));
+
     this->fMomentum = aTrack->GetMomentum();
     this->fVertexPosition = aTrack->GetPosition();
     this->fGlobalTime = aTrack->GetGlobalTime();
@@ -49,7 +54,11 @@ wp::Trajectory::Trajectory(const G4Track* aTrack)
 wp::Trajectory::~Trajectory()
 {
     for (int i=0; i<this->fPositionRecord->size(); i++)
-        delete (*(this->fPositionRecord))[i];
+    {
+        auto* VPointer = (*(this->fPositionRecord))[i];
+        TrajectoryPoint* pointer = static_cast<TrajectoryPoint*>(VPointer);
+        delete pointer;
+    }
     this->fPositionRecord->clear();
     delete this->fPositionRecord;
 }
@@ -67,10 +76,12 @@ void wp::Trajectory::ShowTrajectory(std::ostream& os) const
 
     for (int i=0; i<this->fPositionRecord->size(); i++)
     {
-        G4TrajectoryPoint* aTrajectoryPoint = 
-            (G4TrajectoryPoint*)((*this->fPositionRecord)[i]);
+        TrajectoryPoint* aTrajectoryPoint = 
+            static_cast<TrajectoryPoint*>((*this->fPositionRecord)[i]);
         os << "Point[" << i << "]" 
-            << " Position = " << aTrajectoryPoint->GetPosition() << G4endl;
+            << " Position = " << G4BestUnit(aTrajectoryPoint->GetPosition(), "Length")
+            << ", Momentum = " << G4BestUnit(aTrajectoryPoint->GetMomentum(), "Energy") 
+            << ", interaction: " << aTrajectoryPoint->GetFlag() << G4endl;
     }
 }
 
@@ -150,8 +161,20 @@ std::vector<G4AttValue>* wp::Trajectory::CreateAttValues() const
 
 void wp::Trajectory::AppendStep(const G4Step* aStep)
 {
-    this->fPositionRecord->push_back(
-        new G4TrajectoryPoint(aStep->GetPostStepPoint()->GetPosition()));
+    auto* PreStepPoint = aStep->GetPreStepPoint();
+    auto* PostStepPoint = aStep->GetPostStepPoint();
+    bool flag = (PreStepPoint->GetMomentum() != PostStepPoint->GetMomentum());
+
+    TrajectoryPoint* newPoint = new TrajectoryPoint(
+        PreStepPoint->GetPosition(), PreStepPoint->GetMomentum(), flag);
+    G4VTrajectoryPoint* VNewPoint = static_cast<G4VTrajectoryPoint*>(newPoint);
+    this->fPositionRecord->push_back(VNewPoint);
+    
+    if (flag && !(this->fFlag))
+    {
+        this->fFlag = true;
+        this->fInterIdx = this->fPositionRecord->size() - 1;
+    }
 }
 
 void wp::Trajectory::MergeTrajectory(G4VTrajectory* secondTrajectory)

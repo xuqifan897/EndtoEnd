@@ -45,6 +45,10 @@ namespace wp
         virtual int GetPointEntries() const { return this->fPositionRecord->size(); }
         virtual G4VTrajectoryPoint* GetPoint(G4int i) const 
         { return (*(this->fPositionRecord))[i]; }
+        
+        G4ThreeVector& GetVertexPosition() {return this->fVertexPosition;}
+        bool GetFlag() {return this->fFlag;}
+        int  GetInterIdx() {return this->fInterIdx;}
     
     private:
         TrajectoryPointContainer*    fPositionRecord;
@@ -57,6 +61,11 @@ namespace wp
         G4ThreeVector                fMomentum;
         G4ThreeVector                fVertexPosition;
         G4double                     fGlobalTime;
+
+        //  Indicates whether an interaction happened
+        bool                         fFlag;
+        //  Indicate the index of trajectory point on which an interaction happened.
+        int                          fInterIdx;
     };
 
     extern G4ThreadLocal G4Allocator<Trajectory> * myTrajectoryAllocator;

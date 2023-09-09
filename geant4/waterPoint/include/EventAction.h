@@ -11,10 +11,14 @@ namespace wp
     class EventAction : public G4UserEventAction
     {
     public:
-        EventAction() = default;
+        EventAction();
         ~EventAction() = default;
 
         virtual void EndOfEventAction(const G4Event*);
+    
+    private:
+        static float marginZ;
+        static float sourceOffset;
     };
 }
 

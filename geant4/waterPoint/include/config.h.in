@@ -1,3 +1,4 @@
 #ifndef PHASE
 #define PHASE @PHASE@
+#define EPS 1e-5
 #endif

@@ -5,7 +5,8 @@ project(waterPoint VERSION 0.1.0)
 set(CMAKE_BUILD_TYPE Release)
 
 # which phantom setting to use
-set(PHASE 0)
+# set(PHASE 0)  # to examine the tracking functionality
+set(PHASE 1)  # to use the tracking functionality to score dose
 configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in" "${PROJECT_SOURCE_DIR}/include/config.h")
 
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)

@@ -37,13 +37,16 @@ int wp::argsInit(int argc, char** argv)
             "The depth of the source. Assume the photon is along the +z "
             "direction, and is placed in the middle of x and y direction. It's "
             "a unitless argument.")
+        ("PhantomBottom", po::value<int>()->default_value(50),
+            "The margin of the phantom. If the initial interaction happens "
+            "before the margin, it is counted. Otherwise it is abandoned.")
         ("TallyDimZ", po::value<int>()->default_value(200),
             "The tally dimension along the z direction. "
             "We set the tally X and Y dimensions to be the same as the phantom, "
             "and the source point is set to the same depth as phantom dim z.")
         
         // log information
-        ("resultFolder", po::value<std::string>(), "The folder to which we write results");
+        ("resultFolder", po::value<std::string>()->required(), "The folder to which we write results");
 
     vm = new po::variables_map();
     po::store(po::parse_command_line(argc, argv, desc), *vm);

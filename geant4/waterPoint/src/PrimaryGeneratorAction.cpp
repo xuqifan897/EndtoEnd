@@ -1,8 +1,11 @@
 #include "G4SystemOfUnits.hh"
 #include "G4ParticleTable.hh"
+#include "G4Event.hh"
 
 #include "PrimaryGeneratorAction.h"
 #include "argparse.h"
+#include "config.h"
+#include "EventInfo.h"
 
 wp::PrimaryGeneratorAction::PrimaryGeneratorAction()
 {
@@ -33,4 +36,5 @@ wp::PrimaryGeneratorAction::~PrimaryGeneratorAction()
 void wp::PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
     this->fParticleGun->GeneratePrimaryVertex(anEvent);
+    anEvent->SetUserInformation(new EventInfo());
 }

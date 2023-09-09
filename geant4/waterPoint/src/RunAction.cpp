@@ -35,6 +35,7 @@ void wp::RunAction::EndOfRunAction(const G4Run* aRun)
         int PhantomDimXY = (*vm)["PhantomDimXY"].as<int>();
         int PhantomDimZ = (*vm)["PhantomDimZ"].as<int>();
         int PhantomSZ = (*vm)["PhantomSZ"].as<int>();
+        int PhantomBottom = (*vm)["PhantomBottom"].as<int>();
         float Resolution = (*vm)["resolution"].as<float>() * cm;
 
         std::stringstream metadataSS;
@@ -45,6 +46,10 @@ void wp::RunAction::EndOfRunAction(const G4Run* aRun)
         metadataSS << "Source displacement: " << PhantomSZ << std::endl;
         metadataSS << "Resolution: " << Resolution / cm << " cm" << std::endl;
         metadataSS << "data order: z, y, x" << std::endl;
+    
+        metadataSS << "Kernel Dimension: (" << PhantomDimXY << ", " 
+            << PhantomDimXY << ", " << PhantomSZ + 
+            PhantomBottom << ")" << std::endl;
 
         std::string metadata = metadataSS.str();
         fs::path filePath = ResFd / fs::path("metadata.txt");
@@ -58,25 +63,17 @@ void wp::RunAction::EndOfRunAction(const G4Run* aRun)
         else
             std::cerr << "Cannot open file: " << filePath.string() << std::endl;
 
-        std::vector<double> outputData(PhantomDimXY * PhantomDimXY * PhantomDimZ);
-        auto HitsMaps = masterRun->getHitsMaps();
-        int offset = 0;
-        for (int i=0; i<HitsMaps.size(); i++)
-        {
-            const auto & map = *std::get<2>(HitsMaps[i])->GetMap();
-            for (auto & it : map)
-            {
-                outputData[offset + it.first] = *(it.second);
-            }
-            offset += PhantomDimXY;
-        }
+        const auto & kernel = masterRun->GetKernel();
         filePath = ResFd / fs::path("SD.bin");
         file = std::ofstream(filePath.string());
         if (file.is_open())
         {
-            file.write((char*)(outputData.data()), outputData.size() * sizeof(double));
+            for (int i=0; i<PhantomSZ + PhantomBottom; i++)
+                for (int j=0; j<PhantomDimXY; j++)
+                    file.write((char*)(kernel[i][j].data()), 
+                        PhantomDimXY*sizeof(double));
             file.close();
-            std::cout << "Sensitive detector data written successfully!" << std::endl;
+            std::cout << "Kernel data written successfully!" << std::endl;
         }
         else
             std::cerr << "Unable to open file: " << filePath.string();

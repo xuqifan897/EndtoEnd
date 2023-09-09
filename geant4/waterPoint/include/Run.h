@@ -6,6 +6,7 @@
 
 #include "G4Run.hh"
 #include "G4THitsMap.hh"
+#include "config.h"
 
 namespace wp
 {
@@ -17,20 +18,26 @@ namespace wp
 
         virtual void RecordEvent(const G4Event*);
         virtual void Merge(const G4Run*);
-        // const std::tuple<std::string, int, G4THitsMap<G4double>*>&
-        //     getHitsMap() const
-        //     {return this->HitsMap;}
 
-        const std::vector<std::tuple<std::string, int, G4THitsMap<G4double>*>>&
-            getHitsMaps() const
-            {return this->HitsMaps;}
+        const std::vector<std::vector<std::vector<double>>>&
+            GetKernel() const
+            {return this->kernel;}
     
     private:
-        // hit collection id
-        // std::tuple<std::string, int, G4THitsMap<G4double>*> HitsMap;
         std::vector<std::tuple<std::string, int, G4THitsMap<G4double>*>> HitsMaps;
+
+        std::vector<std::vector<std::vector<double>>> kernel;
+        int PhantomSZ;
+        int PhantomBottom;
+        // the threshold beyond which the interaction does not count.
+        float marginZ;
+
         int logFrequency;
         int nParticles;
+        int PhantomDimXY;
+        int PhantomDimZ;
+        float resolution;
+        float HalfPhantomSizeZ;
     };
 
     extern std::atomic<int> globalCount;
