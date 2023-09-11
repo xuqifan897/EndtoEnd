@@ -78,7 +78,7 @@ set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS}
     # -gencode=arch=compute_52,code=sm_52     # GeForce GTX Titan X cubin
     #-gencode=arch=compute_53,code=sm_53    # Titan X cubin (w/ support for 16bit floating point "half" types)
     # -gencode=arch=compute_70,code=sm_70     # volta v100 cubin
-    -gencode=arch=compute_86,code=sm_86
+    -gencode=arch=compute_89,code=sm_89
     )
 
 # set build type

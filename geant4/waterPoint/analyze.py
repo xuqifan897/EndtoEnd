@@ -38,11 +38,26 @@ def readPointKernel():
     # z, y, x
     array = np.reshape(array, dimension)
 
+    depth = (np.arange(dimension[0]) - sourceD) * resolution
+
+    # plot centerline profile
+    centerLineIdxY = int(dimension[1] / 2)
+    centerLineIdxX = int(dimension[2] / 2)
+    centerLineKernel = array[:, centerLineIdxY, centerLineIdxX]
+    # normalize
+    centerLineKernel = centerLineKernel / np.max(centerLineKernel)
+    plt.plot(depth, centerLineKernel)
+
     # plot partial profile
     partialKernel = np.sum(array, axis=(1, 2))
-    depth = (np.arange(dimension[0]) - sourceD) * resolution
+    # normalize
+    partialKernel = partialKernel / np.max(partialKernel)
     plt.plot(depth, partialKernel)
-    figureFile = os.path.join(resultFolder, 'partial.png')
+
+    plt.legend(["Center line profile", "Partial profile"])
+    plt.xlabel("depth (cm)")
+    plt.ylabel("Energy deposition (a.u.)")
+    figureFile = os.path.join(resultFolder, 'pointKernel.png')
     plt.savefig(figureFile)
     plt.clf()
 
