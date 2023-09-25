@@ -102,13 +102,27 @@ void cudaCreateTexIso( FloatVolume& dens, FloatVolume& data, float iso_voxel, CT
     imgParams.kind		    =	cudaMemcpyHostToDevice;
     cudaMemcpy3D(&imgParams);
 
-    texImg.normalized      	=	false;
-    texImg.filterMode	    =	cudaFilterModeLinear;
-    texImg.addressMode[0]	=	cudaAddressModeBorder;
-    texImg.addressMode[1]	=	cudaAddressModeBorder;
-    texImg.addressMode[2]	=	cudaAddressModeBorder;
+    cudaResourceDesc texImgRes;
+    memset(&texImgRes, 0, sizeof(cudaResourceDesc));
+    texImgRes.resType = cudaResourceTypeArray;
+    texImgRes.res.array.array = imgArray;
 
-    cudaBindTextureToArray(texImg, imgArray, channelDesc);
+    // texImg.normalized      	=	false;
+    // texImg.filterMode	    =	cudaFilterModeLinear;
+    // texImg.addressMode[0]	=	cudaAddressModeBorder;
+    // texImg.addressMode[1]	=	cudaAddressModeBorder;
+    // texImg.addressMode[2]	=	cudaAddressModeBorder;
+
+    cudaTextureDesc texImgDescr;
+    memset(&texImgDescr, 0, sizeof(cudaTextureDesc));
+    texImgDescr.normalizedCoords = false;
+    texImgDescr.filterMode = cudaFilterModeLinear;
+    texImgDescr.addressMode[0] = cudaAddressModeBorder;
+    texImgDescr.addressMode[1] = cudaAddressModeBorder;
+    texImgDescr.addressMode[2] = cudaAddressModeBorder;
+
+    // cudaBindTextureToArray(texImg, imgArray, channelDesc);
+    checkCudaErrors(cudaCreateTextureObject(&texImg, &texImgRes, &texImgDescr, NULL));
     //////////////////////////////////////////////////////////////////////////////////////////////
 
     // calculate new dimensions
@@ -163,7 +177,8 @@ void cudaCreateTexIso( FloatVolume& dens, FloatVolume& data, float iso_voxel, CT
         int isoShared = 2*sizeof(float)*lutsize;
 
         // run cuda kernel to create isotropic density volume with axes voxel count: densize
-        cudaMakeIsotropicWithLUT<<< grid, block, isoShared>>>( iso_matrix, data.voxsize, iso_voxel, iso_size, d_hunits, d_massdens, lutsize);
+        cudaMakeIsotropicWithLUT<<< grid, block, isoShared>>>( iso_matrix, data.voxsize, iso_voxel, iso_size, 
+            d_hunits, d_massdens, lutsize, texImg);
         getLastCudaError("cudaMakeIsotropic()");
 
         delete [] h_hunits;
@@ -172,15 +187,20 @@ void cudaCreateTexIso( FloatVolume& dens, FloatVolume& data, float iso_voxel, CT
         checkCudaErrors(cudaFree(d_massdens));
     } else {
         // run cuda kernel to create isotropic density volume with axes voxel count: densize
-        cudaMakeIsotropic<<< grid, block>>>( iso_matrix, data.voxsize, iso_voxel, iso_size );
+        cudaMakeIsotropic<<< grid, block>>>( iso_matrix, data.voxsize, iso_voxel, iso_size, texImg);
         if (hu2dens) {
             deviceHU2dens<<<grid, block>>>(iso_matrix, iso_matrix, iso_size);
         }
         getLastCudaError("cudaMakeIsotropic()");
     }
 
-    checkCudaErrors(cudaUnbindTexture(texImg));
-    checkCudaErrors(cudaFreeArray(imgArray));
+    // checkCudaErrors(cudaUnbindTexture(texImg));
+    // checkCudaErrors(cudaFreeArray(imgArray));
+    if (texImg)
+        checkCudaErrors(cudaDestroyTextureObject(texImg));
+    
+    if (imgArray)
+        checkCudaErrors(cudaFreeArray(imgArray));
 
     // copy array properties
     dens.size = iso_size;

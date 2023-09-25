@@ -61,6 +61,40 @@ def readPointKernel():
     plt.savefig(figureFile)
     plt.clf()
 
+def kernelLateral():
+    """This function analyzes the lateral profile of 
+    the point dose kernel obtained"""
+    resultFolder = '/data/qifan/projects/EndtoEnd/results/Sept1Point/pointKernel'
+    resultFile = os.path.join(resultFolder, 'SD.bin')
+    dimension = (55, 50, 50)
+    sourceD = 5
+    resolution = 0.1  # cm
+    array = np.fromfile(resultFile, dtype=np.double)
+    # z, y, x
+    array = np.reshape(array, dimension)
+
+    figuresFolder = os.path.join(resultFolder, 'slices')
+    if not os.path.isdir(figuresFolder):
+        os.mkdir(figuresFolder)
+    
+    # normalize the array to its maximum value
+    array /= np.max(array)
+    middleX = int(dimension[1] / 2)
+    lateral = np.arange(dimension[1]) - (dimension[1]-1) / 2
+    lateral *= resolution
+    for i in range(dimension[0]):
+        slice = array[i, middleX, :]
+        plt.plot(lateral,  slice)
+        plt.xlabel('lateral displacement (cm)')
+        plt.ylabel('energy deposition (a.u.)')
+        depth = (i - sourceD) * resolution
+        plt.title('lateral profile at {} cm'.format(depth))
+        filePath = os.path.join(figuresFolder, '{:03d}.png'.format(i+1))
+        plt.savefig(filePath)
+        plt.clf()
+
+
 if __name__ == '__main__':
     # readSmallMat()
-    readPointKernel()
+    # readPointKernel()
+    kernelLateral()

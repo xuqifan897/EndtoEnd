@@ -7,7 +7,8 @@
 
 float *iso_matrix;
 cudaArray *imgArray=0;
-texture<float, 3, cudaReadModeElementType> texImg;
+// texture<float, 3, cudaReadModeElementType> texImg;
+cudaTextureObject_t texImg;  // 3D texture
 
 // each thread controls a voxel and applies a simple conversion between HU and density
 __global__ void
@@ -30,7 +31,8 @@ deviceHU2dens( float *CTunits, float *dens, uint3 count )
 // this function resamples the data at regular intervals using texture memory's intrinsic linear interpolation
 // and outputs an isotropic volume
 __global__ void
-cudaMakeIsotropicWithLUT( float *iso, float3 voxelSize, float iso_voxel, uint3 iso_size, float* lut_hunits, float* lut_massdens, int nlut)
+cudaMakeIsotropicWithLUT( float *iso, float3 voxelSize, float iso_voxel, uint3 iso_size, 
+    float* lut_hunits, float* lut_massdens, int nlut, cudaTextureObject_t texObj)
 {
     extern __shared__ float s[];
     // find the overall ID number of this thread, tid (thread index)
@@ -71,7 +73,8 @@ cudaMakeIsotropicWithLUT( float *iso, float3 voxelSize, float iso_voxel, uint3 i
 
     // same the point from the texture memory
     // 0.5f is added to each coordinate as a shift to the center of the voxel
-    float value = tex3D( texImg, pos.x + 0.5f, pos.y + 0.5f, pos.z + 0.5f);
+    // float value = tex3D( texImg, pos.x + 0.5f, pos.y + 0.5f, pos.z + 0.5f);
+    float value = tex3D<float>(texObj, pos.x + 0.5f, pos.y + 0.5f, pos.z + 0.5f);
 
     // find low
     if (value <= s_lut_hunits[0]) {
@@ -98,7 +101,7 @@ cudaMakeIsotropicWithLUT( float *iso, float3 voxelSize, float iso_voxel, uint3 i
     iso[tidx] = value;
 }
 __global__ void
-cudaMakeIsotropic( float *iso, float3 voxelSize, float iso_voxel, uint3 iso_size )
+cudaMakeIsotropic( float *iso, float3 voxelSize, float iso_voxel, uint3 iso_size, cudaTextureObject_t texObj)
 {
     // find the overall ID number of this thread, tid (thread index)
     unsigned int bidx = blockIdx.x + gridDim.x * ( blockIdx.y + gridDim.y * blockIdx.z );
@@ -120,7 +123,8 @@ cudaMakeIsotropic( float *iso, float3 voxelSize, float iso_voxel, uint3 iso_size
 
     // same the point from the texture memory
     // 0.5f is added to each coordinate as a shift to the center of the voxel
-    float value = tex3D( texImg, pos.x + 0.5f, pos.y + 0.5f, pos.z + 0.5f);
+    // float value = tex3D( texImg, pos.x + 0.5f, pos.y + 0.5f, pos.z + 0.5f);
+    float value = tex3D<float>(texObj, pos.x + 0.5f, pos.y + 0.5f, pos.z + 0.5f);
 
 	// write to output in DCS
     iso[tidx] = value;
