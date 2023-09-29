@@ -353,7 +353,8 @@ void findFluenceProjection(
     dim3 projGrid = dim3{1, 0, 0};
     if (supersample) {
         // use center/corner/edge sampling pattern
-        projBlock = dim3{9, 8, 8};
+        // projBlock = dim3{9, 8, 8};
+        projBlock = dim3{9, 4, 4};
     } else {
         projBlock = dim3{1, 16, 16};
     }
@@ -361,7 +362,7 @@ void findFluenceProjection(
     projGrid.y = ceilf((float)fmap_size.x/projBlock.y);
     projGrid.z = ceilf((float)fmap_size.y/projBlock.z);
 
-    if (verbose>=3) {
+    if (verbose>=1) {
         printf(" ### projGrid:  %3d x %3d x %3d  |  projBlock:  %3d x %3d x %3d\n",
                 projGrid.x, projGrid.y, projGrid.z,
                 projBlock.x, projBlock.y, projBlock.z

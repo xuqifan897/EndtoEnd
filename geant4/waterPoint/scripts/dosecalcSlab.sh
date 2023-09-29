@@ -8,13 +8,26 @@ PreProcess="/data/qifan/projects/EndtoEnd\
 DoseCalc="/data/qifan/projects/EndtoEnd\
 /CCCS/build/dosecalc-beamlet/dosecalc-beamlet"
 
-expFolder="/data/qifan/projects/EndtoEnd\
-/results/slabBench/patient1_dosecalc"
-dcmFolder="/data/qifan/projects/EndtoEnd/results/slabBench/patient1_dicom"
-voxelSize=0.25
+dcmFolder="/data/qifan/projects/EndtoEnd/results/slabBench/slab_dicom"
+expTemplate="/data/qifan/projects/EndtoEnd/results/slabBench/slab_dosecalc"
+voxelSize=0.1
 
+
+# customize the data, fluence dimension and beamlet size
+fluenceDim=9
+beamletSize=1.0
+
+expFolder="/data/qifan/projects/EndtoEnd\
+/results/slabBench/slab_dosecalc_${fluenceDim}_${beamletSize}"
 preprocessLog="${expFolder}/preprocess.log"
 dosecalcLog="${expFolder}/dosecalc.log"
+if [ ! -d ${expFolder} ];
+then
+    mkdir ${expFolder}
+fi
+cp "${expTemplate}/beamlist.txt" ${expFolder}
+sed "s/bs/${beamletSize}/g; s/fd/${fluenceDim}/g" "${expTemplate}/config.json" > "${expFolder}/config.json"
+cp "${expTemplate}/structures.json" ${expFolder}
 
 # preprocess
 cd ${expFolder}
@@ -23,12 +36,12 @@ cd ${expFolder}
     --beamlist="${expFolder}/beamlist.txt" \
     --structures="${expFolder}/structures.json" \
     --config="${expFolder}/config.json" \
-    --bbox-roi="BODY" \
+    --bbox-roi="water" \
     --voxsize=${voxelSize} \
-    --verbose ) > ${preprocessLog} 2>&1 &
+    --verbose ) > ${preprocessLog}
 
 ( time ${DoseCalc} \
     --sparsity-threshold=${sparsity} \
     --ndevices=1 \
     --device=1 \
-    --verbose ) > ${dosecalcLog} 2>&1 &
+    --verbose ) > ${dosecalcLog}

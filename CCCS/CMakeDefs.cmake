@@ -81,6 +81,9 @@ set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS}
     -gencode=arch=compute_89,code=sm_89
     )
 
+# # for debug purposes
+# set(CMAKE_BUILD_TYPE Debug-GPU)
+
 # set build type
 IF(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)

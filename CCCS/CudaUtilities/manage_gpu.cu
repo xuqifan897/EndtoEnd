@@ -55,7 +55,7 @@ void init_devices(int &nDevices, int *gpuid_arr, const int maximum_device_count,
     }
 
     for (int dev=0; dev<nDevices; dev++) {
-        gpuid_arr[dev] = dev;
+        gpuid_arr[dev] = dev + first_device;
     }
 }
 void init_devices_uva(int &nDevices, int *gpuid_arr, const int maximum_device_count, const int ndev_requested, int first_device, bool verbose) {
