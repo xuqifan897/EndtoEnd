@@ -412,11 +412,18 @@ def CCCSBatchStudy():
     by varing the fluence dimension and the beamlet size
     """
     FluenceDim = 9
-    BeamletSize = 2.0
-    shape = (256, 256, 256)
-    size = shape[0] * shape[1] * shape[2]
+    BeamletSize = 0.25
 
-    expFolder = os.path.join(rootFolder, 'slab_dosecalc_{}_{}'.format(FluenceDim, BeamletSize))
+    if True:
+        voxelSize = 0.25
+        expFolder = os.path.join(rootFolder, 'slab_dosecalc_{}_{}_0.25'.format(FluenceDim, BeamletSize))
+        shape = (103, 103, 103)
+    elif False:
+        voxelSize = 0.1
+        expFolder = os.path.join(rootFolder, 'slab_dosecalc_{}_{}'.format(FluenceDim, BeamletSize))
+        shape = (256, 256, 256)
+    size = shape[0] * shape[1] * shape[2]
+    
     Dose_Coefficients_file = os.path.join(expFolder, 'Dose_Coefficients.h5')
     dataset = h5py.File(Dose_Coefficients_file, 'r')
     dataset = dataset['beams']['data']
@@ -433,7 +440,8 @@ def CCCSBatchStudy():
     DoseMat = np.reshape(DoseMat, shape)
 
     # find the location for the beamlet by calculating the mass center
-    slice = DoseMat[:, 128, :]
+    centralIdx = int(shape[1] / 2)
+    slice = DoseMat[:, centralIdx, :]
     result1 = 0.
     for i in range(slice.shape[0]):
         result1 += i * np.sum(slice[i, :])
@@ -474,7 +482,10 @@ def CCCSBatchStudy():
     plt.xlabel('depth (cm)')
     plt.ylabel('dose a.u.')
     plt.title('beamlet ddp with fdim {}, size {}'.format(FluenceDim, BeamletSize))
-    figureFile = os.path.join(expFolder, 'depthDose_{}_{}.png'.format(FluenceDim, BeamletSize))
+    if voxelSize == 0.1:
+        figureFile = os.path.join(expFolder, 'depthDose_{}_{}.png'.format(FluenceDim, BeamletSize))
+    elif voxelSize == 0.25:
+        figureFile = os.path.join(expFolder, 'depthDose_{}_{}_0.25.png'.format(FluenceDim, BeamletSize))
     plt.savefig(figureFile)
     plt.clf()
 

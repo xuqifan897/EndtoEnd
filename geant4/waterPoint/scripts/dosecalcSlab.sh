@@ -10,15 +10,15 @@ DoseCalc="/data/qifan/projects/EndtoEnd\
 
 dcmFolder="/data/qifan/projects/EndtoEnd/results/slabBench/slab_dicom"
 expTemplate="/data/qifan/projects/EndtoEnd/results/slabBench/slab_dosecalc"
-voxelSize=0.1
+voxelSize=0.25
 
 
 # customize the data, fluence dimension and beamlet size
 fluenceDim=9
-beamletSize=1.0
+beamletSize=2.0
 
 expFolder="/data/qifan/projects/EndtoEnd\
-/results/slabBench/slab_dosecalc_${fluenceDim}_${beamletSize}"
+/results/slabBench/slab_dosecalc_${fluenceDim}_${beamletSize}_${voxelSize}"
 preprocessLog="${expFolder}/preprocess.log"
 dosecalcLog="${expFolder}/dosecalc.log"
 if [ ! -d ${expFolder} ];
