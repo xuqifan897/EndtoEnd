@@ -6,6 +6,7 @@ namespace fs = boost::filesystem;
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4ParallelWorldPhysics.hh"
 
 #include "argparse.h"
 #include "PhantomDef.h"
@@ -18,6 +19,9 @@ int main(int argc, char** argv)
 {
     if (bs::argsInit(argc, argv))
         return 0;
+    
+    G4UIExecutive* ui = nullptr;
+    ui = new G4UIExecutive(argc, argv);
     
     bs::GD = new bs::GeomDef();
     bs::GD->display();
@@ -41,22 +45,42 @@ int main(int argc, char** argv)
     G4String parallelWorldName = "ReadoutWorld";
     float offset = 0.;
     G4VUserDetectorConstruction* detector = new bs::DetectorConstruction();
-    detector->RegisterParallelWorld(new bs::ParallelWorld(parallelWorldName, offset, SegZ));
+    if ((*bs::vm)["scoring"].as<bool>())
+        detector->RegisterParallelWorld(new bs::ParallelWorld(parallelWorldName, offset, SegZ));
+
+    G4VModularPhysicsList* physicsList = new bs::PhysicsList();
+    if ((*bs::vm)["scoring"].as<bool>())
+        physicsList->RegisterPhysics(new G4ParallelWorldPhysics(parallelWorldName));
 
     auto* runManager = G4RunManagerFactory::CreateRunManager(
         G4RunManagerType::Default);
 
     runManager->SetUserInitialization(detector);
 
-    runManager->SetUserInitialization(new bs::PhysicsList);
+    runManager->SetUserInitialization(physicsList);
 
     runManager->SetUserInitialization(new bs::ActionInitialization(&localScore));
 
     runManager->Initialize();
 
-    int nParticles = (*bs::vm)["nParticles"].as<int>();
-    runManager->BeamOn(nParticles);
+    G4VisManager* visManager = new G4VisExecutive();
+    visManager->Initialize();
 
+    if(ui)
+    {
+        G4String command = "/control/execute ./vis.mac";
+        G4UImanager::GetUIpointer()->ApplyCommand(command);
+        ui->SessionStart();
+        delete ui;
+    }
+    else
+    {
+        int nParticles = (*bs::vm)["nParticles"].as<int>();
+        runManager->BeamOn(nParticles);
+    }
+    
+    if (visManager)
+        delete visManager;
     delete runManager;
 
 
@@ -75,7 +99,8 @@ int main(int argc, char** argv)
         std::cerr << "Unable to open file: " << file.string() << std::endl;
 
     std::stringstream log;
-    log << "dimension (z, y, x) = (" << SegZ << dimXY << dimXY << ")" << std::endl;
+    log << "dimension (z, y, x) = (" << SegZ << ", " << 
+        dimXY << ", " << dimXY << ")" << std::endl;
     log << "data type : double" << std::endl;
     log << "offset = " << offset / cm << "cm" << std::endl;
     file = folder / fs::path("metadata.txt");
@@ -86,5 +111,5 @@ int main(int argc, char** argv)
         File.close();
     }
     else
-        std::cerr << "Unable to open file: " << file.string() << std::endl;
+        std::cerr << "Unable to open file: " << file.string() << " " << std::endl;
 }

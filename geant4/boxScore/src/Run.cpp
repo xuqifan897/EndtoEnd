@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <atomic>
 
 #include "G4SDManager.hh"
 #include "G4Threading.hh"
@@ -10,10 +11,13 @@
 #include "PhantomDef.h"
 #include "argparse.h"
 
+std::atomic<size_t> bs::Run::eventCounts(0);
+
 bs::Run::Run()
 {
     int dimXY = (*bs::vm)["dimXY"].as<int>();
     int SegZ = (*bs::vm)["SegZ"].as<int>();
+    this->logFreq = (*bs::vm)["logFreq"].as<int>();
     this->HitsMaps.reserve(dimXY*SegZ);
     for (int i=0; i<dimXY*SegZ; i++)
     {
@@ -37,7 +41,19 @@ void bs::Run::RecordEvent(const G4Event* anEvent)
         auto hitsCollection = static_cast<G4THitsMap<G4double>*>(
             anEvent->GetHCofThisEvent()->GetHC(HCID));
         *std::get<2>(this->HitsMaps[i]) += *hitsCollection;
+
+        // // for debug purposes
+        // const auto & hitsmap = *(*hitsCollection).GetMap();
+        // for (auto& it : hitsmap)
+        // {
+        //     if (*(it.second) != 0.0)
+        //         std::cout << "i = " << i << ", idx = " << it.first 
+        //             << ", value = " << *(it.second) << std::endl;
+        // }
     }
+    size_t currentIdx = eventCounts.fetch_add(1);
+    if (currentIdx % this->logFreq == 0)
+        G4cout << "Event number: " << currentIdx << G4endl;
 }
 
 void bs::Run::Merge(const G4Run* aRun)

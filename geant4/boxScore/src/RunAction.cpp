@@ -27,7 +27,7 @@ void bs::RunAction::EndOfRunAction(const G4Run* aRun)
         for (int i=0; i<HitsMaps.size(); i++)
         {
             const auto & hitsmap = *std::get<2>(HitsMaps[i]);
-            for (auto it : *(hitsmap.GetMap()))
+            for (auto& it : *(hitsmap.GetMap()))
                 (*this->LocalScore)[offset + it.first] = *(it.second);
             offset += barSize;
         }

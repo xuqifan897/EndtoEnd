@@ -14,9 +14,6 @@ bs::PrimaryGeneratorAction::PrimaryGeneratorAction()
     float energy = (*vm)["Energy"].as<float>() * MeV;
     this->SAD = (*vm)["SAD"].as<float>() * cm;
     this->beamletSize = (*vm)["beamlet-size"].as<float>() * cm;
-    float SizeZ = 0.;
-    for (int i=0; i<bs::GD->layers.size(); i++)
-        SizeZ += std::get<1>(bs::GD->layers[i]);
 
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
     std::string particleName;
@@ -24,7 +21,7 @@ bs::PrimaryGeneratorAction::PrimaryGeneratorAction()
         = particleTable->FindParticle(particleName="gamma");
     this->fParticleGun->SetParticleDefinition(particle);
     this->fParticleGun->SetParticleEnergy(energy);
-    this->fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., SizeZ - this->SAD));
+    this->fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., - this->SAD));
 }
 
 bs::PrimaryGeneratorAction::~PrimaryGeneratorAction()
@@ -37,6 +34,6 @@ void bs::PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     // momentum sampling
     float isoplaneX = this->beamletSize * (G4UniformRand() - 0.5) * 2;
     float isoplaneY = this->beamletSize * (G4UniformRand() - 0.5) * 2;
-    this->fParticleGun->SetParticlePosition(G4ThreeVector(isoplaneX, isoplaneY, this->SAD));
+    this->fParticleGun->SetParticleMomentumDirection(G4ThreeVector(isoplaneX, isoplaneY, this->SAD));
     this->fParticleGun->GeneratePrimaryVertex(anEvent);
 }

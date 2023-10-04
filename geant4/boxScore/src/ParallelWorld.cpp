@@ -1,5 +1,6 @@
 #include "ParallelWorld.h"
 #include "argparse.h"
+#include "PhantomDef.h"
 
 #include "G4VPhysicalVolume.hh"
 #include "G4ThreeVector.hh"
@@ -14,10 +15,15 @@
 #include "G4PSEnergyDeposit.hh"
 
 bs::ParallelWorld::ParallelWorld(G4String& parallelWorldName, float offset, int dimz)
-: G4VUserParallelWorld(parallelWorldName), Offset(offset), DimZ(dimz)
+: G4VUserParallelWorld(parallelWorldName), DimZ(dimz)
 {
     this->DimXY = (*bs::vm)["dimXY"].as<int>();
     this->voxelSize = (*bs::vm)["voxelSize"].as<float>() * cm;
+
+    float thickness = 0.;
+    for (int i=0; i<GD->layers.size(); i++)
+        thickness += std::get<1>(GD->layers[i]);
+    this->Offset = - thickness + offset;
 }
 
 void bs::ParallelWorld::Construct()
@@ -71,24 +77,25 @@ void bs::ParallelWorld::Construct()
                 2*this->voxelSize);  // width
             this->logicals.push_back(elementLV);
         }
+        G4cout << "Slab offset: " << offsetZ / cm << " cm" << G4endl;
     }
 }
 
 void bs::ParallelWorld::ConstructSD()
 {
     auto SDMpointer = G4SDManager::GetSDMpointer();
-    SDMpointer->SetVerboseLevel(1);
+    SDMpointer->SetVerboseLevel(0);
     
     for (int i=0; i<this->logicals.size(); i++)
     {
         std::string SDname = std::string("SD") + std::to_string(i+1);
         auto senseDet = new G4MultiFunctionalDetector(SDname);
-        SDMpointer->AddNewDetector(senseDet);
 
         G4VPrimitiveScorer* primitive;
         primitive = new G4PSEnergyDeposit("Edep");
         senseDet->RegisterPrimitive(primitive);
 
+        SDMpointer->AddNewDetector(senseDet);
         SetSensitiveDetector(this->logicals[i], senseDet);
     }
 }

@@ -114,7 +114,7 @@ G4VPhysicalVolume* bs::DetectorConstruction::Construct()
         0,  // copy number
         checkOverlaps);  // checking overlaps
 
-    float offsetTotal = 0;
+    float offsetTotal = -thickness;
     for (int i=0; i<GD->layers.size(); i++)
     {
         const std::string& matName = std::get<0>(GD->layers[i]);

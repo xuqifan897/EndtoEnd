@@ -2,6 +2,7 @@
 #define Run_h
 
 #include <vector>
+#include <atomic>
 
 #include "G4Run.hh"
 #include "G4THitsMap.hh"
@@ -23,6 +24,8 @@ namespace bs
     private:
         // hit collection id
         std::vector<std::tuple<std::string, int, G4THitsMap<double>*>> HitsMaps;
+        static std::atomic<size_t> eventCounts;
+        int logFreq;
     };
 }
 

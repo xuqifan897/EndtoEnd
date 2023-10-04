@@ -21,6 +21,8 @@ int bs::argsInit(int argc, char** argv)
             "the value of primary photon energy [MeV].")
         ("nParticles", po::value<int>()->default_value(1),
             "The number of particles to simulate")
+        ("scoring", po::value<bool>()->default_value(true),
+            "whether to score or not.")
         
         // Geometry
         ("voxelSize", po::value<float>()->default_value(0.05), "Sensitive detector "
@@ -35,7 +37,8 @@ int bs::argsInit(int argc, char** argv)
         
         // The following block is for logging
         ("resultFolder", po::value<std::string>()->required(),
-            "The folder to which we write results");
+            "The folder to which we write results")
+        ("logFreq", po::value<int>()->default_value(100000), "the log frequency.");
     
     vm = new po::variables_map();
     po::store(po::parse_command_line(argc, argv, desc), *vm);
