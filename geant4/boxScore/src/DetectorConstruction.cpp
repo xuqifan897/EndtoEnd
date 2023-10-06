@@ -64,7 +64,7 @@ G4VPhysicalVolume* bs::DetectorConstruction::Construct()
     lung->AddElement(elH, 2);
     lung->AddElement(elO, 1);
 
-    std::map<std::string, G4Material*> LUTmat = {
+    this->LUTmat = {
         {"air", air},
         {"water", water},
         {"adipose", adipose},
@@ -86,8 +86,6 @@ G4VPhysicalVolume* bs::DetectorConstruction::Construct()
             "si::GeomDef();\" before the detector construction" << G4endl;
         exit(1);
     }
-
-    bool checkOverlaps = false;
 
     // get the thickness of all slices
     float thickness = 0.;
@@ -112,34 +110,216 @@ G4VPhysicalVolume* bs::DetectorConstruction::Construct()
         nullptr,  // no mother volume
         false,  // no boolean operator
         0,  // copy number
-        checkOverlaps);  // checking overlaps
+        false);  // checking overlaps
+    
+    SenseAssign(worldLV);
 
-    float offsetTotal = -thickness;
+    return worldPV;
+}
+
+void bs::DetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
+{
+    float SizeZ = 0.;
+    for (int i=0; i<GD->layers.size(); i++)
+        SizeZ += std::get<1>(GD->layers[i]);
+    
+    float voxelSize = (*bs::vm)["voxelSize"].as<float>() * cm;
+    int DimZ = static_cast<int>(std::round(SizeZ / voxelSize));
+    int DimOffset = static_cast<int>(std::round(this->offset / voxelSize));
+    int DimThickness = static_cast<int>(std::round(this->thickness / voxelSize));
+
+    // firstly, divide the layers into sub layers, 
+    // each represented by its material name
+    std::vector<std::string> subLayers(DimZ);
+    int currentIdx = 0;
     for (int i=0; i<GD->layers.size(); i++)
     {
-        const std::string& matName = std::get<0>(GD->layers[i]);
-        const float layerThick = std::get<1>(GD->layers[i]);
-
-        std::string layerName = "layer" + std::to_string(i+1);
-        auto* layerMat = LUTmat[matName];
-        auto layerS = new G4Box(layerName, sizeXY, sizeXY, layerThick);
-        auto layerLV = new G4LogicalVolume(
-            layerS,
-            layerMat,
-            layerName);
-        float offset = offsetTotal + layerThick;
-        new G4PVPlacement(
-            nullptr,
-            G4ThreeVector(0., 0., offset),
-            layerLV,
-            layerName,
-            worldLV,
-            false,
-            0,
-            checkOverlaps);
-        offsetTotal += 2 * layerThick;
-        G4cout << "layer: " << i << ", material: " << matName << 
-            ", offset: " << offset / cm << "cm" << G4endl;
+        float layerThickness = std::get<1>(GD->layers[i]);
+        std::string& material = std::get<0>(GD->layers[i]);
+        int layerDimZ = static_cast<int>(layerThickness / voxelSize);
+        for (int j=0; j<layerDimZ; j++)
+            subLayers[currentIdx + j] = material;
+        currentIdx += layerDimZ;
     }
-    return worldPV;
+
+    // then, we take out the part to be scored.
+    std::vector<std::string> PreLayers(DimOffset);
+    std::copy(subLayers.begin(), subLayers.begin()+DimOffset, PreLayers.begin());
+
+    std::vector<std::string> ScoringLayers(DimThickness);
+    std::copy(subLayers.begin() + DimOffset, subLayers.begin() + 
+        DimOffset + DimThickness, ScoringLayers.begin());
+
+    std::vector<std::string> PostLayers(DimZ - DimOffset - DimThickness);
+    std::copy(subLayers.begin() + DimOffset + DimThickness, 
+        subLayers.end(), PostLayers.begin());
+
+    // then, we merge adjacent layers of the same material
+    std::vector<std::tuple<std::string, int>> PreLayersMerge;
+    LayerMerge(PreLayersMerge, PreLayers);
+
+    std::vector<std::tuple<std::string, int>> PostLayersMerge;
+    LayerMerge(PostLayersMerge, PostLayers);
+    
+    int Idx = 0;
+    int DimXY = (*bs::vm)["dimXY"].as<int>();
+    float SizeXY = DimXY * voxelSize;
+    float currentOffset = -SizeZ;
+    G4cout << "Pre-scoring layers:" << G4endl;
+    for (auto& it : PreLayersMerge)
+    {
+        std::string& materialName = std::get<0>(it);
+        int thickDim = std::get<1>(it);
+        float thickPhysical = thickDim * voxelSize;
+        float localOffset = currentOffset + thickPhysical;
+
+        auto MatPhysical = this->LUTmat[materialName];
+        std::string layerName = "layer_" + std::to_string(++Idx);
+        auto layerS = new G4Box(layerName, SizeXY, SizeXY, voxelSize);
+        auto layerLV = new G4LogicalVolume(layerS, MatPhysical, layerName);
+        G4PVPlacement(
+            nullptr,  //no rotation
+            G4ThreeVector(0., 0., localOffset),  // displacement
+            layerLV,  // its logical volume
+            layerName,   // its name
+            worldLogical,  // its mother volume
+            false,  // no boolean operation
+            0,  // copy number
+            false);
+
+        currentOffset += 2 * thickPhysical;
+
+        G4cout << "material: " << std::left << std::setw(10) << materialName << "thickness(cm): " 
+            << std::left << std::setw(10) << thickPhysical / cm  << 
+            "offset(cm)" << std::left << std::setw(10) << localOffset / cm << G4endl;
+    }
+
+    G4cout << G4endl << "Scoring layers:" << G4endl;
+    this->logicals.reserve(DimThickness * DimXY);
+    for (auto& it : ScoringLayers)
+    {
+        std::string& materialName = it;
+        int thickDim = 1;
+        float thickPhysical = thickDim * voxelSize;
+        float localOffset = currentOffset + thickPhysical;
+        int layerIdx = ++Idx;
+
+        auto MatPhysical = this->LUTmat[materialName];
+        for (int ii=0; ii<DimXY; ii++)
+        {
+            float OffsetY = -SizeXY + (2*ii+1) * voxelSize;
+            std::string layerName = "layer_" + std::to_string(layerIdx) + "_" + std::to_string(ii+1);
+            auto layerS = new G4Box(layerName, SizeXY, voxelSize, voxelSize);
+            auto layerLV = new G4LogicalVolume(layerS, MatPhysical, layerName);
+            new G4PVPlacement(
+                nullptr,  // no rotation
+                G4ThreeVector(0., OffsetY, localOffset),  // displacement
+                layerLV,  // its logical volume
+                layerName,  // its name
+                worldLogical,  // its mother volume
+                false,  // no boolean operation
+                0,  // copy number
+                false);
+            
+            std::string elementName = "element_" + std::to_string(layerIdx) + "_" + std::to_string(ii);
+            auto elementS = new G4Box(elementName, voxelSize, voxelSize, voxelSize);
+            auto elementLV = new G4LogicalVolume(elementS, MatPhysical, elementName);
+            new G4PVReplica(elementName, elementLV, layerLV, kXAxis, DimXY, 2*voxelSize);
+
+            this->logicals.push_back(elementLV);
+        }
+
+        currentOffset += 2 * thickPhysical;
+
+        G4cout << "material: " << std::left << std::setw(10) << it << "thickness(cm): " 
+            << std::left << std::setw(10) << thickPhysical / cm 
+            << "offset(cm):" << localOffset / cm << G4endl;
+    }
+
+    G4cout << G4endl << "Post-scoring layers:" << G4endl;
+    for (auto& it : PostLayersMerge)
+    {
+        std::string& materialName = std::get<0>(it);
+        int thickDim = std::get<1>(it);
+        float thickPhysical = thickDim * voxelSize;
+        float localOffset = currentOffset + thickPhysical;
+
+        auto MatPhysical = this->LUTmat[materialName];
+        std::string layerName = "layer_" + std::to_string(++Idx);
+        auto layerS = new G4Box(layerName, SizeXY, SizeXY, voxelSize);
+        auto layerLV = new G4LogicalVolume(layerS, MatPhysical, layerName);
+        G4PVPlacement(
+            nullptr,  //no rotation
+            G4ThreeVector(0., 0., localOffset),  // displacement
+            layerLV,  // its logical volume
+            layerName,   // its name
+            worldLogical,  // its mother volume
+            false,  // no boolean operation
+            0,  // copy number
+            false);
+
+        currentOffset += 2 * thickPhysical;
+
+        G4cout << "material: " << std::left << std::setw(10) << materialName << "thickness(cm): " 
+            << std::left << std::setw(10) << thickPhysical / cm  << 
+            "offset(cm)" << std::left << std::setw(10) << localOffset / cm << G4endl;
+    }
+}
+
+void bs::DetectorConstruction::LayerMerge(
+    std::vector<std::tuple<std::string, int>>& result, 
+    std::vector<std::string>& input)
+{
+    result.clear();
+    if (input.size() == 0)
+        return;
+    int lastIdx = 0;
+    int currentIdx = 0;
+    while (true)
+    {
+        std::string initMat = input[lastIdx];
+        bool flag = false;
+        while (true)
+        {
+            if (currentIdx == input.size())
+            {
+                int thickness = currentIdx - lastIdx;
+                if (thickness != 0)
+                    result.push_back(std::make_tuple(initMat, thickness));
+                flag = true;
+                break;
+            }
+
+            if (input[currentIdx] == initMat)
+                currentIdx += 1;
+            else
+            {
+                int thickness = currentIdx - lastIdx;
+                result.push_back(std::make_tuple(initMat, thickness));
+                lastIdx = currentIdx;
+                break;
+            }
+        }
+        if (flag)
+            break;
+    }
+}
+
+void bs::DetectorConstruction::ConstructSDandField()
+{
+    auto SDMpointer = G4SDManager::GetSDMpointer();
+    SDMpointer->SetVerboseLevel(1);
+
+    for (int i=0; i<this->logicals.size(); i++)
+    {
+        std::string SDname = std::string("SD") + std::to_string(i+1);
+        auto senseDet = new G4MultiFunctionalDetector(SDname);
+        
+        G4VPrimitiveScorer* primitive;
+        primitive = new G4PSEnergyDeposit("Edep");
+        senseDet->RegisterPrimitive(primitive);
+
+        SDMpointer->AddNewDetector(senseDet);
+        SetSensitiveDetector(this->logicals[i], senseDet);
+    }
 }

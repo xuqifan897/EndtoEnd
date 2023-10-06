@@ -14,7 +14,7 @@ target_include_directories(boxScore PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(boxScore PRIVATE ${Boost_INCLUDE_DIR})
 target_link_libraries(boxScore ${Boost_LIBRARIES})
 
-option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" ON)
+option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" OFF)
 if(WITH_GEANT4_UIVIS)
   find_package(Geant4 REQUIRED ui_all vis_all)
 else()

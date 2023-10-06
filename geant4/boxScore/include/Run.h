@@ -20,11 +20,11 @@ namespace bs
         const std::vector<std::tuple<std::string, int, G4THitsMap<G4double>*>>&
             getHitsMaps() const
             {return this->HitsMaps;}
-    
+            
+        static std::atomic<size_t> eventCounts;
     private:
         // hit collection id
         std::vector<std::tuple<std::string, int, G4THitsMap<double>*>> HitsMaps;
-        static std::atomic<size_t> eventCounts;
         int logFreq;
     };
 }

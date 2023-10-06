@@ -1,18 +1,13 @@
 #!/bin/bash
 
-if true ; then
-./build/boxScore \
-    --nParticles 10000000 \
-    --scoring false \
-    --SegZ 20 \
-    --resultFolder /data/qifan/projects/EndtoEnd/results/slabBench/patient1_g4
+resultFolder="/data/qifan/projects/EndtoEnd/results/slabBench/patient1_g4"
+if [ ! -d ${resultFolder} ]; then
+    mkdir ${resultFolder}
 fi
+logFile="${resultFolder}/log.txt"
 
-if false ; then
-gdb --args ./build/boxScore \
+( time ./build/boxScore \
     --nParticles 10000000 \
-    --SegZ 20 \
-    --resultFolder /data/qifan/projects/EndtoEnd/results/slabBench/patient1_g4
-fi
-
-# break /data/qifan/projects/EndtoEnd/geant4/boxScore/src/Run.cpp:46
+    --SegZ 16 \
+    --resultFolder ${resultFolder}
+) 2>&1 > ${logFile} &

@@ -30,7 +30,7 @@ int bs::argsInit(int argc, char** argv)
             "the parallel world. sizes are in half values [cm]")
         ("dimXY", po::value<int>()->default_value(256), "the X and Y dimension of "
             "the sensitive detectors")
-        ("SegZ", po::value<int>()->default_value(256), "The number of Z detector "
+        ("SegZ", po::value<int>()->default_value(16), "The number of Z detector "
             "elements in the parallel sensitive detector")
         ("SAD", po::value<float>()->default_value(100.), "Source-to-Axis distance [cm]")
         ("beamlet-size", po::value<float>()->default_value(.05), "beamlet size, in half value [cm]")

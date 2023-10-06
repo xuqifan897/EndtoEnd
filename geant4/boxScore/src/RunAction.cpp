@@ -18,7 +18,7 @@ void bs::RunAction::BeginOfRunAction(const G4Run* aRun)
 
 void bs::RunAction::EndOfRunAction(const G4Run* aRun)
 {
-    if (this->isMaster)
+    if (this->isMaster && (*bs::vm)["scoring"].as<bool>())
     {
         const Run* masterRun = static_cast<const Run *>(aRun);
         auto& HitsMaps = masterRun->getHitsMaps();
