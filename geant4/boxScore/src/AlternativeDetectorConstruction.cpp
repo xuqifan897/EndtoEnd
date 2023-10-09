@@ -25,11 +25,11 @@
 #include "G4PSEnergyDeposit.hh"
 #include "G4VUserDetectorConstruction.hh"
 
-#include "DetectorConstruction.h"
+#include "AlternaltiveDetectorConstruction.h"
 #include "PhantomDef.h"
 #include "argparse.h"
 
-G4VPhysicalVolume* bs::DetectorConstruction::Construct()
+G4VPhysicalVolume* bs::AlternativeDetectorConstruction::Construct()
 {
     G4NistManager* nist = G4NistManager::Instance();
     G4Material* air = nist->FindOrBuildMaterial("G4_AIR");
@@ -117,7 +117,7 @@ G4VPhysicalVolume* bs::DetectorConstruction::Construct()
     return worldPV;
 }
 
-void bs::DetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
+void bs::AlternativeDetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
 {
     float SizeZ = 0.;
     for (int i=0; i<GD->layers.size(); i++)
@@ -200,6 +200,7 @@ void bs::DetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
             "offset(cm)" << std::left << std::setw(10) << localOffset / cm << G4endl;
     }
 
+#if true
     G4cout << G4endl << "Scoring layers:" << G4endl;
     this->logicals.reserve(DimThickness * DimXY);
     for (auto& it : ScoringLayers)
@@ -227,19 +228,19 @@ void bs::DetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
                 0,  // copy number
                 false);
             
-            std::string elementName = "element_" + std::to_string(layerIdx) + "_" + std::to_string(ii+1);
-            auto elementS = new G4Box(elementName, voxelSize, voxelSize, voxelSize);
-            auto elementLV = new G4LogicalVolume(elementS, MatPhysical, elementName);
-            new G4PVReplica(elementName, elementLV, layerLV, kXAxis, DimXY, 2*voxelSize);
+            // std::string elementName = "element_" + std::to_string(layerIdx) + "_" + std::to_string(ii+1);
+            // auto elementS = new G4Box(elementName, voxelSize, voxelSize, voxelSize);
+            // auto elementLV = new G4LogicalVolume(elementS, MatPhysical, elementName);
+            // new G4PVReplica(elementName, elementLV, layerLV, kXAxis, DimXY, 2*voxelSize);
 
             // set visualization properties
             G4VisAttributes* layer_logVisAtt 
                 = new G4VisAttributes(G4Colour(1., 0., 0., .3));
             layer_logVisAtt->SetForceWireframe(true);
             layerLV->SetVisAttributes(layer_logVisAtt);
-            elementLV->SetVisAttributes(layer_logVisAtt);
+            // elementLV->SetVisAttributes(layer_logVisAtt);
 
-            this->logicals.push_back(elementLV);
+            // this->logicals.push_back(elementLV);
         }
 
         currentOffset += 2 * thickPhysical;
@@ -248,6 +249,9 @@ void bs::DetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
             << std::left << std::setw(10) << thickPhysical / cm 
             << "offset(cm):" << localOffset / cm << G4endl;
     }
+#else
+    currentOffset += 2 * this->thickness;
+#endif
 
     G4cout << G4endl << "Post-scoring layers:" << G4endl;
     for (auto& it : PostLayersMerge)
@@ -285,7 +289,8 @@ void bs::DetectorConstruction::SenseAssign(G4LogicalVolume* worldLogical)
     }
 }
 
-void bs::DetectorConstruction::LayerMerge(
+
+void bs::AlternativeDetectorConstruction::LayerMerge(
     std::vector<std::tuple<std::string, int>>& result, 
     std::vector<std::string>& input)
 {
@@ -321,24 +326,5 @@ void bs::DetectorConstruction::LayerMerge(
         }
         if (flag)
             break;
-    }
-}
-
-void bs::DetectorConstruction::ConstructSDandField()
-{
-    auto SDMpointer = G4SDManager::GetSDMpointer();
-    SDMpointer->SetVerboseLevel(1);
-
-    for (int i=0; i<this->logicals.size(); i++)
-    {
-        std::string SDname = std::string("SD") + std::to_string(i+1);
-        auto senseDet = new G4MultiFunctionalDetector(SDname);
-        
-        G4VPrimitiveScorer* primitive;
-        primitive = new G4PSEnergyDeposit("Edep");
-        senseDet->RegisterPrimitive(primitive);
-
-        SDMpointer->AddNewDetector(senseDet);
-        SetSensitiveDetector(this->logicals[i], senseDet);
     }
 }

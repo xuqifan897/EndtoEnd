@@ -100,27 +100,15 @@
 /vis/set/lineWidth     # Revert to default line width (1.)
 #
 # Attach text to one edge of Shape1, with a small, fixed offset
-/vis/scene/add/text 0 6 -4 cm 18 4 4 Shape1
+# /vis/scene/add/text 0 6 -4 cm 18 4 4 Shape1
 # Attach text to one corner of Shape2, with a small, fixed offset
-/vis/scene/add/text 6 7 10 cm 18 4 4 Shape2
+# /vis/scene/add/text 6 7 10 cm 18 4 4 Shape2
 #
 # To get nice view
 # Make the "World" box invisible
 /vis/geometry/set/visibility World 0 false
 # "Envelope" is transparent blue to represent water
-/vis/geometry/set/colour Envelope 0 0 0 0 .3
-
-/vis/geometry/set/colour layer0 0 0 0 1 .3
-/vis/geometry/set/colour layer1 0 0 1 0 .3
-/vis/geometry/set/colour layer2 0 1 0 0 .3
-/vis/geometry/set/colour layer4 1 0 0 0 .3
-/vis/geometry/set/colour layer5 0 0 0 1 .3
-/vis/geometry/set/colour layer6 0 0 1 0 .3
-/vis/geometry/set/colour layer7 0 1 0 0 .3
-/vis/geometry/set/colour layer8 1 0 0 0 .3
-/vis/geometry/set/colour layer9 0 0 0 1 .3
-/vis/geometry/set/colour layer10 0 0 1 0 .3
-
+# /vis/geometry/set/colour Envelope 0 0 0 1 .3
 /vis/viewer/set/style surface
 /vis/viewer/set/hiddenMarker true
 /vis/viewer/set/viewpointThetaPhi 120 150

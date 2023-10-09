@@ -1,6 +1,8 @@
 #ifndef PrimaryGeneratorAction_h
 #define PrimaryGeneratorAction_h 1
 
+#include <atomic>
+
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "G4ParticleGun.hh"
 
@@ -13,11 +15,15 @@ namespace bs
         virtual ~PrimaryGeneratorAction() override;
 
         void GeneratePrimaries(G4Event*) override;
+
+        int tellInterval(size_t phoCnt, bool& change);
     
     private:
         G4ParticleGun* fParticleGun;
         float beamletSize;  // half value
         float SAD;
+
+        static std::atomic<size_t> particleCount;
     };
 }
 

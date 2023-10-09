@@ -21,8 +21,10 @@ int bs::argsInit(int argc, char** argv)
             "the value of primary photon energy [MeV].")
         ("nParticles", po::value<int>()->default_value(1),
             "The number of particles to simulate")
-        ("scoring", po::value<bool>()->default_value(true),
-            "whether to score or not.")
+        ("gui", po::value<bool>()->default_value(false),
+            "whether to use GUI or not. If false, run batch mode")
+        ("dummy", po::value<bool>()->default_value(false),
+            "Use simpler geometry for visualization.")
         
         // Geometry
         ("voxelSize", po::value<float>()->default_value(0.05), "Sensitive detector "
@@ -33,12 +35,15 @@ int bs::argsInit(int argc, char** argv)
         ("SegZ", po::value<int>()->default_value(16), "The number of Z detector "
             "elements in the parallel sensitive detector")
         ("SAD", po::value<float>()->default_value(100.), "Source-to-Axis distance [cm]")
-        ("beamlet-size", po::value<float>()->default_value(.05), "beamlet size, in half value [cm]")
+        ("beamlet-size", po::value<float>()->default_value(.25), "beamlet size, in half value [cm]")
         
         // The following block is for logging
         ("resultFolder", po::value<std::string>()->required(),
             "The folder to which we write results")
-        ("logFreq", po::value<int>()->default_value(100000), "the log frequency.");
+        ("logFreq", po::value<int>()->default_value(100000), "the log frequency.")
+        ("iteration", po::value<int>()->default_value(0), 
+            "We score the dose within one block in one iteration. "
+            "This variable indicates the iteration index of the current execution.");
     
     vm = new po::variables_map();
     po::store(po::parse_command_line(argc, argv, desc), *vm);

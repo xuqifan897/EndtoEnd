@@ -20,15 +20,12 @@ bs::Run::Run()
     this->logFreq = (*bs::vm)["logFreq"].as<int>();
     this->HitsMaps.clear();
 
-    if ((*bs::vm)["scoring"].as<bool>())
+    this->HitsMaps.reserve(dimXY*SegZ);
+    for (int i=0; i<dimXY*SegZ; i++)
     {
-        this->HitsMaps.reserve(dimXY*SegZ);
-        for (int i=0; i<dimXY*SegZ; i++)
-        {
-            std::string name = "SD" + std::to_string(i+1) + "/Edep";
-            int id = G4SDManager::GetSDMpointer()->GetCollectionID(name);
-            this->HitsMaps.push_back(std::make_tuple(name, id, new G4THitsMap<G4double>()));
-        }
+        std::string name = "SD" + std::to_string(i+1) + "/Edep";
+        int id = G4SDManager::GetSDMpointer()->GetCollectionID(name);
+        this->HitsMaps.push_back(std::make_tuple(name, id, new G4THitsMap<G4double>()));
     }
 }
 

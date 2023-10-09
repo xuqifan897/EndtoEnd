@@ -24,6 +24,10 @@ namespace bs
     };
 
     extern GeomDef* GD;
+
+    // a description of the spectrum. Energy, energy fluence, 
+    // number fluence, cummulative number fluence
+    extern std::vector<std::tuple<float, float, int, int>> Spec;
 }
 
 #endif
