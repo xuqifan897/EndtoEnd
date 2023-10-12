@@ -327,7 +327,7 @@ void bs::DetectorConstruction::LayerMerge(
 void bs::DetectorConstruction::ConstructSDandField()
 {
     auto SDMpointer = G4SDManager::GetSDMpointer();
-    SDMpointer->SetVerboseLevel(1);
+    SDMpointer->SetVerboseLevel(0);
 
     for (int i=0; i<this->logicals.size(); i++)
     {

@@ -41,3 +41,12 @@ include(${Geant4_USE_FILE})
 #
 target_include_directories(waterPoint PRIVATE ${Geant4_INCLUDE_DIR})
 target_link_libraries(waterPoint ${Geant4_LIBRARIES})
+
+
+# For point dose convolution
+add_executable(slabPointTab slabPointTab.cpp ${sources} ${headers})
+target_include_directories(slabPointTab PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(slabPointTab PRIVATE ${Boost_INCLUDE_DIR})
+target_link_libraries(slabPointTab ${Boost_LIBRARIES})
+target_include_directories(slabPointTab PRIVATE ${Geant4_INCLUDE_DIR})
+target_link_libraries(slabPointTab ${Geant4_LIBRARIES})
