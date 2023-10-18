@@ -293,7 +293,10 @@ def IPBConvExam():
     depth = (np.arange(MCShape[0]) + 0.5) * resolution
     plt.plot(depth, CCCSDoseLine)
     plt.plot(depth, beamDoseLine)
-    # plt.plot(depth, scale)
+    plt.xlabel('depth (cm)')
+    plt.ylabel('dose (a.u.)')
+    plt.legend(['CCCS', 'Monte Carlo'])
+    plt.title('depth dose beamlet 1.0 cm')
     figureFile = os.path.join(IPBFolder, 'IPBconvInverseSquare.png')
     plt.savefig(figureFile)
     plt.clf()
@@ -306,7 +309,7 @@ def IPBG4Exam():
     So we hypothesize that the CCCS dose could be calculated using a non-diverging 
     Terma distribution
     """
-    IPBFolder = '/data/qifan/projects/EndtoEnd/results/slabBench/slabPoly_1.0_250_1e8'
+    IPBFolder = '/data/qifan/projects/EndtoEnd/results/slabBench/slabPoly_1.0_200_1e8'
     MCShape = (256, 63, 63)
     datatype = np.double
 
@@ -375,7 +378,8 @@ def IPBG4Exam():
     result1, result2 = int(result1), int(result2)
     CCCSDoseLine = CCCSDose[result1, :, result2]
     CCCSDoseLine = CCCSDoseLine.copy()
-    CCCSDoseLine /= np.max(CCCSDoseLine)
+    CCCSroof = np.max(CCCSDoseLine)
+    CCCSDoseLine /= CCCSroof
 
     IPBDoseWidth = IPBDose.shape[1]
     idx = int((IPBDoseWidth-1)/2)
@@ -393,9 +397,32 @@ def IPBG4Exam():
     depth = (np.arange(MCShape[0]) + 0.5) * resolution
     plt.plot(depth, CCCSDoseLine)
     plt.plot(depth, IPBDoseLine)
+    plt.xlabel('depth (cm)')
+    plt.ylabel('dose (a.u.)')
+    plt.title('depth dose beamlet 1.0 cm')
     figureFile = os.path.join(IPBFolder, 'CCCSMCLong.png')
     plt.savefig(figureFile)
     plt.clf()
+
+    depthIdx = 100
+    
+    CCCSlateral = CCCSDose[result1, depthIdx, :] / CCCSroof
+    CCCSAxis = (np.arange(CCCSShape[2]) - result2 - 0.8) * resolution * 2
+    CCCSwidth = 20
+    CCCSBegin = int(result2 + 1 - CCCSwidth/2)
+    CCCSEnd = int(result2 + 1 + CCCSwidth/2)
+    plt.plot(CCCSAxis[CCCSBegin:CCCSEnd], CCCSlateral[CCCSBegin:CCCSEnd])
+    IPBlateral = IPBDose[depthIdx, idx, :] * scale
+    IPBAxis = (np.arange(MCShape[2]) - (MCShape[2]-1)/2) * resolution
+    IPBwidth = 40
+    IPBBegin = int((MCShape[2]-1-IPBwidth)/2)
+    IPBEnd = int((MCShape[2]-1+IPBwidth)/2)
+    plt.plot(IPBAxis[IPBBegin:IPBEnd], IPBlateral[IPBBegin:IPBEnd])
+    plt.xlabel('lateral distance (cm)')
+    plt.ylabel('dose (a.u.)')
+    plt.title('lateral beamlet 1.0 cm')
+    figureFile = os.path.join(IPBFolder, 'lateralSAD200window10.png')
+    plt.savefig(figureFile)
 
 
 if __name__ == '__main__':
@@ -403,5 +430,5 @@ if __name__ == '__main__':
     # doseConcat()
     # specVerify()
     # MC_CCCS_comp()
-    IPBConvExam()
-    # IPBG4Exam()
+    # IPBConvExam()
+    IPBG4Exam()

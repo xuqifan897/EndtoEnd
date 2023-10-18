@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if true ; then
-    resultFolder="/data/qifan/projects/EndtoEnd/results/slabBench/slabPoly_1.0_250_1e8"
+    resultFolder="/data/qifan/projects/EndtoEnd/results/slabBench/slabPoly_1.5_200_1e8"
     if [ ! -d ${resultFolder} ]; then
         mkdir ${resultFolder}
     fi
@@ -11,8 +11,8 @@ if true ; then
         ( time ./build/boxScore \
             --nParticles 100000000 \
             --dimXY 63 \
-            --SAD 250 \
-            --beamlet-size 0.5 \
+            --SAD 200 \
+            --beamlet-size 0.75 \
             --resultFolder ${resultFolder} \
             --iteration ${iteration} ) 2>&1 > ${logFile}
     done
