@@ -425,10 +425,71 @@ def IPBG4Exam():
     plt.savefig(figureFile)
 
 
+def visCCCSdose():
+    """
+    Due to the discrete nature of the CCCS algorithm, we expect that the dose 
+    distribution could not be isotropic in all C/S directions, instead, we 
+    expect radial branches. So here we take a look
+    """
+    CCCS_folder = '/data/qifan/projects/EndtoEnd/results/' \
+        'slabBench/slab_dosecalc_9_0.5'
+    FluenceDim = 9
+    CCCSDoseFile = os.path.join(CCCS_folder, 'Dose_Coefficients.h5')
+    beamletIdx = int((FluenceDim - 1) / 2 * FluenceDim + (FluenceDim - 1) / 2)
+    dataset = h5py.File(CCCSDoseFile, 'r')
+    dataset = dataset['beams']['data']
+    beam = dataset['beam_00000']
+    BeamletKey = 'beamlet_{:05d}'.format(beamletIdx)
+    beamlet = beam[BeamletKey]
+    coeffs = beamlet['coeffs'][()]
+    lindex = beamlet['lindex'][()]
+
+    CCCSShape = (256, 256, 256)
+    size = CCCSShape[0] * CCCSShape[1] * CCCSShape[2]
+    datatype = np.double
+    CCCSDose = np.zeros(size, dtype=datatype)
+    for key, value in zip(lindex, coeffs):
+        CCCSDose[key] = value
+    CCCSDose = np.reshape(CCCSDose, CCCSShape)
+
+    centralIdx = int(CCCSShape[1] / 2)
+    slice = CCCSDose[:, centralIdx, :]
+
+    resultFolder = '/data/qifan/projects/EndtoEnd/results/slabBench/CCCSslice'
+    if not os.path.isdir(resultFolder):
+        os.mkdir(resultFolder)
+    
+    file = os.path.join(resultFolder, 'slice.png')
+    plt.imsave(file, slice)
+    plt.clf()
+
+    cropSize = (20, 20)
+    leading = (int((CCCSShape[0] - cropSize[0])/2), int((CCCSShape[2] - cropSize[1])/2))
+    leading = np.array(leading)
+    leading += np.array((2, -3))
+    sliceCrop = slice[leading[0]: leading[0]+cropSize[0], leading[1]: leading[1]+cropSize[1]]
+    # then we enlarge it
+    enlargeFactor = 10
+    enlargeSize = enlargeFactor * np.array(cropSize)
+    sliceEnlarge = np.zeros(enlargeSize, dtype=sliceCrop.dtype)
+    for i in range(cropSize[0]):
+        for j in range(cropSize[1]):
+            sliceEnlarge[i*enlargeFactor: (i+1)*enlargeFactor, 
+                j*enlargeFactor: (j+1)*enlargeFactor] = sliceCrop[i, j]
+    file = os.path.join(resultFolder, 'sliceEnlarge.png')
+    plt.imsave(file, sliceEnlarge)
+    plt.clf()
+    
+    # file = os.path.join(resultFolder, 'sliceCrop.png')
+    # plt.imsave(file, sliceCrop)
+    # plt.clf()
+
+
 if __name__ == '__main__':
     # simpleView()
     # doseConcat()
     # specVerify()
     # MC_CCCS_comp()
     # IPBConvExam()
-    IPBG4Exam()
+    # IPBG4Exam()
+    visCCCSdose()
