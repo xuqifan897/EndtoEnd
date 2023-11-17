@@ -1,4 +1,5 @@
 #include "cudaInit.h"
+#include "kernel.h"
 #include <cuda_runtime.h>
 #include <vector>
 
@@ -148,4 +149,23 @@ int old::initCudaConstandTex(
     makeSurfObject(&(device_data.surfDose), device_data.dose_Array);
 
     return 1;
+}
+
+int old::freeCudaTexture()
+{
+    checkCudaErrors(cudaFree(device_data.revDens));
+    checkCudaErrors(cudaFree(device_data.revTerma));
+    checkCudaErrors(cudaDestroySurfaceObject(device_data.surfDose));
+    checkCudaErrors(cudaDestroyTextureObject(device_data.texDose));
+    checkCudaErrors(cudaDestroyTextureObject(device_data.texTerma));
+    checkCudaErrors(cudaFreeArray(device_data.dose_Array));
+    checkCudaErrors(cudaFreeArray(device_data.term_Array));
+
+    checkCudaErrors(cudaDestroyTextureObject(texDens));
+    checkCudaErrors(cudaFreeArray(d_dens_array));
+    checkCudaErrors(cudaDestroyTextureObject(texSpectrum));
+    checkCudaErrors(cudaFreeArray(d_spectrum_array));
+    checkCudaErrors(cudaDestroyTextureObject(texKern));
+    checkCudaErrors(cudaFreeArray(d_kern_array));
+    return 0;
 }

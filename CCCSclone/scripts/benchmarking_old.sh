@@ -1,7 +1,6 @@
 #!/bin/bash
 
 ./build/CCCSclone \
-    --debugLog true \
     --resultFolder /data/qifan/projects/EndtoEnd/results/CCCSclone/results \
     --dataFolder /data/qifan/projects/EndtoEnd/results/CCCSclone/tmp \
     --dicomVolumeDimension 103 103 103 \

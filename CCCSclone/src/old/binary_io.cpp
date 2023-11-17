@@ -49,3 +49,32 @@ int old::load_data(CONSTANTS* host, SHM_DATA* data)
 
     return 0;
 }
+
+int old::write_result(const std::vector<std::vector<std::vector<float>>>& result)
+{
+    int nBeams = result.size();
+    for (int dc=0; dc<nBeams; dc++)
+    {
+        fs::path beamFolder = Paths::Instance()->result_dir();
+        beamFolder = beamFolder / fs::path(std::string("beam") + std::to_string(dc));
+        if (! fs::is_directory(beamFolder))
+            fs::create_directories(beamFolder);
+        
+        const auto& beamData = result[dc];
+        int nBeamlets = beamData.size();
+        for (int i=0; i<nBeamlets; i++)
+        {
+            fs::path beamletFile = beamFolder / fs::path(std::string("beamlet") + 
+                std::to_string(i) + std::string(".bin"));
+            std::ofstream f(beamletFile.string());
+            if (! f)
+            {
+                std::cerr << "Cannot open file: " << beamletFile.string() << std::endl;
+                return 1;
+            }
+            f.write((char*)(beamData[i].data()), beamData[i].size()*sizeof(float));
+            f.close();
+        }
+    }
+    return 0;
+}

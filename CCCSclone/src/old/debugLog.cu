@@ -43,6 +43,20 @@ int old::datavols_log(CONSTANTS* constants, SHM_DATA* datavols)
     int volume = constants->size.x * constants->size.y * constants->size.z * sizeof(float);
     f.write((char*)(datavols->density.data()), volume);
     f.close();
+
+    output.clear();
+    for (int i=0; i<datavols->radial_boundary.size(); i++)
+        output << std::left << std::setw(12) << std::setprecision(4) << datavols->radial_boundary[i];
+    outputFile = fs::path(Paths::Instance()->result_dir());
+    outputFile = outputFile / fs::path("radial_boundary.txt");
+    f.open(outputFile.string());
+    if (! f)
+    {
+        std::cerr << "Could not open file: " << outputFile.string() << std::endl;
+        return 1;
+    }
+    f << output.str();
+    f.close();
     return 0;
 }
 

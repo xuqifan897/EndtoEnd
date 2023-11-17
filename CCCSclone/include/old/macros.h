@@ -19,4 +19,10 @@
 #define FORMAT_3VEC(v) "("<<v.x<<", "<<v.y<<", "<<v.z<<")"
 #define FORMAT_2VEC(v) "("<<v.x<<", "<<v.y<<")"
 
+#define fast_cosf(x)                cosf(x)
+#define fast_sinf(x)                sinf(x)
+#define fast_sincosf(x, sptr, cptr) sincosf(x, sptr, cptr)
+#define fast_powf(x, n)             powf(x, n)
+#define fast_sq(x)                  x*x
+
 #endif // __DOSECALCIO_MACROS_H__

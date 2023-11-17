@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     if (read_spectrum_file(&mono_kernels, 1) != 1)
     {
         std::cerr << "Failed reading spectrum file!\n" << std::endl;
-        exit(1);
+        return -1;
     }
 
     // Store copies of constant problem data and texture / surface references on GPU
@@ -73,6 +73,24 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    // // Start calculation
-    // old::radconvolveTexture(&mono_kernels, constants, beam_arr, nrays);
+    // prepare results
+    // order: beam -> beamlet
+    std::vector<std::vector<std::vector<float>>> result(beam_arr.size());
+
+    // Start calculation
+    bool unpack2Patient = dev::getarg<bool>("unpack2Patient");
+    old::radconvolveTexture(&mono_kernels, constants, beam_arr, nrays, unpack2Patient, result);
+
+    // Write result
+    if (unpack2Patient)
+        if (old::write_result(result))
+        {
+            std::cerr << "Failed in writing result to disk." << std::endl;
+            return -1;
+        }
+
+    old::freeCudaTexture();
+    delete constants;
+    delete datavols;
+    return 0;
 }

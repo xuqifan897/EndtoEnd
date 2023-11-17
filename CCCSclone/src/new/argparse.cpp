@@ -23,6 +23,7 @@ bool dev::argparse(int argc, char** argv)
         ("dataFolder", po::value<std::string>(), "The folder containing the necessary data (required)")
         ("resultFolder", po::value<std::string>(), "The folder to put result in (required)")
         ("deviceIdx", po::value<int>()->default_value(0), "The GPU idx for dose calculation. Here we only use 1 card.")
+        ("unpack2Patient", po::value<bool>()->default_value(true), "The flag to unpack the BEV dose to the patient volume")
         ("debugLog", po::value<bool>()->default_value(false), "whether to log the variables")
         ("dicomVolumeDimension", po::value<std::vector<int>>()->multitoken(), 
             "Dicom volume dimension, 3 digits (required)")
@@ -33,7 +34,7 @@ bool dev::argparse(int argc, char** argv)
         ("doseBoundingBoxDimensions", po::value<std::vector<int>>()->multitoken(),
             "Dose bounding box dimensions (required)")
         ("REVConvolutionArrayDimensions", po::value<std::vector<int>>()->multitoken(),
-            "REV convolution array dimensions (required)")
+            "Maximum REV convolution array dimensions (required)")
         ("convlat", po::value<float>()->default_value(0.25),
             "Convolution ray lateral spacing. [cm]")
         ("convstep", po::value<float>()->default_value(0.25),

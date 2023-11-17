@@ -17,6 +17,8 @@ namespace old
         bool         debug_write=false // write debug data to file
     );
 
+    int freeCudaTexture();
+
     struct DEVICE_CONV_DATA {
         /* float *terma; */
         float *dose;                    // storage of final dose for each beam
