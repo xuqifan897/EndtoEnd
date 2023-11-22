@@ -13,6 +13,7 @@ void old::Paths::Initialize()
     this->m_data_dir = fs::path(DATA_FOLDER);
     this->m_temp_dir = fs::path(dev::getarg<std::string>("dataFolder"));
     this->m_result_dir = fs::path(dev::getarg<std::string>("resultFolder"));
+    this->m_debug_dir = fs::path(dev::getarg<std::string>("debugFolder"));
 }
 
 old::Paths* old::Paths::Instance()

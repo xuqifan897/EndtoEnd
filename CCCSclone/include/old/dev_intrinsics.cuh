@@ -1,7 +1,7 @@
 #ifndef __CUDA_UTILITES_DEV_INTRINSICS_H__
 #define __CUDA_UTILITES_DEV_INTRINSICS_H__
 
-#include "macros.h"
+// #include "macros.h"
 #include "cuda_runtime.h"
 
 extern float __fmaf_rn(float x, float y, float z);

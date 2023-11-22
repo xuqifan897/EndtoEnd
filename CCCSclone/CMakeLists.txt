@@ -16,7 +16,7 @@ target_include_directories(CCCSclone PRIVATE
     ${PROJECT_SOURCE_DIR}/include/new)
 
 find_package(CUDA REQUIRED)
-set(CUDA_ARCHITECTURES 75)
+set(CUDA_ARCHITECTURES 89)
 target_include_directories(CCCSclone PRIVATE ${CUDA_INCLUDE_DIRS})
 
 find_package(Boost REQUIRED COMPONENTS program_options filesystem)

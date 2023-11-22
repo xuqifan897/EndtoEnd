@@ -75,19 +75,14 @@ int main(int argc, char** argv)
 
     // prepare results
     // order: beam -> beamlet
-    std::vector<std::vector<std::vector<float>>> result(beam_arr.size());
+    old::RES_LOG result(beam_arr.size());
 
     // Start calculation
-    bool unpack2Patient = dev::getarg<bool>("unpack2Patient");
-    old::radconvolveTexture(&mono_kernels, constants, beam_arr, nrays, unpack2Patient, result);
+    old::radconvolveTexture(&mono_kernels, constants, beam_arr, nrays, result);
 
-    // Write result
-    if (unpack2Patient)
-        if (old::write_result(result))
-        {
-            std::cerr << "Failed in writing result to disk." << std::endl;
-            return -1;
-        }
+    // write result
+    if (writeResults(result))
+        return 1;
 
     old::freeCudaTexture();
     delete constants;

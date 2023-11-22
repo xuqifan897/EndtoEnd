@@ -19,10 +19,22 @@
 #define FORMAT_3VEC(v) "("<<v.x<<", "<<v.y<<", "<<v.z<<")"
 #define FORMAT_2VEC(v) "("<<v.x<<", "<<v.y<<")"
 
-#define fast_cosf(x)                cosf(x)
-#define fast_sinf(x)                sinf(x)
-#define fast_sincosf(x, sptr, cptr) sincosf(x, sptr, cptr)
-#define fast_powf(x, n)             powf(x, n)
-#define fast_sq(x)                  x*x
+// use device intrinsics for device execution (faster but less accurate hardware solutions)
+// TODO: -x given to intrinsic cos/sin gives NaN (investigate if true)
+#if defined(__CUDA_ARCH__)
+    // use device intrinsics for device execution (faster but less accurate hardware solutions)
+    #define fast_cosf(x)                __cosf(x)
+    #define fast_sinf(x)                __sinf(x)
+    #define fast_sincosf(x, sptr, cptr) __sincosf(x, sptr, cptr)
+    #define fast_powf(x, n)             __powf(x, n)
+    #define fast_sq(x)                  __fmul_rn(x,x)
+#else
+    // fallback to helper_math.h definitions (which auto-fallback to host functions for gcc compiled code)
+    #define fast_cosf(x)                cosf(x)
+    #define fast_sinf(x)                sinf(x)
+    #define fast_sincosf(x, sptr, cptr) sincosf(x, sptr, cptr)
+    #define fast_powf(x, n)             powf(x, n)
+    #define fast_sq(x)                  x*x
+#endif
 
 #endif // __DOSECALCIO_MACROS_H__

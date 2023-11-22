@@ -3,6 +3,12 @@
 #include "cudaSiddon.cuh"
 #include "cudaInit.h"
 
+// variables held in each device's constant memory
+// (data init by host using cudaMemCpyToSymbol() in initCudaConstants)
+__constant__ float KERN_RADII[N_KERNEL_RADII];
+void old::kern_radii_init(const std::vector<float>& source)
+    { checkCudaErrors(cudaMemcpyToSymbol(KERN_RADII, source.data(), N_KERNEL_RADII*sizeof(float))); }
+
 #define INVALID     -1e-12;
 #define subvoxidx   (threadIdx.x)
 #define subvoxcount (blockDim.x)
@@ -102,7 +108,8 @@ old::cudaBeamletRaytrace(
     float3              rev_voxelsize,
     float3              f_calc_bbox_start,
     cudaTextureObject_t tex3Ddens,
-    cudaTextureObject_t tex3Dter,
+    // cudaTextureObject_t tex3Dter,
+    float3*             g_coords_log,
 
     float* d_fluence_map,
     float3 f_size,
@@ -158,6 +165,10 @@ old::cudaBeamletRaytrace(
                 /* raytrace_write(packbDens, -3.f); */
                 SET_INACTIVE_THREAD;
             }
+
+            if (g_coords_log != nullptr)
+                g_coords_log[out_idx] = pbev_idx;
+
             // get pillar index
             if (CHECK_ACTIVE_THREAD){
                 int2 pillar_idx = make_int2(
@@ -321,7 +332,7 @@ old::PackRowConvolve(float *bDens,
     uint ntheta,
     uint nphi,
     cudaTextureObject_t kernTex,
-    bool TERMA_ONLY
+    float* debugProbe
 )
 {
     // initialize doseArray to 0 since last convolution
@@ -347,10 +358,10 @@ old::PackRowConvolve(float *bDens,
     // check for pillar wall, invalid pillar, outside of pillar
     if (SHM_DENS(pack_tX) < 0.0f) { return; }
 
-    if (TERMA_ONLY) {
-        surf3Dwrite(SHM_TERM(pack_tX), surfDoseObj, sizeof(float) * pack_tX, pack_tY, pack_tZ, cudaBoundaryModeZero);
-        return;
-    }
+    // if (TERMA_ONLY) {
+    //     surf3Dwrite(SHM_TERM(pack_tX), surfDoseObj, sizeof(float) * pack_tX, pack_tY, pack_tZ, cudaBoundaryModeZero);
+    //     return;
+    // }
 
 	// determine convolution direction index, for sampling the poly-energetic dose deposition kernel
     float P = f_kern_wt_idx;
@@ -472,6 +483,9 @@ old::PackRowConvolve(float *bDens,
 
     // normalize by nphi
     sum /= nphi;
+
+    if (debugProbe != nullptr)
+        debugProbe[mem_idx] = sum;
 
 	// write the summed result out using a  object
     surf3Dwrite(sum, surfDoseObj, sizeof(float) * pack_tX, pack_tY, pack_tZ, cudaBoundaryModeTrap);

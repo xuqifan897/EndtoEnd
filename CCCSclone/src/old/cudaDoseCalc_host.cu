@@ -5,7 +5,11 @@
 #include "configure.h"
 #include "binary_io.h"
 #include "geometry.h"
+#include "debugLog.h"
 
+#include <iostream>
+#include <string>
+#include <iomanip>
 #include "cuda_runtime.h"
 #include "boost/filesystem.hpp"
 
@@ -16,8 +20,7 @@ int old::radconvolveTexture (
     CONSTANTS           *constants,
     std::vector<BEAM>&  beams,
     int                 nrays,
-    bool                unpack2Patient,
-    std::vector<std::vector<std::vector<float>>>& result)
+    RES_LOG& result)
 {
     float3 rev_voxelsize = {constants->rev_latspacing, 
         constants->rev_longspacing, constants->rev_latspacing};
@@ -42,9 +45,11 @@ int old::radconvolveTexture (
 
         // 1. initialize fluence map. Here, we enable all beamlets
         float* d_fluence_map;
-        int fluenceSize = this_beam.fmap_size.x * this_beam.fmap_size.y * sizeof(float);
-        checkCudaErrors(cudaMalloc((void**)(&d_fluence_map), fluenceSize));
-        checkCudaErrors(cudaMemset((void*)d_fluence_map, 1., fluenceSize));
+        int fluenceSize = this_beam.fmap_size.x * this_beam.fmap_size.y;
+        std::vector<float> h_fluence_map(fluenceSize, 1.);
+        checkCudaErrors(cudaMalloc((void**)(&d_fluence_map), fluenceSize * sizeof(float)));
+        checkCudaErrors(cudaMemcpy(d_fluence_map, h_fluence_map.data(), 
+            fluenceSize*sizeof(float), cudaMemcpyHostToDevice));
 
         PILLAR_GRID hPG{};
         hPG.numBeamlets = this_beam.fmap_size.x * this_beam.fmap_size.y;
@@ -160,7 +165,7 @@ int old::radconvolveTexture (
             rev, d_fluence_map,
             conGrid, conBlock,
             memsize, packedGrid, tileBlock,
-            unpack2Patient, result[dc]
+            dc, result[dc]
         );
 
         // clean up
@@ -227,9 +232,10 @@ int old::radconvolveCompute(
     const std::vector<REV_DATA>& rev, float* d_fluence_map,
     const std::vector<dim3>& conGrid, const std::vector<dim3>& conBlock, 
     const std::vector<uint>& memsize, const dim3& packedGrid, const dim3& tileBlock,
-    bool unpack2Patient, std::vector<std::vector<float>>& beamResult)
+    int dc, BEAM_LOG& beamResult)
 {
     float3 rev_voxelsize = {constants->rev_latspacing, constants->rev_longspacing, constants->rev_latspacing};
+    fs::path debugDir(Paths::Instance()->debug_dir());
     for (int ray_idx=0; ray_idx<nrays; ray_idx++)
     {
         // get kernel rotation angles once instead of for each kernel thread launch
@@ -240,6 +246,16 @@ int old::radconvolveCompute(
         // calculate rev Terma and sample density
         // rayGrid[rr] in the order of XYZ
         int raySharedMem = rayBlock.x * rayBlock.y * rayBlock.z * sizeof(float);
+
+        float3* g_coords_log = nullptr;
+        if (constants->debugREVTerma && dc==0 && ray_idx==0)
+        {
+            #include "debug_raytrace.cpp.in"
+            int volume = constants->max_rev_size.x * 
+                constants->max_rev_size.y * constants->max_rev_size.z;
+            checkCudaErrors(cudaMalloc((void**)(&g_coords_log), volume*sizeof(float3)));
+        }
+
         cudaBeamletRaytrace<<<rayGrid[ray_idx], rayBlock, raySharedMem>>>(
             device_data.revDens,
             device_data.revTerma,
@@ -266,7 +282,7 @@ int old::radconvolveCompute(
             rev_voxelsize,
             make_float3(constants->calc_bbox_start),
             texDens,
-            device_data.texTerma,
+            g_coords_log,
 
             // raytrcing/terma args
             d_fluence_map,
@@ -281,6 +297,25 @@ int old::radconvolveCompute(
             texSpectrum
         );
 
+        float* d_debugProbe=nullptr;
+        if (constants->debugREVTerma && dc==0 && ray_idx==0)
+        {
+            if (write_g_coords_log(g_coords_log, constants, debugDir))
+                return 1;
+            checkCudaErrors(cudaFree(g_coords_log));
+            if (writeREVTerma(device_data.revTerma, 
+                device_data.revDens, constants, debugDir))
+                return 1;
+            #include "debug_convolve.cpp.in"
+        }
+        if (constants->debugREVDose && dc==0 && ray_idx==0)
+        {
+            int volume = constants->max_rev_size.x * 
+                constants->max_rev_size.y * constants->max_rev_size.z;
+            checkCudaErrors(cudaMalloc((void**)(&d_debugProbe), volume*sizeof(float)));
+            checkCudaErrors(cudaMemset(d_debugProbe, 0, volume*sizeof(float)));
+        }
+
         // perform dose calculation (CCCS) w/ heterogeneity correction in REV volume
         PackRowConvolve<<<conGrid[ray_idx], conBlock[ray_idx], memsize[ray_idx]>>> (
             device_data.revDens,
@@ -294,8 +329,19 @@ int old::radconvolveCompute(
             constants->ntheta,
             constants->nphi,
             texKern,
-            false
+            d_debugProbe
         );
+
+        if (constants->debugREVDose && dc==0 && ray_idx==0)
+        {
+            if (writeREVDose(device_data.texDose, constants, debugDir))
+                return 1;
+            if (writeREVDebug(d_debugProbe, constants, debugDir))
+                return 1;
+            if (writeREVSurf(device_data.surfDose, constants, debugDir))
+                return 1;
+            checkCudaErrors(cudaFree(d_debugProbe));
+        }
 
         // transform packed REV dose coefficients from the previous convolution back to the BEV system then
         // perform element-by-element sum, accumulating over all convolution directions
@@ -307,10 +353,18 @@ int old::radconvolveCompute(
             rev_voxelsize,
             hPG.gridDims
         );
+
+        // for debug purposes
+        if (constants->debugREVDose)
+            std::cout << "ray index: " << ray_idx << std::endl;
     }
 
-    if (! unpack2Patient)
-        return 0;
+    if (constants->debugBEVDose && dc==0)
+        if (writeBEVDose(device_data.dose, hPG, debugDir))
+            return 1;
+    
+    // if (! constants->logPatientDose)
+    //     return 0;
 
     // unpack pillars from BEV storage
     // copy output of PackedREVtoBEVdose to cudaArray and attach texture object
@@ -340,12 +394,12 @@ int old::radconvolveCompute(
     );
 
     int calcDataSize = constants->bbox_nvoxels();
-    beamResult.resize(hPG.numBeamlets);
+    std::get<1>(beamResult).resize(hPG.numBeamlets);
     float* d_unpacked_dose;
     checkCudaErrors(cudaMalloc((void**)(&d_unpacked_dose), calcDataSize*sizeof(float)));
     for (int i=0; i<hPG.numBeamlets; i++)
     {
-        beamResult[i].resize(calcDataSize);
+        std::get<1>(beamResult)[i].resize(calcDataSize);
         checkCudaErrors(cudaMemset(d_unpacked_dose, 0., calcDataSize*sizeof(float)));
         UnpackBEVDosePillar <<<unpackGrid, unpackBlock>>> (
             d_unpacked_dose,
@@ -369,9 +423,10 @@ int old::radconvolveCompute(
             hPG.pillarStartCoords[i],
             hPG.beamletAngles[i]
         );
-        checkCudaErrors(cudaMemcpy(beamResult[i].data(), d_unpacked_dose, 
+        checkCudaErrors(cudaMemcpy(std::get<1>(beamResult)[i].data(), d_unpacked_dose, 
             calcDataSize*sizeof(float), cudaMemcpyDeviceToHost));
     }
+    std::get<0>(beamResult) = hPG;
     checkCudaErrors(cudaFree(d_unpacked_dose));
     checkCudaErrors(cudaDestroyTextureObject(texPackedBEVDose));
     checkCudaErrors(cudaFreeArray(PackedBEVdose_Array));

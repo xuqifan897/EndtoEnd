@@ -15,8 +15,7 @@ namespace old
         CONSTANTS           *constants,
         std::vector<BEAM>&  beams,
         int                 nrays,
-        bool                unpack2Patient,
-        std::vector<std::vector<std::vector<float>>>& result
+        RES_LOG& result
     );
 
     int radconvolvePrep(CONSTANTS* constants, PILLAR_GRID* hPG, 
@@ -32,7 +31,7 @@ namespace old
         const std::vector<REV_DATA>& rev, float* d_fluence_map,
         const std::vector<dim3>& conGrid, const std::vector<dim3>& conBlock, 
         const std::vector<uint>& memsize, const dim3& packedGrid, const dim3& tileBlock,
-        bool unpack2Patient, std::vector<std::vector<float>>& beamResult);
+        int dc, BEAM_LOG& result);
 
     void update_extents(float3& currMin, float3& currMax, const float3& thisPt);
 
@@ -85,7 +84,8 @@ namespace old
         float3              rev_voxelsize,
         float3              f_calc_bbox_start,
         cudaTextureObject_t tex3Ddens,
-        cudaTextureObject_t tex3Dter,
+        // cudaTextureObject_t tex3Dter,
+        float3*             g_coords_log,
 
         float* d_fluence_map,
         float3 f_size,
@@ -112,7 +112,7 @@ namespace old
         uint ntheta,
         uint nphi,
         cudaTextureObject_t kernTex,
-        bool TERMA_ONLY
+        float* debugProbe
     );
 
     __global__ void
@@ -157,7 +157,7 @@ namespace old
         const std::vector<REV_DATA>& rev, float* d_fluence_map,
         const std::vector<dim3>& conGrid, const std::vector<dim3>& conBlock, 
         const std::vector<uint>& memsize, const dim3& packedGrid, const dim3& tileBlock,
-        bool unpack2Patient, std::vector<std::vector<float>>& beamResult);
+        bool unpack2Patient, RES_LOG& beamResult);
 }
 
 #endif

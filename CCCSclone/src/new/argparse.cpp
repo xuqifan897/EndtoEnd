@@ -22,8 +22,9 @@ bool dev::argparse(int argc, char** argv)
             "All parameters should be specified as the arguments to this program")
         ("dataFolder", po::value<std::string>(), "The folder containing the necessary data (required)")
         ("resultFolder", po::value<std::string>(), "The folder to put result in (required)")
+        ("debugFolder", po::value<std::string>()->default_value("."),
+            "The folder to put debut results (required to log debug results)")
         ("deviceIdx", po::value<int>()->default_value(0), "The GPU idx for dose calculation. Here we only use 1 card.")
-        ("unpack2Patient", po::value<bool>()->default_value(true), "The flag to unpack the BEV dose to the patient volume")
         ("debugLog", po::value<bool>()->default_value(false), "whether to log the variables")
         ("dicomVolumeDimension", po::value<std::vector<int>>()->multitoken(), 
             "Dicom volume dimension, 3 digits (required)")
@@ -50,7 +51,20 @@ bool dev::argparse(int argc, char** argv)
         ("penumbra", po::value<float>()->default_value(1.0),
             "Beamlet transverse dose spread. [cm]")
         ("beamCount", po::value<int>()->default_value(1),
-            "Number of beams to pick from omni_beam_lists.txt");
+            "Number of beams to pick from omni_beam_lists.txt")
+        
+        // debug flags
+        ("debugREVTerma", po::value<bool>()->default_value(false),
+            "whether to log out the REV Terma calculation result, "
+            "only to record the result of the 0th beam")
+        ("debugREVDose", po::value<bool>()->default_value(false),
+            "whether to log out the REV Dose calculation result, "
+            "only to record the result of the 0th beam")
+        ("debugBEVDose", po::value<bool>()->default_value(false),
+            "whether to log out the BEV Dose calculation result, "
+            "only to record the result of the 0th beam")
+        ("logPatientDose", po::value<bool>()->default_value(true),
+            "whether to log out the final patient beam");
         
         dicomVolumeStartCoords = std::vector<float>({0., 0., -25.55});
         po::store(po::parse_command_line(argc, argv, desc), vm);

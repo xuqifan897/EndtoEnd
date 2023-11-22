@@ -1,0 +1,51 @@
+if (! fs::is_directory(debugDir))
+    fs::create_directories(debugDir);
+
+std::stringstream output;
+output << "conGrid: " << conGrid[ray_idx] << std::endl;
+output << "conBlock: " << conBlock[ray_idx] << std::endl;
+output << "memsize: " << memsize[ray_idx] << std::endl;
+output << "kern_wt_idx: " << kern_wt_idx << std::endl;
+output << "rev[ray_idx].size: " << rev[ray_idx].size << std::endl;
+output << "constants:" << std::endl;
+output << "    max_rev_size: " << constants->max_rev_size << std::endl;
+output << "    rev_longspacing: " << constants->rev_longspacing << std::endl;
+output << "    nradii: " << constants->nradii << std::endl;
+output << "    ntheta: " << constants->ntheta << std::endl;
+output << "    nphi: " << constants->nphi << std::endl;
+fs::path file = debugDir / fs::path("parameters_conv.txt");
+std::ofstream f(file.string());
+if (! f)
+{
+    std::cerr << "Could not open file: " << file.string() << std::endl;
+    return 1;
+}
+f << output.str();
+f.close();
+
+// log texKern
+float* d_texKern;
+checkCudaErrors(cudaMalloc((void**)(&d_texKern), constants->nradii*constants->ntheta*sizeof(float)));
+dim3 blockSize(8, 8, 1);
+dim3 gridSize;
+gridSize.x = int(std::ceil(static_cast<float>(constants->nradii) / blockSize.x));
+gridSize.y = int(std::ceil(static_cast<float>(constants->ntheta) / blockSize.y));
+readTexture2D<<<gridSize, blockSize>>>(d_texKern, texKern, constants->nradii, constants->ntheta);
+std::vector<float> h_texKern(constants->nradii*constants->ntheta);
+checkCudaErrors(cudaMemcpy(h_texKern.data(), d_texKern, 
+    constants->nradii*constants->ntheta*sizeof(float), cudaMemcpyDeviceToHost));
+checkCudaErrors(cudaFree(d_texKern));
+file = debugDir / fs::path("texKern_log.txt");
+f.open(file.string());
+if (! f)
+{
+    std::cerr << "Could not open file: " << file.string() << std::endl;
+    return 1;
+}
+for (int i=0; i<constants->ntheta; i++)
+{
+    for (int j=0; j<constants->nradii; j++)
+        f << std::setw(12) << std::left << h_texKern[j+i*constants->nradii];
+    f << std::endl;
+}
+f.close();

@@ -29,4 +29,10 @@ void old::constantsInit(CONSTANTS* host)
     (host)->penumbra = dev::getarg<float>("penumbra");
     (host)->beam_count = dev::getarg<int>("beamCount");
     (host)->beam_spec = std::string("spec_6mv.spec");
+
+    // debug flags
+    (host)->debugREVTerma = dev::getarg<bool>("debugREVTerma");
+    (host)->debugREVDose = dev::getarg<bool>("debugREVDose");
+    (host)->debugBEVDose = dev::getarg<bool>("debugBEVDose");
+    (host)->logPatientDose = dev::getarg<bool>("logPatientDose");
 }

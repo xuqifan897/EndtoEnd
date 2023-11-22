@@ -1,0 +1,74 @@
+if (! fs::is_directory(debugDir))
+    fs::create_directories(debugDir);
+
+std::stringstream output;
+output << "rayGrid:" << rayGrid[ray_idx] << std::endl;
+output << "rayBlock: " << rayBlock << std::endl;
+output << "raySharedMem: " << raySharedMem << std::endl;
+output << "this_beam" << std::endl;
+output << "    source: " << this_beam.source << std::endl;
+output << "    beamlet_size: " << this_beam.beamlet_size << std::endl;
+output << "    azimuth: " << this_beam.azimuth << std::endl;
+output << "    zenith: " << this_beam.zenith << std::endl;
+output << "    coll: " << this_beam.coll << std::endl;
+output << "    direction: " << this_beam.direction << std::endl;
+output << "    isocenter: " << this_beam.isocenter << std::endl;
+output << "    sad: " << this_beam.sad << std::endl;
+output << "    fmap_size: " << this_beam.fmap_size << std::endl;
+
+output << "hPG" << std::endl;
+output << "    gridDims: " << hPG.gridDims << std::endl;
+output << "    pillarDims: " << hPG.pillarDims << std::endl;
+output << "    numBealmets: " << hPG.numBeamlets << std::endl;
+output << "    wallThickness: " << hPG.wallThickness << std::endl;
+output << "    numPillars: " << hPG.numPillars << std::endl;
+
+fs::path file = debugDir / fs::path("dpg_beamletIdx.txt");
+if(logCudaVector_txt(dpg_beamletIdx, hPG.numBeamlets, file))
+    return 1;
+file = debugDir / fs::path("dpg_beamletAngles.txt");
+if(logCudaVector_txt(dpg_beamletAngles, hPG.numBeamlets, file))
+    return 1;
+file = debugDir / fs::path("dpg_pillarStartCoords.txt");
+if(logCudaVector_txt(dpg_pillarStartCoords, hPG.numBeamlets, file))
+    return 1;
+file = debugDir / fs::path("dpg_beamletIsocenters.txt");
+if(logCudaVector_txt(dpg_beamletIsocenters, hPG.numBeamlets, file))
+    return 1;
+
+output << "kern_theta: " << kern_theta << std::endl;
+output << "kern_phi: " << kern_phi << std::endl;
+output << "rev[ray_idx]" << std::endl;
+output << "    min_coords: " << rev[ray_idx].min_coords << std::endl;
+output << "    size: " << rev[ray_idx].size << std::endl;
+output << "constants: " << std::endl;
+output << "    max_rev_size: " << constants->max_rev_size << std::endl;
+output << "    start: " << constants->start << std::endl;
+output << "    voxel: " << constants->voxel << std::endl;
+output << "    calc_bbox_start: " << constants->calc_bbox_start << std::endl;
+output << "    size: " << constants->size << std::endl;
+output << "    calc_bbox_size: " << constants->calc_bbox_size << std::endl;
+output << "    beamhard_correct: " << constants->beamhard_correct << std::endl;
+output << "rev_voxelsize: " << rev_voxelsize << std::endl;
+output << "mono->nkernels: " << mono->nkernels << std::endl;
+
+file = debugDir / fs::path("parameters.txt");
+std::ofstream f(file.string());
+if (! f)
+{
+    std::cerr << "Can not open file: " << file.string() << std::endl;
+    return 1;
+}
+f << output.str();
+f.close();
+
+file = debugDir / fs::path("d_fluence_map.txt");
+if (logCudaVector_txt(d_fluence_map, hPG.numBeamlets, file))
+    return 1;
+
+// log texture
+if(texDens_log(constants, debugDir))
+    return 1;
+
+if (texSpectrum_log(mono, debugDir))
+    return 1;

@@ -16,6 +16,7 @@ namespace old
         std::string temp_dir() {return m_temp_dir.string();}
         std::string data_dir() {return m_data_dir.string();}
         std::string result_dir() {return m_result_dir.string();}
+        std::string debug_dir() {return m_debug_dir.string();}
         std::string kernel_dir() {return (m_data_dir / boost::filesystem::path("dsa")).string();}
         std::string spectra_dir() {return (m_data_dir / boost::filesystem::path("spectra")).string();}
 
@@ -34,6 +35,7 @@ namespace old
         boost::filesystem::path m_temp_dir;
         boost::filesystem::path m_data_dir;
         boost::filesystem::path m_result_dir;
+        boost::filesystem::path m_debug_dir;
     
     private:
         Paths() {};

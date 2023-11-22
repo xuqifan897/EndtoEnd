@@ -21,7 +21,7 @@ int old::datavols_log(CONSTANTS* constants, SHM_DATA* datavols)
         }
         output << std::endl;
     }
-    fs::path outputFile(Paths::Instance()->result_dir());
+    fs::path outputFile(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("kernel_array.txt");
     std::ofstream f(outputFile.string());
     if (! f)
@@ -32,7 +32,7 @@ int old::datavols_log(CONSTANTS* constants, SHM_DATA* datavols)
     f << output.str();
     f.close();
 
-    outputFile = fs::path(Paths::Instance()->result_dir());
+    outputFile = fs::path(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("density.bin");
     f.open(outputFile.string());
     if (! f)
@@ -44,10 +44,10 @@ int old::datavols_log(CONSTANTS* constants, SHM_DATA* datavols)
     f.write((char*)(datavols->density.data()), volume);
     f.close();
 
-    output.clear();
+    output.str("");
     for (int i=0; i<datavols->radial_boundary.size(); i++)
         output << std::left << std::setw(12) << std::setprecision(4) << datavols->radial_boundary[i];
-    outputFile = fs::path(Paths::Instance()->result_dir());
+    outputFile = fs::path(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("radial_boundary.txt");
     f.open(outputFile.string());
     if (! f)
@@ -79,7 +79,7 @@ int old::mono_kernel_log(MONO_KERNELS* mono)
             std::fixed << std::setprecision(4) << std::setw(width) << mono->mu_en[i] << std::endl;
     }
 
-    fs::path outputFile(Paths::Instance()->result_dir());
+    fs::path outputFile(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("spectrum_log.txt");
     std::ofstream f(outputFile.string());
     if (! f)
@@ -137,7 +137,7 @@ int old::constants_log(CONSTANTS* constants)
     output << "calc_bbox_size: (" << constants->calc_bbox_size.x << ", " 
         << constants->calc_bbox_size.y << ", " << constants->calc_bbox_size.z << ")" << std::endl;
     
-    fs::path outputFile(Paths::Instance()->result_dir());
+    fs::path outputFile(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("constants_log.txt");
     std::ofstream f(outputFile.string());
     if (! f)
@@ -172,7 +172,7 @@ int old::beams_log(std::vector<BEAM>& beams)
     output << "beamlet_size: (" << firstBeam.beamlet_size.x << ", " << 
         firstBeam.beamlet_size.y << ")" << std::endl;
     
-    fs::path outputFile(Paths::Instance()->result_dir());
+    fs::path outputFile(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("beams_log.txt");
     std::ofstream f(outputFile.string());
     if (! f)
@@ -227,7 +227,7 @@ int old::texKern_log(CONSTANTS* constants)
             result << std::left << std::setw(12) << std::setprecision(4) << h_result[i * width + j];
         result << std::endl;
     }
-    fs::path outputFile(Paths::Instance()->result_dir());
+    fs::path outputFile(Paths::Instance()->debug_dir());
     outputFile = outputFile / fs::path("texKern_log.txt");
     std::ofstream f(outputFile.string());
     if (! f)
@@ -243,7 +243,7 @@ int old::texKern_log(CONSTANTS* constants)
     return 0;
 }
 
-int old::texSpectrum_log(MONO_KERNELS* mono_kernels)
+int old::texSpectrum_log(MONO_KERNELS* mono_kernels, const fs::path& debug_dir)
 {
     int width = mono_kernels->nkernels;
     int hight = 4;
@@ -263,8 +263,7 @@ int old::texSpectrum_log(MONO_KERNELS* mono_kernels)
             result << std::left << std::setw(12) << std::setprecision(4) << h_result[i * width + j];
         result << std::endl;
     }
-    fs::path outputFile(Paths::Instance()->result_dir());
-    outputFile = outputFile / fs::path("texSpectrum_log.txt");
+    fs::path outputFile = debug_dir / fs::path("texSpectrum_log.txt");
     std::ofstream f(outputFile.string());
     if (! f)
     {
@@ -279,7 +278,7 @@ int old::texSpectrum_log(MONO_KERNELS* mono_kernels)
     return 0;
 }
 
-int old::texDens_log(CONSTANTS* constants)
+int old::texDens_log(CONSTANTS* constants, const fs::path& debug_dir)
 {
     auto& size = constants->size;
     uint volume=size.x*size.y*size.z*sizeof(float);
@@ -295,8 +294,7 @@ int old::texDens_log(CONSTANTS* constants)
     // output result
     float* h_result = new float[size.x*size.y*size.z];
     checkCudaErrors(cudaMemcpy(h_result, d_result, volume, cudaMemcpyDeviceToHost));
-    fs::path outputFile(Paths::Instance()->result_dir());
-    outputFile = outputFile / fs::path("texDens_log.bin");
+    fs::path outputFile = debug_dir / fs::path("texDens_log.bin");
     std::ofstream f(outputFile.string());
     if (! f)
     {
@@ -310,8 +308,33 @@ int old::texDens_log(CONSTANTS* constants)
     return 0;
 }
 
+
+int old::write_g_coords_log(const float3* d_g_coords_log, 
+    CONSTANTS* constants, const boost::filesystem::path& debug_dir)
+{
+    int volume = constants->max_rev_size.x * constants->max_rev_size.y 
+        * constants->max_rev_size.z;
+    std::vector<float3> h_g_coords_log(volume);
+    checkCudaErrors(cudaMemcpy(h_g_coords_log.data(), d_g_coords_log, 
+        volume*sizeof(float3), cudaMemcpyDeviceToHost));
+    
+    if (! fs::is_directory(debug_dir))
+        fs::create_directories(debug_dir);
+    fs::path DoseFile = debug_dir / fs::path("g_coords.bin");
+    std::ofstream f(DoseFile.string());
+    if (! f)
+    {
+        std::cerr << "Could not open file: " << DoseFile.string();
+        return 1;
+    }
+    f.write((char*)(h_g_coords_log.data()), volume*sizeof(float3));
+    f.close();
+    return 0;
+}
+
 int old::debugLog(SHM_DATA* datavols, MONO_KERNELS *mono, CONSTANTS *constants, std::vector<BEAM>& beams)
 {
+    const auto& debug_dir = Paths::Instance()->debug_dir();
     if (datavols_log(constants, datavols))
         return 1;
     if (mono_kernel_log(mono))
@@ -322,9 +345,114 @@ int old::debugLog(SHM_DATA* datavols, MONO_KERNELS *mono, CONSTANTS *constants, 
         return 1;
     if (texKern_log(constants))
         return 1;
-    if (texSpectrum_log(mono))
+    if (texSpectrum_log(mono, debug_dir))
         return 1;
-    if (texDens_log(constants))
+    if (texDens_log(constants, debug_dir))
         return 1;
     return 0;
+}
+
+int old::logCudaVector_txt(float* d_source, int size, const fs::path& destFile)
+{
+    std::vector<float> h_source(size);
+    checkCudaErrors(cudaMemcpy(h_source.data(), d_source, size*sizeof(float), cudaMemcpyDeviceToHost));
+    std::ofstream f(destFile.string());
+    if (! f)
+    {
+        std::cerr << "Could not open the file: " << destFile.string() << std::endl;
+        return 1;
+    }
+    for (int i=0; i<size; i++)
+        f << std::left << std::setw(12) << h_source[i];
+    f.close();
+    return 0;
+}
+
+int old::logCudaVector_txt(int* d_source, int size, const fs::path& destFile)
+{
+    std::vector<int> h_source(size);
+    checkCudaErrors(cudaMemcpy(h_source.data(), d_source, size*sizeof(int), cudaMemcpyDeviceToHost));
+    std::ofstream f(destFile.string());
+    if (! f)
+    {
+        std::cerr << "Could not open the file: " << destFile.string() << std::endl;
+        return 1;
+    }
+    for (int i=0; i<size; i++)
+        f << std::left << std::setw(12) << h_source[i];
+    f.close();
+    return 0;
+}
+
+int old::logCudaVector_txt(float2* d_source, int size,
+    const boost::filesystem::path& destFile)
+{
+    std::vector<float2> h_source(size);
+    checkCudaErrors(cudaMemcpy(h_source.data(), d_source, size*sizeof(float2), cudaMemcpyDeviceToHost));
+    std::ofstream f(destFile.string());
+    if (! f)
+    {
+        std::cerr << "Could not open the file: " << destFile.string() << std::endl;
+        return 1;
+    }
+    for (int i=0; i<size; i++)
+        f << "(" << std::left << std::setw(12) << h_source[i].x << ", " 
+            << std::left << std::setw(12) << h_source[i].y << ")" << std::endl;
+    f.close();
+    return 0;
+}
+
+int old::logCudaVector_txt(float3* d_source, int size,
+    const boost::filesystem::path& destFile)
+{
+    std::vector<float3> h_source(size);
+    checkCudaErrors(cudaMemcpy(h_source.data(), d_source, size*sizeof(float3), cudaMemcpyDeviceToHost));
+    std::ofstream f(destFile.string());
+    if (! f)
+    {
+        std::cerr << "Could not open the file: " << destFile.string() << std::endl;
+        return 1;
+    }
+    for (int i=0; i<size; i++)
+        f << "(" << std::left << std::setw(12) << h_source[i].x << ", " 
+            << std::left << std::setw(12) << h_source[i].y << "," 
+            << std::left << std::setw(12) << h_source[i].z << ")" << std::endl;
+    f.close();
+    return 0;
+}
+
+std::ostream& old::operator<<(std::ostream& os, const float3& obj)
+{
+    os << "(" << obj.x << ", " << obj.y << ", " << obj.z << ")";
+    return os;
+}
+
+std::ostream& old::operator<<(std::ostream& os, const int3& obj)
+{
+    os << "(" << obj.x << ", " << obj.y << ", " << obj.z << ")";
+    return os;
+}
+
+std::ostream& old::operator<<(std::ostream& os, const float2& obj)
+{
+    os << "(" << obj.x << ", " << obj.y << ")";
+    return os;
+}
+
+std::ostream& old::operator<<(std::ostream& os, const int2& obj)
+{
+    os << "(" << obj.x << ", " << obj.y << ")";
+    return os;
+}
+
+std::ostream& old::operator<<(std::ostream& os, const uint2& obj)
+{
+    os << "(" << obj.x << ", " << obj.y << ")";
+    return os;
+}
+
+std::ostream& old::operator<<(std::ostream& os, const dim3& obj)
+{
+    os << "(" << obj.x << ", " << obj.y << ", " << obj.z << ")";
+    return os;
 }

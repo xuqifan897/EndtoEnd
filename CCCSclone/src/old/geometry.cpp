@@ -1,6 +1,7 @@
 #include "geometry.h"
 #include "dev_intrinsics.cuh"
 #include "configure.h"
+#include "macros.h"
 
 #include <limits>
 #include <iostream>

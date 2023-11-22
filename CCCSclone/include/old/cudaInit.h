@@ -43,10 +43,6 @@ namespace old
     extern DEVICE_CONV_DATA device_data;
     extern float* device_dose_accm;
 
-    // variables held in each device's constant memory
-    // (data init by host using cudaMemCpyToSymbol() in initCudaConstants)
-    __constant__ float KERN_RADII[N_KERNEL_RADII];
-
     void makeTexObject(cudaTextureObject_t *texobj, cudaArray *res, int dims,
         cudaTextureAddressMode addressmode, cudaTextureFilterMode filtermode,
         bool normalizedCoords=false, 
@@ -54,6 +50,8 @@ namespace old
         cudaResourceType restype=cudaResourceType::cudaResourceTypeLinear);
 
     void makeSurfObject(cudaSurfaceObject_t *surfobj, cudaArray *res);
+
+    void kern_radii_init(const std::vector<float>& source);
 }
 
 #endif

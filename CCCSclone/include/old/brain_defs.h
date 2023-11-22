@@ -83,6 +83,12 @@ namespace old
             /* return (float)get_kernel_phi_index(ray_index, ntheta, nphi) * 2.0f * PI / nphi; */
         }
         ////////////////////////////////////
+
+        // Flags for debugging
+        bool debugREVTerma;
+        bool debugREVDose;
+        bool debugBEVDose;
+        bool logPatientDose;
     };
 
     struct SHM_DATA {

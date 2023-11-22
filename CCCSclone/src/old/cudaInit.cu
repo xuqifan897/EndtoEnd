@@ -99,7 +99,7 @@ int old::initCudaConstandTex(
     mean_radii[0] = 0.5 * datavols->radial_boundary[0];
     for (int rr=1; rr<constants->nradii; rr++)
         mean_radii[rr] = 0.5*(datavols->radial_boundary[rr]+datavols->radial_boundary[rr-1]);
-    checkCudaErrors(cudaMemcpyToSymbol(KERN_RADII, mean_radii.data(), constants->nradii*sizeof(float)));
+    kern_radii_init(mean_radii);
 
     // Bind denisty to 3D Texture Array
     cudaExtent volExtent = make_cudaExtent(
@@ -128,26 +128,39 @@ int old::initCudaConstandTex(
     checkCudaErrors(cudaMalloc((void**)(&(device_data.revDens)), revSize));
     checkCudaErrors(cudaMalloc((void**)(&(device_data.revTerma)), revSize));
 
-    // Cuda Array for terma texture object fetching
-    cudaExtent calc_bbox_extent = make_cudaExtent(constants->calc_bbox_size.x,
-        constants->calc_bbox_size.y, constants->calc_bbox_size.z);
-    checkCudaErrors(cudaMalloc3DArray(&(device_data.term_Array), &floatChannelDesc, calc_bbox_extent));
+    // // Cuda Array for terma texture object fetching
+    // cudaExtent calc_bbox_extent = make_cudaExtent(constants->calc_bbox_size.x,
+    //     constants->calc_bbox_size.y, constants->calc_bbox_size.z);
+    // checkCudaErrors(cudaMalloc3DArray(&(device_data.term_Array), &floatChannelDesc, calc_bbox_extent));
+    // makeTexObject(&(device_data.texTerma), 
+    //     device_data.term_Array, 3, cudaAddressModeBorder, cudaFilterModeLinear);
 
     // Allocate 3D CUDA array to bind with surface and texture objects
-    {
-        cudaExtent doseExtent = make_cudaExtent(constants->max_rev_size.x,
-            constants->max_rev_size.y, constants->max_rev_size.z);
-        checkCudaErrors(cudaMalloc3DArray(&(device_data.dose_Array), 
-            &floatChannelDesc, doseExtent, cudaArraySurfaceLoadStore));
-    }
-
-    // generate texture/surface object for reading / writing terma and dose data in kernels
-    makeTexObject(&(device_data.texTerma), 
-        device_data.term_Array, 3, cudaAddressModeBorder, cudaFilterModeLinear);
-    makeTexObject(&(device_data.texDose),
-        device_data.dose_Array, 3, cudaAddressModeBorder, cudaFilterModeLinear);
-    makeSurfObject(&(device_data.surfDose), device_data.dose_Array);
-
+    floatChannelDesc = cudaCreateChannelDesc<float>();
+    cudaExtent dataSize;
+    dataSize.width = constants->max_rev_size.x;
+    dataSize.height = constants->max_rev_size.y;
+    dataSize.depth = constants->max_rev_size.z;
+    checkCudaErrors(cudaMalloc3DArray(&(device_data.dose_Array), 
+        &floatChannelDesc, dataSize, cudaArraySurfaceLoadStore));
+    cudaResourceDesc surfRes;
+    memset(&surfRes, 0, sizeof(cudaResourceDesc));
+    surfRes.resType = cudaResourceTypeArray;
+    surfRes.res.array.array = device_data.dose_Array;
+    checkCudaErrors(cudaCreateSurfaceObject(&(device_data.surfDose), &surfRes));
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = device_data.dose_Array;
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    texDescr.normalizedCoords = false;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeBorder;
+    texDescr.addressMode[1] = cudaAddressModeBorder;
+    texDescr.addressMode[2] = cudaAddressModeBorder;
+    texDescr.readMode = cudaReadModeElementType;
+    checkCudaErrors(cudaCreateTextureObject(&(device_data.texDose), &texRes, &texDescr, nullptr));
     return 1;
 }
 

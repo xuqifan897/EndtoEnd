@@ -4,12 +4,12 @@
 #include "brain_defs.h"
 
 #include <vector>
+#include <boost/filesystem.hpp>
 
 namespace old
 {
     int load_data(CONSTANTS* host, SHM_DATA* data);
     int load_density(SHM_DATA* data);
-    int write_result(const std::vector<std::vector<std::vector<float>>>& result);
 
     struct PILLAR_GRID{
         int numBeamlets;               // number of active pillars in this fluence map
@@ -44,6 +44,23 @@ namespace old
         float3 max_coords {}; // coords of last voxel in BEV
         uint3  size {};       // dimensions of this BEV volume
     };
+
+    typedef std::vector<float> BEAMLET_LOG;
+    typedef std::pair<PILLAR_GRID, std::vector<BEAMLET_LOG>> BEAM_LOG;
+    typedef std::vector<BEAM_LOG> RES_LOG;
+
+    int writeREVTerma(const float* d_revTerma, 
+        const float* d_revDens, CONSTANTS* constants,
+        const boost::filesystem::path& debugDir);
+    int writeREVDose(const cudaTextureObject_t revDoseTex, 
+        CONSTANTS* constants, const boost::filesystem::path& debugDir);
+    int writeREVDebug(float* d_debugLog, CONSTANTS* constants,
+        const boost::filesystem::path& debugDir);
+    int writeREVSurf(const cudaSurfaceObject_t surfDose, 
+        CONSTANTS* constants, const boost::filesystem::path& debugDir);
+    int writeBEVDose(const float* d_bevDose, const PILLAR_GRID& hPG, 
+        const boost::filesystem::path& debugDir);
+    int writeResults(const RES_LOG& results);
 }
 
 #endif
