@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import h5py
+import matplotlib.pyplot as plt
 
 def viewDens():
     resultFolder = '/data/qifan/projects/EndtoEnd/results/CCCSclone/results'
@@ -228,8 +229,11 @@ def checkResultSample():
         roofOld = np.max(beamletOld)
         roofNew = np.max(beamletNew)
         print("peak value of old result: {:.4e}".format(roofOld))
-        print("peak value of new reuslt: {:.4e}".format(roofNew))
+        print("peak value of new reuslt: {:.4e}\n".format(roofNew))
+        print("sum value of old result: {:.4e}".format(np.sum(beamletOld)))
+        print("sum value of new result: {:.4e}\n".format(np.sum(beamletNew)))
         print("summed absolute difference: {:.4e}".format(diff))
+        print("discrepancy: {:.4e}".format(diff / np.sum(beamletOld)))
 
 
 def print_hdf5_structure(item, indent=0):
@@ -273,6 +277,40 @@ def getCCCSBeamletDose(file, shape, idx):
     return CCCSDose
 
 
+def print_dose():
+    """
+    This function prints a cross-section of the dose into an image
+    """
+    matrixShape = (101, 101, 101)
+    fullShape = (103, 103, 103)
+    beamletFile = "/data/qifan/projects/EndtoEnd/"\
+        "results/CCCSclone/results/beam0/beamlet40"
+    beamletNew_ = np.fromfile(beamletFile, dtype=np.float32)
+    beamletNew_ = np.reshape(beamletNew_, matrixShape)
+    beamletNew = np.zeros(fullShape, dtype=np.float32)
+    beamletNew[1:-1, 1:-1, 1:-1] = beamletNew_
+
+    # get a cross-section
+    cross_section = beamletNew[:, 50, :]
+    if False:
+        image = "./scripts/transverse.png"
+        plt.imsave(image, cross_section)
+
+    # calculate centroid
+    coords = np.arange(cross_section.shape[0])
+    coords_x = np.expand_dims(coords, axis=1)
+    coords_y = np.expand_dims(coords, axis=0)
+    idx_x = np.sum(cross_section * coords_x) / np.sum(cross_section)
+    idx_y = np.sum(cross_section * coords_y) / np.sum(cross_section)
+
+    idx_y = int(np.round(idx_y))
+    slice = beamletNew[:, :, idx_y]
+    slice = np.transpose(slice, axes=(1, 0))
+    if True:
+        image = "./scripts/longitudinal.png"
+        plt.imsave(image, slice)
+
+
 if __name__ == '__main__':
     # viewDens()
     # viewDose()
@@ -282,4 +320,5 @@ if __name__ == '__main__':
     # view_g_coords()
     # REVDoseDebug()
     # check_BEVDose()
-    checkResultSample()
+    # checkResultSample()
+    print_dose()

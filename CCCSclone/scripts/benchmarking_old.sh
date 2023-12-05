@@ -10,7 +10,3 @@
     --doseBoundingBoxStartIndices 1 1 1 \
     --doseBoundingBoxDimensions 101 101 101 \
     --REVConvolutionArrayDimensions 800 800 800 \
-    --debugLog false \
-    --debugREVTerma false \
-    --debugREVDose false \
-    --debugBEVDose false \
